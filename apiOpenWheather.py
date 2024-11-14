@@ -2,7 +2,7 @@ import requests
 import geocoder
 from geopy.distance import geodesic
 
-# Función para buscar lugares cercanos usando Overpass API
+# Función para buscar lugares cercanos usando Overpass API 
 def buscar_lugares_cercanos(lat, lon):
     # Consulta para hospitales y centros de acopio
     query = f"""
