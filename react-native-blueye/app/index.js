@@ -1,19 +1,26 @@
+// index.js
 import "../global.css";
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, AppRegistry } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Main from '../components/Main';
+import { TamaguiProvider } from '@tamagui/core';  // Importa TamaguiProvider
+import config from '../tamagui.config';  // Importa la configuración de Tamagui
+import Main from '../components/Main';  // Importa el componente Main
 
-export default function App() {
+const App = () => {
   return (
-    <SafeAreaProvider>
-      <View style={styles.container}>
-        <StatusBar style="light" />
-        <Main />
-      </View>
-    </SafeAreaProvider>
+    <TamaguiProvider config={config}>  // Envuelve tu aplicación con TamaguiProvider
+      <SafeAreaProvider>
+        <View style={styles.container}>
+          <StatusBar style="light" />
+          <Main />
+        </View>
+      </SafeAreaProvider>
+    </TamaguiProvider>
   );
-}
+};
+
+AppRegistry.registerComponent('YourAppName', () => App);
 
 const styles = StyleSheet.create({
   container: {

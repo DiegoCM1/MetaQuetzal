@@ -8,6 +8,7 @@
     "userInterfaceStyle": "light",
     "scheme": "blueye",
     "newArchEnabled": true,
+    "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

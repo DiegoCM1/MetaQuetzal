@@ -1,83 +1,61 @@
+// Main.jsx
 import React from 'react';
-import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+import { StyleSheet, View, Text } from 'react-native';
+import { Button, Card } from 'tamagui'; // Importa lo que uses de Tamagui
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native'; // Asegúrate de importar correctamente NavigationContainer
+import { createStackNavigator } from '@react-navigation/stack'; // Asegúrate de importar Stack
+import Settings from '../app/settings'; // Cambié la importación a settings.js
+import Monetization from '../app/monetization'; // Cambié la importación a monetization.js
+import ChatAI from '../app/chat-ai'; // Cambié la importación a chat-ai.js
+import Main from '../app/index'; // Cambié la importación a main.js
 
-const Main = () => {
+const Stack = createStackNavigator();
+
+const MainComponent = () => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <TouchableOpacity 
-        underlayColor={"#09f"}
-        style={styles.circularButton}
-        onPress={() => alert('You are redirected to another page')}
-      >
-        <Text style={styles.buttonText}>Index JS</Text>
-      </TouchableOpacity>
-
-      <Pressable style={styles.linkContainer}>
-        <Link href="/chat-ai">
-          <Text style={styles.linkText}>Hablar con la IA</Text>
-        </Link>
-      </Pressable>
-
-      <View style={styles.testContainer}>
-        <TouchableOpacity style={styles.testButton}>
-          <Text style={styles.testButtonText}>Test Button</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Settings">
+        <Stack.Screen name="Settings" component={Settings} options={{ title: 'Ajustes' }} />
+        <Stack.Screen name="Subscription" component={Monetization} options={{ title: 'Suscripción' }} />
+        <Stack.Screen name="Chat" component={ChatAI} options={{ title: 'Chat' }} />
+        <Stack.Screen name="Map" component={Main} options={{ title: 'Mapa' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
-
-export default Main;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  circularButton: {
-    width: 200, 
-    height: 200,
-    backgroundColor: 'red',
-    borderRadius: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-  },
-  linkContainer: {
-    backgroundColor: '#bae6fd',
-    padding: 10,
-    marginTop: 20,
-  },
-  linkText: {
-    color: '#334155',
-    fontSize: 16,
-  },
-  testContainer: {
-    width: '33%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  testButton: {
-    backgroundColor: '#3b82f6',
-    padding: 16,
-    borderRadius: 8,
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
+  card: {
+    width: '100%',
+    padding: 20,
+    borderRadius: 10,
+    backgroundColor: '#fff',
     shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
-  testButtonText: {
-    color: 'white',
+  cardTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    fontSize: 18,
+    marginBottom: 10,
+  },
+  button: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#007bff',
+    color: '#fff',
+    borderRadius: 5,
   },
 });
+
+export default Main;

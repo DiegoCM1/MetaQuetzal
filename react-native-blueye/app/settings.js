@@ -1,46 +1,20 @@
 import "../global.css";
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Pressable } from 'react-native';
+import { StatusBar } from "expo-status-bar";
+import React from "react";
+import { View, Text, Switch } from "react-native";
 
-export default function App() {
+export default function SettingsScreen() {
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
-      {/* Nuevo Contenedor de Prueba */}
-      <View className="w-2/6 justify-center items-center bg-gray-100 mt-4 mb-4">
-        <TouchableOpacity className="bg-blue-500 p-4 rounded-lg shadow-lg">
-          <Text className="text-white font-bold text-lg">Test Button</Text>
-        </TouchableOpacity>
+    <View className="flex-1 bg-gray-100 p-4">
+      <Text className="text-xl font-bold mb-4">Ajustes</Text>
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-lg">Notificaciones</Text>
+        <Switch />
       </View>
-
-
-      {/* Botón Circular */}
-      <TouchableOpacity 
-        underlayColor={"#09f"}
-        style={{
-          width: 200, 
-          height: 200,
-          backgroundColor: 'red',
-          borderRadius: 100,
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}
-        onPress={() => alert('You are redirected to another page')}
-      >
-        <Text style={{ color: 'white' }}>Settings</Text>
-      </TouchableOpacity>
-
-
-
+      <View className="flex-row justify-between items-center">
+        <Text className="text-lg">Modo oscuro</Text>
+        <Switch />
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
