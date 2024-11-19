@@ -1,20 +1,19 @@
 import "../global.css";
-import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { View, Text, Switch } from "react-native";
+import { TamaguiProvider } from "@tamagui/core";  // Importa TamaguiProvider
+import config from "../tamagui.config";  // Importa la configuración de Tamagui
+import { Stack, Text, Switch } from "@tamagui/core"; // Solo los componentes esenciales
 
 export default function SettingsScreen() {
   return (
-    <View className="flex-1 bg-gray-100 p-4">
-      <Text className="text-xl font-bold mb-4">Ajustes</Text>
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-lg">Notificaciones</Text>
-        <Switch />
-      </View>
-      <View className="flex-row justify-between items-center">
-        <Text className="text-lg">Modo oscuro</Text>
-        <Switch />
-      </View>
-    </View>
+    <TamaguiProvider config={config}>  {/* TamaguiProvider envolviendo el componente */}
+      <Stack flex={1} backgroundColor="$background">
+        <Text fontWeight="700">Ajustes</Text>
+      </Stack>
+
+      <Stack flex={1} backgroundColor="$background">
+        <Text fontWeight="700" className="bg-slate-400">Ajustes</Text>
+      </Stack>
+    </TamaguiProvider>
   );
 }

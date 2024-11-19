@@ -1,20 +1,16 @@
-// Main.jsx
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { Button, Card } from 'tamagui'; // Importa lo que uses de Tamagui
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native'; // Asegúrate de importar correctamente NavigationContainer
-import { createStackNavigator } from '@react-navigation/stack'; // Asegúrate de importar Stack
-import Settings from '../app/settings'; // Cambié la importación a settings.js
-import Monetization from '../app/monetization'; // Cambié la importación a monetization.js
-import ChatAI from '../app/chat-ai'; // Cambié la importación a chat-ai.js
-import Main from '../app/index'; // Cambié la importación a main.js
+import { TamaguiProvider } from '@tamagui/core'; // Asegúrate de importar esto
+import config from '../tamagui.config'; // Importa la configuración de Tamagui
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import Settings from '../app/settings';
+import Monetization from '../app/monetization';
+import ChatAI from '../app/chat-ai';
+import Main from '../app/index';
 
 const Stack = createStackNavigator();
 
 const MainComponent = () => {
-  const insets = useSafeAreaInsets();
-
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Settings">
@@ -27,35 +23,4 @@ const MainComponent = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  card: {
-    width: '100%',
-    padding: 20,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  button: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: '#007bff',
-    color: '#fff',
-    borderRadius: 5,
-  },
-});
-
-export default Main;
+export default MainComponent;

@@ -9,7 +9,7 @@ import Main from '../components/Main';  // Importa el componente Main
 
 const App = () => {
   return (
-    <TamaguiProvider config={config}>  // Envuelve tu aplicación con TamaguiProvider
+    <TamaguiProvider config={config}>  // Envwuelve tu aplicación con TamaguiProvider
       <SafeAreaProvider>
         <View style={styles.container}>
           <StatusBar style="light" />
