@@ -23,15 +23,32 @@ export default function SettingsScreen() {
           {/* Notificaciones */}
           <XStack className="items-center justify-between">
             <Text className="text-lg text-gray-700">Notificaciones</Text>
-            <Switch value={true} className="bg-gray-300" />
+            <Switch value={true} />
           </XStack>
 
           <Separator className="h-px bg-gray-300" />
 
+            {/* Alarmas */}
+            <XStack className="items-center justify-between">
+              <Text className="text-lg text-gray-700">Alarmas</Text>
+              <Text className="text-blue-600">Editar Alarmas</Text>
+              </XStack>
+
+          <Separator className="h-px bg-gray-300" />
+
+
           {/* Tema Oscuro */}
           <XStack className="items-center justify-between">
             <Text className="text-lg text-gray-700">Tema Oscuro</Text>
-            <Switch value={false} className="bg-gray-300" />
+            <Switch value={false} />
+          </XStack>
+
+          <Separator className="h-px bg-gray-300" />
+
+          {/* Tema Daltonismo */}
+          <XStack className="items-center justify-between">
+            <Text className="text-lg text-gray-700">Daltonismo</Text>
+            <Switch value={false} />
           </XStack>
 
           <Separator className="h-px bg-gray-300" />
@@ -47,7 +64,7 @@ export default function SettingsScreen() {
           {/* Cuenta */}
           <XStack className="items-center justify-between">
             <Text className="text-lg text-gray-700">Cuenta</Text>
-            <Text className="text-blue-600">Español</Text>
+            <Text className="text-blue-600">Editar mis datos</Text>
           </XStack>
 
           <Separator className="h-px bg-gray-300" />
@@ -55,8 +72,9 @@ export default function SettingsScreen() {
           {/* Familiares */}
           <XStack className="items-center justify-between">
             <Text className="text-lg text-gray-700">Familia</Text>
-            <Text className="text-blue-600">Español</Text>
+            <Text className="text-blue-600">Editar familiares</Text>
           </XStack>
+          
           
         </YStack>
       </YStack>
