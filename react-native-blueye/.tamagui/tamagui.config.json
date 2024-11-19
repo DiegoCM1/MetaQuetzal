@@ -1133,17 +1133,269 @@
         "id": "dark"
       }
     },
-    "tokens": {},
-    "shorthands": {},
+    "tokens": {
+      "size": {
+        "4": {
+          "isVar": true,
+          "key": "$4",
+          "name": "c-size-4",
+          "val": 16,
+          "variable": "var(--c-size-4)"
+        },
+        "6": {
+          "isVar": true,
+          "key": "$6",
+          "name": "c-size-6",
+          "val": 24,
+          "variable": "var(--c-size-6)"
+        },
+        "8": {
+          "isVar": true,
+          "key": "$8",
+          "name": "c-size-8",
+          "val": 32,
+          "variable": "var(--c-size-8)"
+        },
+        "10": {
+          "isVar": true,
+          "key": "$10",
+          "name": "c-size-10",
+          "val": 40,
+          "variable": "var(--c-size-10)"
+        }
+      },
+      "color": {
+        "color1": {
+          "isVar": true,
+          "key": "$color1",
+          "name": "c-color-color1",
+          "val": "#ffffff",
+          "variable": "var(--c-color-color1)"
+        },
+        "color3": {
+          "isVar": true,
+          "key": "$color3",
+          "name": "c-color-color3",
+          "val": "#007bff",
+          "variable": "var(--c-color-color3)"
+        },
+        "color11": {
+          "isVar": true,
+          "key": "$color11",
+          "name": "c-color-color11",
+          "val": "#666666",
+          "variable": "var(--c-color-color11)"
+        },
+        "color12": {
+          "isVar": true,
+          "key": "$color12",
+          "name": "c-color-color12",
+          "val": "#000000",
+          "variable": "var(--c-color-color12)"
+        },
+        "background": {
+          "isVar": true,
+          "key": "$background",
+          "name": "c-color-background",
+          "val": "#f5f5f5",
+          "variable": "var(--c-color-background)"
+        },
+        "shadowColor": {
+          "isVar": true,
+          "key": "$shadowColor",
+          "name": "c-color-shadowColor",
+          "val": "#000000",
+          "variable": "var(--c-color-shadowColor)"
+        },
+        "borderColor": {
+          "isVar": true,
+          "key": "$borderColor",
+          "name": "c-color-borderColor",
+          "val": "#007bff",
+          "variable": "var(--c-color-borderColor)"
+        },
+        "backgroundHover": {
+          "isVar": true,
+          "key": "$backgroundHover",
+          "name": "c-color-backgroundHover",
+          "val": "#0056b3",
+          "variable": "var(--c-color-backgroundHover)"
+        },
+        "borderColorHover": {
+          "isVar": true,
+          "key": "$borderColorHover",
+          "name": "c-color-borderColorHover",
+          "val": "#000000",
+          "variable": "var(--c-color-borderColorHover)"
+        },
+        "backgroundPress": {
+          "isVar": true,
+          "key": "$backgroundPress",
+          "name": "c-color-backgroundPress",
+          "val": "#003d80",
+          "variable": "var(--c-color-backgroundPress)"
+        },
+        "borderColorPress": {
+          "isVar": true,
+          "key": "$borderColorPress",
+          "name": "c-color-borderColorPress",
+          "val": "#003d80",
+          "variable": "var(--c-color-borderColorPress)"
+        },
+        "colorHover": {
+          "isVar": true,
+          "key": "$colorHover",
+          "name": "c-color-colorHover",
+          "val": "#ffffff",
+          "variable": "var(--c-color-colorHover)"
+        }
+      },
+      "radius": {
+        "4": {
+          "isVar": true,
+          "key": "$4",
+          "name": "c-radius-4",
+          "val": 8,
+          "variable": "var(--c-radius-4)"
+        }
+      }
+    },
+    "shorthands": {
+      "padding": "padding",
+      "margin": "margin"
+    },
     "unset": {},
     "settings": {
       "webContainerType": "inline-size"
     },
-    "inverseShorthands": {},
+    "inverseShorthands": {
+      "padding": "padding",
+      "margin": "margin"
+    },
     "parsed": true,
     "getNewCSS": "Function",
     "fontSizeTokens": {},
-    "specificTokens": {},
+    "specificTokens": {
+      "$size.4": {
+        "isVar": true,
+        "key": "$4",
+        "name": "c-size-4",
+        "val": 16,
+        "variable": "var(--c-size-4)"
+      },
+      "$size.6": {
+        "isVar": true,
+        "key": "$6",
+        "name": "c-size-6",
+        "val": 24,
+        "variable": "var(--c-size-6)"
+      },
+      "$size.8": {
+        "isVar": true,
+        "key": "$8",
+        "name": "c-size-8",
+        "val": 32,
+        "variable": "var(--c-size-8)"
+      },
+      "$size.10": {
+        "isVar": true,
+        "key": "$10",
+        "name": "c-size-10",
+        "val": 40,
+        "variable": "var(--c-size-10)"
+      },
+      "$color.color1": {
+        "isVar": true,
+        "key": "$color1",
+        "name": "c-color-color1",
+        "val": "#ffffff",
+        "variable": "var(--c-color-color1)"
+      },
+      "$color.color3": {
+        "isVar": true,
+        "key": "$color3",
+        "name": "c-color-color3",
+        "val": "#007bff",
+        "variable": "var(--c-color-color3)"
+      },
+      "$color.color11": {
+        "isVar": true,
+        "key": "$color11",
+        "name": "c-color-color11",
+        "val": "#666666",
+        "variable": "var(--c-color-color11)"
+      },
+      "$color.color12": {
+        "isVar": true,
+        "key": "$color12",
+        "name": "c-color-color12",
+        "val": "#000000",
+        "variable": "var(--c-color-color12)"
+      },
+      "$color.background": {
+        "isVar": true,
+        "key": "$background",
+        "name": "c-color-background",
+        "val": "#f5f5f5",
+        "variable": "var(--c-color-background)"
+      },
+      "$color.shadowColor": {
+        "isVar": true,
+        "key": "$shadowColor",
+        "name": "c-color-shadowColor",
+        "val": "#000000",
+        "variable": "var(--c-color-shadowColor)"
+      },
+      "$color.borderColor": {
+        "isVar": true,
+        "key": "$borderColor",
+        "name": "c-color-borderColor",
+        "val": "#007bff",
+        "variable": "var(--c-color-borderColor)"
+      },
+      "$color.backgroundHover": {
+        "isVar": true,
+        "key": "$backgroundHover",
+        "name": "c-color-backgroundHover",
+        "val": "#0056b3",
+        "variable": "var(--c-color-backgroundHover)"
+      },
+      "$color.borderColorHover": {
+        "isVar": true,
+        "key": "$borderColorHover",
+        "name": "c-color-borderColorHover",
+        "val": "#000000",
+        "variable": "var(--c-color-borderColorHover)"
+      },
+      "$color.backgroundPress": {
+        "isVar": true,
+        "key": "$backgroundPress",
+        "name": "c-color-backgroundPress",
+        "val": "#003d80",
+        "variable": "var(--c-color-backgroundPress)"
+      },
+      "$color.borderColorPress": {
+        "isVar": true,
+        "key": "$borderColorPress",
+        "name": "c-color-borderColorPress",
+        "val": "#003d80",
+        "variable": "var(--c-color-borderColorPress)"
+      },
+      "$color.colorHover": {
+        "isVar": true,
+        "key": "$colorHover",
+        "name": "c-color-colorHover",
+        "val": "#ffffff",
+        "variable": "var(--c-color-colorHover)"
+      },
+      "$radius.4": {
+        "isVar": true,
+        "key": "$4",
+        "name": "c-radius-4",
+        "val": 8,
+        "variable": "var(--c-radius-4)"
+      }
+    },
     "defaultFontToken": ""
   }
 }

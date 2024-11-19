@@ -1,12 +1,21 @@
 import { createTamagui } from '@tamagui/core';
+import { themes, tokens } from '@tamagui/themes';
+
+const customTokens = {
+  ...tokens,
+  color: {
+    ...tokens.color,
+    customColor1: '#ff5733', // Color personalizado
+  },
+};
 
 const config = createTamagui({
-  themes: {
-    light: { background: '#fff', color: '#000' },
-    dark: { background: '#000', color: '#fff' },
+  themes, // Usa los temas predeterminados
+  tokens: customTokens, // Combina los tokens predeterminados con los personalizados
+  shorthands: {
+    padding: 'padding',
+    margin: 'margin',
   },
-  tokens: {},
-  shorthands: {},
 });
 
 export default config;

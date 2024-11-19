@@ -1,26 +1,23 @@
-import React from 'react';
-import { TamaguiProvider } from '@tamagui/core'; // Asegúrate de importar esto
-import config from '../tamagui.config'; // Importa la configuración de Tamagui
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import Settings from '../app/settings';
-import Monetization from '../app/monetization';
-import ChatAI from '../app/chat-ai';
-import Main from '../app/index';
+import { View, Text, TextInput } from "react-native";
 
-const Stack = createStackNavigator();
-
-const MainComponent = () => {
+export default function Home() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Settings">
-        <Stack.Screen name="Settings" component={Settings} options={{ title: 'Ajustes' }} />
-        <Stack.Screen name="Subscription" component={Monetization} options={{ title: 'Suscripción' }} />
-        <Stack.Screen name="Chat" component={ChatAI} options={{ title: 'Chat' }} />
-        <Stack.Screen name="Map" component={Main} options={{ title: 'Mapa' }} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-};
+    <View className="flex-1">
 
-export default MainComponent;
+      {/* Barra de búsqueda */}
+      <View className="bg-black shadow p-4 flex-row items-center">
+        <TextInput
+          className="flex-1 bg-gray-100 p-2 rounded-md color-slate-400"
+          placeholder="Search location..."
+        />
+      </View>
+
+      {/* Contenedor del mapa */}
+      <View className="flex-1 bg-gray-200 items-center justify-center">
+        <Text className="text-gray-400 text-lg">
+          Aquí irá el mapa (react-native-maps/mapbox).
+        </Text>
+      </View>
+    </View>
+  );
+}
