@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { View, Text, Switch, ScrollView } from "react-native";
 import config from "../tamagui.config"; // Importa la configuración de Tamagui
 import { YStack, XStack, Separator } from "tamagui";
+import { Link } from "expo-router";
 
 export default function SettingsScreen() {
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -28,7 +29,9 @@ export default function SettingsScreen() {
             {/* Alarmas */}
             <XStack className="items-center justify-between">
               <Text className="text-lg text-gray-700">Alarmas</Text>
-              <Text className="text-blue-600">Editar Alarmas</Text>
+              <Link href={"./alarms"} className="text-red-800">
+                Editar alarmas
+              </Link>
             </XStack>
 
             <Separator className="h-px bg-gray-300" />
@@ -70,6 +73,8 @@ export default function SettingsScreen() {
               <Text className="text-lg text-gray-700">Familia</Text>
               <Text className="text-blue-600">Editar familiares</Text>
             </XStack>
+
+            <Separator className="h-px bg-gray-300" />
           </YStack>
         </YStack>
       </ScrollView>

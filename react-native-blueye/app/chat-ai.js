@@ -1,4 +1,4 @@
-import "../global.css"; 
+import "../global.css";
 import React, { useState } from "react";
 import {
   View,
@@ -104,6 +104,19 @@ export default function ChatScreen() {
         data={[
           { sender: "user", text: "Hola" },
           { sender: "bot", text: "Hola, ¿en qué puedo ayudarte?" },
+          {
+            sender: "user",
+            text: "Escuché que se aproxima un huracán, cuentame más",
+          },
+          {
+            sender: "bot",
+            text: "Huracán categoría 5 en Acapulco - Pasos rápidos: Evacúa si puedes, ve a un refugio temporal, consulta rutas de evacuación y sigue indicaciones oficiales. Contactos útiles: Protección Civil 744 483 8328 / 911, Bomberos 744 484 4122, CFE 071. Apaga gas y luz, guarda documentos importantes en bolsas impermeables, ten agua, comida, linterna, botiquín y radio. Durante el huracán, refúgiate en una habitación interior, lejos de ventanas, mantén la calma y sigue noticias oficiales. Después, sal solo cuando sea seguro, reporta emergencias y evita áreas peligrosas.",
+          },
+          { sender: "user", text: "Okay, muchas gracias!" },
+          {
+            sender: "bot",
+            text: "De nada, si tienes más dudas estoy aquí para ayudarte! :)",
+          },
         ]}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (
@@ -141,7 +154,9 @@ export default function ChatScreen() {
         >
           <MaterialCommunityIcons
             name={recording ? "stop" : "microphone"}
-            size={20} color="white" />
+            size={20}
+            color="white"
+          />
         </TouchableOpacity>
       </View>
 
