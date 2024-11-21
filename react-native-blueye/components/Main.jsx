@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { View, Text } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+/*import MapView, { Marker } from "react-native-maps";
 import axios from "axios";
-
+*/
 export default function Home() {
-  const [location, setLocation] = useState({
+  /*const [location, setLocation] = useState({
     latitude: 20.659698, // Coordenadas iniciales (México)
     longitude: -103.349609,
   });
@@ -27,10 +27,10 @@ export default function Home() {
     // Obtener datos climáticos para la ubicación inicial
     fetchWeather(location.latitude, location.longitude);
   }, []);
-
+*/
   return (
-    <View className="flex-1 h-full bg-black">
-      {/* Datos del clima */}
+    /*<View className="flex-1 h-full bg-black">
+      {/* Datos del clima }
       {weatherData && (
         <View className="bg-gray-100 mt-12 p-4">
           <Text className="text-lg font-bold text-gray-800">
@@ -44,7 +44,7 @@ export default function Home() {
           </Text>
         </View>
       )}
-      {/* Mapa */}
+      {/* Mapa }
       <MapView
         style={{ flex: 1 }} // Asegúrate de que el estilo cubra toda la pantalla
         initialRegion={{
@@ -60,9 +60,11 @@ export default function Home() {
           longitudeDelta: 0.1,
         }}
       >
-        {/* Marcador */}
+        {/* Marcador }
         <Marker coordinate={location} title="Ubicación seleccionada" />
       </MapView>
+      */
+    <View className="flex-1 h-full bg-black">
     </View>
   );
 }
