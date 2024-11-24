@@ -14,66 +14,91 @@ export default function Layout() {
   return (
     <SafeAreaProvider>
       <TamaguiProvider config={config} defaultTheme="light">
-        <View className="flex-1 bg-gray-100">
-          {/* Renderizar pantallas */}
-          <Slot />
-          {/* Barra de navegación inferior */}
-          <View className="w-full bg-blue-500">
-            <View className="flex-row border-t border-gray-300">
-              {/* Botón Inicio */}
-              <Link
-                href="/"
-                className={`flex-1 p-4 items-center text-center ${
-                  currentRoute === "/"
-                    ? "bg-blue-700 text-white"
-                    : "bg-blue-500 hover:bg-blue-600"
-                }`}
-              >
-                <Ionicons name="home" size={32} color="white" />
-              </Link>
+      <View className="flex-1 bg-phase2bg">
+      {/* Renderizar pantallas */}
+      <Slot />
 
-              {/* Botón Chat-AI */}
-              <Link
-                href="/chat-ai"
-                className={`flex-1 p-4 items-center text-center ${
-                  currentRoute.startsWith("/chat-ai")
-                    ? "bg-blue-700 text-white"
-                    : "bg-blue-500 hover:bg-blue-600"
-                }`}
-              >
-                <MaterialCommunityIcons name="robot-happy" size={32} color="white" />
-              </Link>
+      {/* Barra de navegación inferior */}
+      <View className="w-full bg-phase2Cards border-t border-phase2Borders">
+        <View className="flex-row">
+          {/* Botón Inicio */}
+          <Link
+            href="/"
+            className={`flex-1 p-4 items-center text-center ${
+              currentRoute === "/"
+                ? "bg-phase2Cards text-phase2Titles"
+                : "bg-phase2Buttons text-white hover:bg-phase2Borders"
+            }`}
+          >
+            <Ionicons
+              name="home"
+              size={28}
+              color={currentRoute === "/" ? "rgb(30, 30, 60)" : "white"}
+            />
+          </Link>
 
-              {/* Botón Configuración */}
-              <Link
-                href="/settings"
-                className={`flex-1 p-4 items-center text-center ${
-                  currentRoute.startsWith("/settings")
-                    ? "bg-blue-700 text-white"
-                    : "bg-blue-500 hover:bg-blue-600"
-                }`}
-              >
-                <MaterialIcons name="settings" size={32} color="white" />
-              </Link>
+          {/* Botón Chat-AI */}
+          <Link
+            href="/chat-ai"
+            className={`flex-1 p-4 items-center text-center ${
+              currentRoute.startsWith("/chat-ai")
+                ? "bg-phase2Cards text-phase2Titles"
+                : "bg-phase2Buttons text-white hover:bg-phase2Borders"
+            }`}
+          >
+            <MaterialCommunityIcons
+              name="robot-happy"
+              size={28}
+              color={
+                currentRoute.startsWith("/chat-ai")
+                  ? "rgb(30, 30, 60)"
+                  : "white"
+              }
+            />
+          </Link>
 
-              {/* Botón Monetización */}
-              <Link
-                href="/monetization"
-                className={`flex-1 p-4 items-center text-center ${
-                  currentRoute.startsWith("/monetization")
-                    ? "bg-blue-700 text-white"
-                    : "bg-blue-500 hover:bg-blue-600"
-                }`}
-              >
-                <MaterialCommunityIcons
-                  name="account-cash"
-                  size={32}
-                  color="white"
-                />
-              </Link>
-            </View>
-          </View>
+          {/* Botón Configuración */}
+          <Link
+            href="/settings"
+            className={`flex-1 p-4 items-center text-center ${
+              currentRoute.startsWith("/settings")
+                ? "bg-phase2Cards text-phase2Titles"
+                : "bg-phase2Buttons text-white hover:bg-phase2Borders"
+            }`}
+          >
+            <MaterialIcons
+              name="settings"
+              size={28}
+              color={
+                currentRoute.startsWith("/settings")
+                  ? "rgb(30, 30, 60)"
+                  : "white"
+              }
+            />
+          </Link>
+
+          {/* Botón Monetización */}
+          <Link
+            href="/monetization"
+            className={`flex-1 p-4 items-center text-center ${
+              currentRoute.startsWith("/monetization")
+                ? "bg-phase2Cards text-phase2Titles"
+                : "bg-phase2Buttons text-white hover:bg-phase2Borders"
+            }`}
+          >
+            <MaterialCommunityIcons
+              name="account-cash"
+              size={28}
+              color={
+                currentRoute.startsWith("/monetization")
+                  ? "rgb(30, 30, 60)"
+                  : "white"
+              }
+            />
+          </Link>
         </View>
+      </View>
+    </View>
       </TamaguiProvider>
     </SafeAreaProvider>
   );

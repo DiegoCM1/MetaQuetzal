@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMapEvents,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import axios from "axios";
@@ -29,33 +35,44 @@ const MapViewWeb = () => {
     pressure: false,
     hurricaneRadar: false, // Nueva capa de radar de huracanes
   });
-const [forecastVisible, setForecastVisible] = useState(false);
-const [weatherVisible, setWeatherVisible] = useState(false);
-const [emergencyContact, setEmergencyContact] = useState("+52 55 1234 5678"); // Número inicial por defecto
+  const [forecastVisible, setForecastVisible] = useState(false);
+  const [weatherVisible, setWeatherVisible] = useState(false);
+  const [emergencyContact, setEmergencyContact] = useState("+52 55 1234 5678"); // Número inicial por defecto
 
+  const weatherTileURLs = {
+    temperature:
+      "https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+    precipitation:
+      "https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+    humidity:
+      "https://tile.openweathermap.org/map/humidity_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+    wind: "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+    pressure:
+      "https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+    hurricaneRadar:
+      "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486", // Usando la capa de viento para huracanes
+  };
 
-const weatherTileURLs = {
-  temperature: "https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
-  precipitation: "https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
-  humidity: "https://tile.openweathermap.org/map/humidity_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
-  wind: "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
-  pressure: "https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
-  hurricaneRadar: "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486", // Usando la capa de viento para huracanes
-};
-
-const HurricaneMap = () => {
-  return (
-    <div style={{ width: "100%", height: "100vh", position: "relative" }}>
-      <iframe
-        title="Hurricane Map"
-        src="https://www.rainviewer.com/map.html?loc=20.5147,-99.9146,5&oCS=1&c=3&o=83&lm=1&layer=sat-rad&sm=1&sn=1"
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none", zIndex: 10 }}
-        allowFullScreen
-      ></iframe>
-    </div>
-  );
-};
-
+  const HurricaneMap = () => {
+    return (
+      <div style={{ width: "100%", height: "100vh", position: "relative" }}>
+        <iframe
+          title="Hurricane Map"
+          src="https://www.rainviewer.com/map.html?loc=20.5147,-99.9146,5&oCS=1&c=3&o=83&lm=1&layer=sat-rad&sm=1&sn=1"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            border: "none",
+            zIndex: 10,
+          }}
+          allowFullScreen
+        ></iframe>
+      </div>
+    );
+  };
 
   const obtenerClima = async (lat, lon) => {
     const API_KEY = "73d3f6f15ce8ce7055f93bb64dde8486";
@@ -77,7 +94,9 @@ const HurricaneMap = () => {
       obtenerPronostico(lat, lon);
     } catch (error) {
       console.error("Error al obtener los datos del clima:", error);
-      setError("Error al obtener los datos del clima. Verifique su conexión a internet o la clave API.");
+      setError(
+        "Error al obtener los datos del clima. Verifique su conexión a internet o la clave API."
+      );
     }
   };
 
@@ -99,8 +118,13 @@ const HurricaneMap = () => {
       console.log("Datos del pronóstico obtenidos:", response.data);
       setForecastData(response.data);
     } catch (error) {
-      console.error("Error al obtener los datos del pronóstico del tiempo:", error);
-      setError("Error al obtener los datos del pronóstico del tiempo. Verifique su conexión a internet o la clave API.");
+      console.error(
+        "Error al obtener los datos del pronóstico del tiempo:",
+        error
+      );
+      setError(
+        "Error al obtener los datos del pronóstico del tiempo. Verifique su conexión a internet o la clave API."
+      );
     }
   };
 
@@ -147,7 +171,9 @@ const HurricaneMap = () => {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          console.log(`Ubicación del usuario: lat ${latitude}, lon ${longitude}`);
+          console.log(
+            `Ubicación del usuario: lat ${latitude}, lon ${longitude}`
+          );
           setUserLocation([latitude, longitude]);
           obtenerClima(latitude, longitude);
         },
@@ -400,8 +426,8 @@ const HurricaneMap = () => {
         }
       `}</style>
 
-       {/* Barra de búsqueda */}
-       <div className="search-bar">
+      {/* Barra de búsqueda */}
+      <div className="search-bar">
         <input
           type="text"
           placeholder="Buscar una ubicación..."
@@ -427,33 +453,41 @@ const HurricaneMap = () => {
           </label>
         ))}
       </div>
-        <div className="contact-container">
+      <div className="contact-container">
         <h4>Contactos</h4>
         <div className="contact-item">
-          <img src="https://cdn-icons-png.flaticon.com/512/15/15971.png" alt="Teléfono" />
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/15/15971.png"
+            alt="Teléfono"
+          />
           <a href="tel:+525512345678">+52 55 1234 5678</a>
         </div>
         <div className="contact-item">
-          <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Correo" />
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/732/732200.png"
+            alt="Correo"
+          />
           <a href="mailto:info@example.com">info@example.com</a>
         </div>
       </div>
 
-
-
-<div className="contact-container">
-  <h4>Contactos de Emergencia</h4>
-  <div className="contact-item">
-    <img src="https://cdn-icons-png.flaticon.com/512/15/15971.png" alt="Teléfono" />
-    <a href={`tel:${emergencyContact}`}>{emergencyContact}</a>
-  </div>
-  <div className="contact-item">
-    <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Correo" />
-    <a href="mailto:info@example.com">info@example.com</a>
-  </div>
-</div>
-
-
+      <div className="contact-container">
+        <h4>Contactos de Emergencia</h4>
+        <div className="contact-item">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/15/15971.png"
+            alt="Teléfono"
+          />
+          <a href={`tel:${emergencyContact}`}>{emergencyContact}</a>
+        </div>
+        <div className="contact-item">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/732/732200.png"
+            alt="Correo"
+          />
+          <a href="mailto:info@example.com">info@example.com</a>
+        </div>
+      </div>
 
       {/* Mapa */}
       <MapContainer center={userLocation} zoom={5} className="map-container">
@@ -462,7 +496,11 @@ const HurricaneMap = () => {
         {Object.keys(weatherLayers).map(
           (layer) =>
             (weatherLayers[layer] || layer === "precipitation") && (
-              <TileLayer key={layer} url={weatherTileURLs[layer]} opacity={0.6} />
+              <TileLayer
+                key={layer}
+                url={weatherTileURLs[layer]}
+                opacity={0.6}
+              />
             )
         )}
 
@@ -470,26 +508,33 @@ const HurricaneMap = () => {
         {selectedLocation && (
           <Marker position={selectedLocation}>
             <Popup>
-              <h4>Ubicación Seleccionada</h4>
+              <h4 className="text-lg font-bold text-blue-500">
+                Ubicación Seleccionada
+              </h4>
               {weatherData ? (
                 <>
-                  <p>Clima: {weatherData.weather[0].description}</p>
-                  <p>Temp: {weatherData.main.temp}°C</p>
-                  <p>Humedad: {weatherData.main.humidity}%</p>
+                  <p className="text-sm text-gray-600">
+                    Clima: {weatherData.weather[0].description}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Temp: {weatherData.main.temp}°C
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Humedad: {weatherData.main.humidity}%
+                  </p>
                 </>
               ) : (
-                <p>Obteniendo clima...</p>
+                <p className="text-sm text-gray-500">Obteniendo clima...</p>
               )}
             </Popup>
           </Marker>
         )}
-
         {/* Marcador de ubicación actual */}
         <Marker position={userLocation} icon={locationIcon}>
           <Popup>
-            <h4>Estás aquí</h4>
-            <p>Lat: {userLocation[0]}</p>
-            <p>Lon: {userLocation[1]}</p>
+            <h4 className="text-lg font-bold text-blue-500">Estás aquí</h4>
+            <p className="text-sm text-gray-600">Lat: {userLocation[0]}</p>
+            <p className="text-sm text-gray-600">Lon: {userLocation[1]}</p>
           </Popup>
         </Marker>
       </MapContainer>
@@ -556,6 +601,5 @@ const HurricaneMap = () => {
     </div>
   );
 };
-
 
 export default MapViewWeb;

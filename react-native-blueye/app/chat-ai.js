@@ -99,7 +99,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-100 p-4">
+    <View className="flex-1 p-4 bg-[rgb(200,230,250)]">
       <FlatList
         data={[
           { sender: "user", text: "Hola" },
@@ -121,10 +121,16 @@ export default function ChatScreen() {
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (
           <View
-            className={`mb-2 ${item.sender === "user" ? "items-end" : "items-start"}`}
+            className={`mb-2 ${
+              item.sender === "user" ? "items-end" : "items-start"
+            }`}
           >
             <Text
-              className={`p-3 rounded-lg ${item.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-200 text-black"}`}
+              className={`p-3 rounded-lg text-phase2Titles ${
+                item.sender === "user"
+                  ? "bg-phase2Buttons text-white"
+                  : "bg-phase2Cards"
+              }`}
             >
               {item.text}
             </Text>
@@ -133,23 +139,24 @@ export default function ChatScreen() {
       />
       <View className="flex-row items-center mt-4">
         <TouchableOpacity
-          className="bg-blue-500 py-2 px-4 rounded-lg"
+          className="bg-phase2Buttons py-2 px-4 rounded-lg"
           onPress={handleOpenCamera}
         >
           <MaterialCommunityIcons name="camera" size={20} color="white" />
         </TouchableOpacity>
         <TouchableOpacity
-          className="bg-blue-500 py-2 px-4 rounded-lg ml-2 mr-2"
+          className="bg-phase2Buttons py-2 px-4 rounded-lg mx-2"
           onPress={handlePickImage}
         >
           <MaterialCommunityIcons name="folder-image" size={20} color="white" />
         </TouchableOpacity>
         <TextInput
-          className="flex-1 border border-gray-300 rounded-lg p-2"
+          className="flex-1 border border-phase2Borders rounded-lg p-2 bg-white text-phase2Titles"
           placeholder="Escribe un mensaje..."
+          placeholderTextColor="rgb(120,120,120)"
         />
         <TouchableOpacity
-          className="bg-blue-500 py-2 px-4 rounded-lg ml-2"
+          className="bg-phase2Buttons py-2 px-4 rounded-lg ml-2"
           onPress={recording ? handleStopRecording : handleAudioRecord}
         >
           <MaterialCommunityIcons

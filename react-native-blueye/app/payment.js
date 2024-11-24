@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  Image,
+} from "react-native";
 import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
 
@@ -11,7 +18,6 @@ export default function PaymentScreen() {
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
 
-  // Función para manejar el pago
   const handlePayment = () => {
     if (paymentMethod === "Tarjeta") {
       if (!cardNumber || !cardHolder || !expiryDate || !cvv) {
@@ -30,69 +36,108 @@ export default function PaymentScreen() {
       }
 
       Alert.alert("Pago Exitoso", "Tu pago con tarjeta ha sido procesado.", [
-        { text: "OK", onPress: () => router.push(`/confirmation?method=Tarjeta&plan=Seleccionado`) },
+        {
+          text: "OK",
+          onPress: () =>
+            router.push(`/confirmation?method=Tarjeta&plan=Seleccionado`),
+        },
       ]);
     } else if (paymentMethod === "PayPal") {
-      // Redirigir al enlace de PayPal
       router.push("https://www.paypal.com/checkoutnow");
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Método de Pago</Text>
+    <View className="flex-1 p-5 items-center">
+      <Text className="text-2xl font-bold text-phase2Titles mb-5">
+        Método de Pago
+      </Text>
 
-      <TouchableOpacity style={styles.option} onPress={() => setPaymentMethod("Tarjeta")}>
-        <View style={styles.cardIcons}>
+      {/* Opción de Tarjeta */}
+      <TouchableOpacity
+        className={`flex-row items-center p-4 mb-3 border ${paymentMethod === "Tarjeta" ? "border-phase2Buttons" : "border-phase2Borders"} rounded-lg w-11/12 justify-between bg-white`}
+        onPress={() => setPaymentMethod("Tarjeta")}
+      >
+        <View className="flex-row items-center">
           <Image
-            source={{ uri: "https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" }}
-            style={styles.logo}
+            source={{
+              uri: "https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png",
+            }}
+            className="w-10 h-6 mr-2"
+            resizeMode="contain"
           />
           <Image
-            source={{ uri: "https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" }}
-            style={styles.logo}
+            source={{
+              uri: "https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg",
+            }}
+            className="w-10 h-6"
+            resizeMode="contain"
           />
         </View>
-        <Text style={[styles.optionText, paymentMethod === "Tarjeta" && styles.selectedText]}>
+        <Text
+          className={`text-base ${
+            paymentMethod === "Tarjeta"
+              ? "text-phase2Buttons font-bold"
+              : "text-phase2Titles"
+          }`}
+        >
           Pago con Tarjeta
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.option} onPress={() => setPaymentMethod("PayPal")}>
+      {/* Opción de PayPal */}
+      <TouchableOpacity
+        className={`flex-row items-center p-4 mb-3 border ${paymentMethod === "PayPal" ? "border-phase2Buttons" : "border-phase2Borders"} rounded-lg w-11/12 justify-between bg-white`}
+        onPress={() => setPaymentMethod("PayPal")}
+      >
         <Image
-          source={{ uri: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Paypal_2014_logo.png" }}
-          style={styles.logo}
+          source={{
+            uri: "https://upload.wikimedia.org/wikipedia/commons/a/a4/Paypal_2014_logo.png",
+          }}
+          className="w-10 h-6"
+          resizeMode="contain"
         />
-        <Text style={[styles.optionText, paymentMethod === "PayPal" && styles.selectedText]}>
+        <Text
+          className={`text-base ${
+            paymentMethod === "PayPal"
+              ? "text-phase2Buttons font-bold"
+              : "text-phase2Titles"
+          }`}
+        >
           Pago con PayPal
         </Text>
       </TouchableOpacity>
 
+      {/* Información de tarjeta si está seleccionada */}
       {paymentMethod === "Tarjeta" && (
-        <View style={styles.form}>
+        <View className="w-11/12 mt-5">
           <TextInput
-            style={styles.input}
+            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
             placeholder="Número de Tarjeta"
+            placeholderTextColor="rgb(120,120,120)"
             keyboardType="numeric"
             maxLength={16}
             value={cardNumber}
             onChangeText={setCardNumber}
           />
           <TextInput
-            style={styles.input}
+            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
             placeholder="Nombre del Titular"
+            placeholderTextColor="rgb(120,120,120)"
             value={cardHolder}
             onChangeText={setCardHolder}
           />
           <TextInput
-            style={styles.input}
+            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
             placeholder="Fecha de Expiración (MM/AA)"
+            placeholderTextColor="rgb(120,120,120)"
             value={expiryDate}
             onChangeText={setExpiryDate}
           />
           <TextInput
-            style={styles.input}
+            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
             placeholder="CVV"
+            placeholderTextColor="rgb(120,120,120)"
             keyboardType="numeric"
             maxLength={3}
             value={cvv}
@@ -101,82 +146,15 @@ export default function PaymentScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.paymentButton} onPress={handlePayment}>
-        <Text style={styles.paymentButtonText}>Confirmar Pago</Text>
+      {/* Botón de Confirmar */}
+      <TouchableOpacity
+        className="bg-phase2Buttons rounded-lg py-4 px-6 items-center mt-5 w-11/12 shadow-md"
+        onPress={handlePayment}
+      >
+        <Text className="text-phase2SmallTxt font-bold text-base">
+          Confirmar Pago
+        </Text>
       </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F7F8FA",
-    padding: 20,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 20,
-  },
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#DDD",
-    borderRadius: 8,
-    width: "90%",
-    justifyContent: "space-between",
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#333",
-    marginLeft: 10,
-  },
-  selectedText: {
-    color: "#4A90E2",
-    fontWeight: "bold",
-  },
-  logo: {
-    width: 40,
-    height: 24,
-    resizeMode: "contain",
-    marginHorizontal: 5,
-  },
-  cardIcons: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  form: {
-    width: "90%",
-    marginTop: 20,
-  },
-  input: {
-    width: "100%",
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#DDD",
-  },
-  paymentButton: {
-    backgroundColor: "#4A90E2",
-    borderRadius: 8,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    alignItems: "center",
-    marginVertical: 20,
-    width: "90%",
-  },
-  paymentButtonText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-});
