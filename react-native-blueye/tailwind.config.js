@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class", // Cambiar de "media" (por defecto) a "class"
   content: [
     "./App.{js,jsx,ts,tsx}",
     "./app/**/*.{js,jsx,ts,tsx}",
@@ -31,19 +32,14 @@ module.exports = {
         // Gris oscuro para textos menos importantes o secundarios
         phase2SecondaryTxt: "rgb(120, 120, 120)",   // Gris oscuro para subtítulos
 
-        // Colores para modo oscuro
-
-        // Fondo oscuro para modo oscuro
-        darkBg: "rgb(18, 18, 18)",      // Fondo oscuro para modo oscuro
-
-        // Texto claro para modo oscuro
-        darkText: "rgb(220, 220, 220)",   // Texto claro para modo oscuro
-
-        // Azul como color primario para botones y elementos principales
-        primary: "rgb(0, 122, 255)",   // Azul primario para botones y enlaces
-
-        // Gris claro para botones secundarios o elementos menos importantes
-        secondary: "rgb(200, 200, 200)",  // Gris claro para botones secundarios
+        // Dark mode colors
+        phase2bgDark: "rgb(20, 30, 50)",
+        phase2CardsDark: "rgb(40, 60, 80)",
+        phase2ButtonsDark: "rgb(60, 200, 220)",
+        phase2TitlesDark: "rgb(230, 230, 250)",
+        phase2SmallTxtDark: "rgb(150, 150, 170)",
+        phase2BordersDark: "rgb(60, 60, 70)",
+        phase2SecondaryTxtDark: "rgb(180, 180, 200)",
       },
     },
   },

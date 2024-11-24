@@ -5,21 +5,28 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 const CardPlan1 = ({ header, description, price, icon, onSelect }) => (
-  <View className="bg-[rgb(220,240,255)] rounded-xl p-6 my-4 w-11/12 shadow-lg">
+  <View className="bg-phase2Cards dark:bg-phase2CardsDark rounded-xl p-6 my-4 w-11/12 shadow-lg">
     <View className="flex-row items-center mb-4">
-      <Ionicons name={icon} size={32} color="#32B4C8" />{" "}
-      {/* Color de phase2Buttons */}
-      <Text className="text-xl font-bold text-phase2Titles ml-4">{header}</Text>
+      <Ionicons
+        name={icon}
+        size={32}
+        color="rgb(50, 180, 200)" // phase2Buttons
+      />
+      <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark ml-4">
+        {header}
+      </Text>
     </View>
-    <Text className="text-base text-phase2SecondaryTxt my-2">
+    <Text className="text-base text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark my-2">
       {description}
     </Text>
-    <Text className="text-lg font-bold text-phase2Titles my-3">{price}</Text>
+    <Text className="text-lg font-bold text-phase2Titles dark:text-phase2TitlesDark my-3">
+      {price}
+    </Text>
     <TouchableOpacity
-      className="bg-phase2Buttons rounded-lg py-3 items-center mt-4"
+      className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg py-3 items-center mt-4"
       onPress={onSelect}
     >
-      <Text className="text-phase2SmallTxt font-bold text-base">
+      <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base">
         Seleccionar
       </Text>
     </TouchableOpacity>
@@ -32,7 +39,7 @@ export default function SubscriptionScreen() {
   return (
     <View className="flex-1 px-5">
       <StatusBar style="light" />
-      <Text className="text-2xl font-bold text-gray-800 text-center my-5">
+      <Text className="text-2xl font-bold text-phase2Titles dark:text-phase2TitlesDark text-center my-5">
         Elige el plan ideal para ti
       </Text>
       <View className="flex-1 items-center">
