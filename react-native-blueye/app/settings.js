@@ -10,21 +10,69 @@ export default function SettingsScreen() {
 
   const { colorScheme, toggleColorScheme } = useColorScheme();
 
+  const [isDaltonicMode, setIsDaltonicMode] = useState(false); // Estado para el modo daltónico
+
+  // Manejar el cambio del modo daltónico
+  const handleDaltonicToggle = () => {
+    if (!isDaltonicMode) {
+      // Desactivar modo oscuro al activar el modo daltónico
+      if (colorScheme === "dark") {
+        toggleColorScheme();
+      }
+    }
+    setIsDaltonicMode(!isDaltonicMode);
+  };
+
+  // Manejar el cambio del modo oscuro
+  const handleDarkModeToggle = () => {
+    if (colorScheme !== "dark") {
+      // Desactivar modo daltónico al activar el modo oscuro
+      if (isDaltonicMode) {
+        setIsDaltonicMode(false);
+      }
+    }
+    toggleColorScheme();
+  };
+
   return (
-    <ScrollView className="flex-1 bg-phase2bg dark:bg-phase2bgDark">
+    <ScrollView
+      className={`flex-1 ${
+        isDaltonicMode
+          ? "bg-phase2bgDaltonic" // Fondo en modo daltónico
+          : "bg-phase2bg dark:bg-phase2bgDark" // Fondo normal y modo oscuro
+      }`}
+    >
       <YStack className="p-6 space-y-8">
         {/* Header */}
-        <Text className="text-3xl font-extrabold text-phase2Titles dark:text-phase2TitlesDark">
+        <Text
+          className={`text-3xl font-extrabold ${
+            isDaltonicMode
+              ? "text-phase2TitlesDaltonic" // Texto en modo daltónico
+              : "text-phase2Titles dark:text-phase2TitlesDark" // Texto normal y oscuro
+          }`}
+        >
           Ajustes
         </Text>
 
-        <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+        <Separator
+          className={`h-1 ${
+            isDaltonicMode
+              ? "bg-phase2BordersDaltonic" // Separador en modo daltónico
+              : "bg-phase2Borders dark:bg-phase2BordersDark" // Separador normal y oscuro
+          }`}
+        />
 
         {/* Opciones */}
         <YStack className="space-y-6">
           {/* Notificaciones */}
           <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text
+              className={`text-lg ${
+                isDaltonicMode
+                  ? "text-phase2SmallTxtDaltonic" // Texto en modo daltónico
+                  : "text-phase2Titles dark:text-phase2TitlesDark" // Texto normal y oscuro
+              }`}
+            >
               Notificaciones
             </Text>
             <Switch
@@ -35,80 +83,175 @@ export default function SettingsScreen() {
             />
           </XStack>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+          <Separator
+            className={`h-1 ${
+              isDaltonicMode
+                ? "bg-phase2BordersDaltonic"
+                : "bg-phase2Borders dark:bg-phase2BordersDark"
+            }`}
+          />
 
           {/* Alarmas */}
           <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text
+              className={`text-lg ${
+                isDaltonicMode
+                  ? "text-phase2SmallTxtDaltonic"
+                  : "text-phase2Titles dark:text-phase2TitlesDark"
+              }`}
+            >
               Alarmas
             </Text>
             <Link
               href="./alarms"
-              className="text-phase2Buttons dark:text-phase2ButtonsDark font-bold"
+              className={`font-bold ${
+                isDaltonicMode
+                  ? "text-phase2ButtonsDaltonic"
+                  : "text-phase2Buttons dark:text-phase2ButtonsDark"
+              }`}
             >
               Editar alarmas
             </Link>
           </XStack>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+          <Separator
+            className={`h-1 ${
+              isDaltonicMode
+                ? "bg-phase2BordersDaltonic"
+                : "bg-phase2Borders dark:bg-phase2BordersDark"
+            }`}
+          />
 
           {/* Opción para el modo oscuro */}
           <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text
+              className={`text-lg ${
+                isDaltonicMode
+                  ? "text-phase2SmallTxtDaltonic"
+                  : "text-phase2Titles dark:text-phase2TitlesDark"
+              }`}
+            >
               Modo Oscuro
             </Text>
             <Switch
               value={colorScheme === "dark"}
-              onValueChange={toggleColorScheme}
+              onValueChange={handleDarkModeToggle}
             />
           </XStack>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+          <Separator
+            className={`h-1 ${
+              isDaltonicMode
+                ? "bg-phase2BordersDaltonic"
+                : "bg-phase2Borders dark:bg-phase2BordersDark"
+            }`}
+          />
 
           {/* Tema Daltonismo */}
           <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text
+              className={`text-lg ${
+                isDaltonicMode
+                  ? "text-phase2SmallTxtDaltonic"
+                  : "text-phase2Titles dark:text-phase2TitlesDark"
+              }`}
+            >
               Daltonismo
             </Text>
             <Switch
-              value={false}
+              value={isDaltonicMode}
+              onValueChange={handleDaltonicToggle}
               thumbColor="white"
               trackColor={{ false: "#ccc", true: "rgb(50, 180, 200)" }}
             />
           </XStack>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+          <Separator
+            className={`h-1 ${
+              isDaltonicMode
+                ? "bg-phase2BordersDaltonic"
+                : "bg-phase2Borders dark:bg-phase2BordersDark"
+            }`}
+          />
 
           {/* Idioma */}
           <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text
+              className={`text-lg ${
+                isDaltonicMode
+                  ? "text-phase2SmallTxtDaltonic"
+                  : "text-phase2Titles dark:text-phase2TitlesDark"
+              }`}
+            >
               Idioma
             </Text>
-            <Text className="text-phase2Buttons dark:text-phase2ButtonsDark font-bold">
+            <Text
+              className={`font-bold ${
+                isDaltonicMode
+                  ? "text-phase2ButtonsDaltonic"
+                  : "text-phase2Buttons dark:text-phase2ButtonsDark"
+              }`}
+            >
               Español
             </Text>
           </XStack>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+          <Separator
+            className={`h-1 ${
+              isDaltonicMode
+                ? "bg-phase2BordersDaltonic"
+                : "bg-phase2Borders dark:bg-phase2BordersDark"
+            }`}
+          />
 
           {/* Cuenta */}
           <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text
+              className={`text-lg ${
+                isDaltonicMode
+                  ? "text-phase2SmallTxtDaltonic"
+                  : "text-phase2Titles dark:text-phase2TitlesDark"
+              }`}
+            >
               Cuenta
             </Text>
-            <Text className="text-phase2Buttons dark:text-phase2ButtonsDark font-bold">
+            <Text
+              className={`font-bold ${
+                isDaltonicMode
+                  ? "text-phase2ButtonsDaltonic"
+                  : "text-phase2Buttons dark:text-phase2ButtonsDark"
+              }`}
+            >
               Editar mis datos
             </Text>
           </XStack>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+          <Separator
+            className={`h-1 ${
+              isDaltonicMode
+                ? "bg-phase2BordersDaltonic"
+                : "bg-phase2Borders dark:bg-phase2BordersDark"
+            }`}
+          />
 
           {/* Familiares */}
           <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text
+              className={`text-lg ${
+                isDaltonicMode
+                  ? "text-phase2SmallTxtDaltonic"
+                  : "text-phase2Titles dark:text-phase2TitlesDark"
+              }`}
+            >
               Familia
             </Text>
-            <Text className="text-phase2Buttons dark:text-phase2ButtonsDark font-bold">
+            <Text
+              className={`font-bold ${
+                isDaltonicMode
+                  ? "text-phase2ButtonsDaltonic"
+                  : "text-phase2Buttons dark:text-phase2ButtonsDark"
+              }`}
+            >
               Editar familiares
             </Text>
           </XStack>

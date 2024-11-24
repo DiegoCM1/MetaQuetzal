@@ -40,6 +40,16 @@ module.exports = {
         phase2SmallTxtDark: "rgb(150, 150, 170)",
         phase2BordersDark: "rgb(60, 60, 70)",
         phase2SecondaryTxtDark: "rgb(180, 180, 200)",
+
+        // Daltonic mode colors
+        phase2bgDaltonic: "#F4F4F4",            // Fondo neutro para daltonismo
+        phase2CardsDaltonic: "#E67E22",         // Fondo/acento secundario para daltonismo
+        phase2ButtonsDaltonic: "#1ABC9C",       // Acento para elementos interactivos
+        phase2TitlesDaltonic: "#0072CE",        // Azul accesible para encabezados
+        phase2SmallTxtDaltonic: "#34495E",      // Texto principal en alto contraste
+        phase2BordersDaltonic: "#FFC107",       // Color de resaltado accesible
+        phase2SecondaryTxtDaltonic: "#34495E",    // Gris de alto contraste para subtítulos
+
       },
     },
   },

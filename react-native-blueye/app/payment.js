@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/Ionicons";
+import { useDaltonicMode } from "../context/DaltonicModeContext"; // Importar el contexto
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -17,6 +18,9 @@ export default function PaymentScreen() {
   const [cardHolder, setCardHolder] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
+  
+  // Obtener el estado del modo daltonismo
+  const { isDaltonicMode } = useDaltonicMode();
 
   const handlePayment = () => {
     if (paymentMethod === "Tarjeta") {
@@ -48,14 +52,32 @@ export default function PaymentScreen() {
   };
 
   return (
-    <View className="flex-1 p-5 items-center">
-      <Text className="text-2xl font-bold text-phase2Titles mb-5">
+    <View
+      className={`flex-1 p-5 items-center ${
+        isDaltonicMode ? "bg-phase2bgDaltonic" : "bg-phase2bg"
+      }`}
+    >
+      <Text
+        className={`text-2xl font-bold mb-5 ${
+          isDaltonicMode ? "text-phase2TitlesDaltonic" : "text-phase2Titles"
+        }`}
+      >
         Método de Pago
       </Text>
 
       {/* Opción de Tarjeta */}
       <TouchableOpacity
-        className={`flex-row items-center p-4 mb-3 border ${paymentMethod === "Tarjeta" ? "border-phase2Buttons" : "border-phase2Borders"} rounded-lg w-11/12 justify-between bg-white`}
+        className={`flex-row items-center p-4 mb-3 border ${
+          paymentMethod === "Tarjeta"
+            ? isDaltonicMode
+              ? "border-phase2ButtonsDaltonic"
+              : "border-phase2Buttons"
+            : isDaltonicMode
+            ? "border-phase2BordersDaltonic"
+            : "border-phase2Borders"
+        } rounded-lg w-11/12 justify-between ${
+          isDaltonicMode ? "bg-phase2CardsDaltonic" : "bg-white"
+        }`}
         onPress={() => setPaymentMethod("Tarjeta")}
       >
         <View className="flex-row items-center">
@@ -77,7 +99,11 @@ export default function PaymentScreen() {
         <Text
           className={`text-base ${
             paymentMethod === "Tarjeta"
-              ? "text-phase2Buttons font-bold"
+              ? isDaltonicMode
+                ? "text-phase2ButtonsDaltonic font-bold"
+                : "text-phase2Buttons font-bold"
+              : isDaltonicMode
+              ? "text-phase2TitlesDaltonic"
               : "text-phase2Titles"
           }`}
         >
@@ -87,7 +113,17 @@ export default function PaymentScreen() {
 
       {/* Opción de PayPal */}
       <TouchableOpacity
-        className={`flex-row items-center p-4 mb-3 border ${paymentMethod === "PayPal" ? "border-phase2Buttons" : "border-phase2Borders"} rounded-lg w-11/12 justify-between bg-white`}
+        className={`flex-row items-center p-4 mb-3 border ${
+          paymentMethod === "PayPal"
+            ? isDaltonicMode
+              ? "border-phase2ButtonsDaltonic"
+              : "border-phase2Buttons"
+            : isDaltonicMode
+            ? "border-phase2BordersDaltonic"
+            : "border-phase2Borders"
+        } rounded-lg w-11/12 justify-between ${
+          isDaltonicMode ? "bg-phase2CardsDaltonic" : "bg-white"
+        }`}
         onPress={() => setPaymentMethod("PayPal")}
       >
         <Image
@@ -100,7 +136,11 @@ export default function PaymentScreen() {
         <Text
           className={`text-base ${
             paymentMethod === "PayPal"
-              ? "text-phase2Buttons font-bold"
+              ? isDaltonicMode
+                ? "text-phase2ButtonsDaltonic font-bold"
+                : "text-phase2Buttons font-bold"
+              : isDaltonicMode
+              ? "text-phase2TitlesDaltonic"
               : "text-phase2Titles"
           }`}
         >
@@ -112,7 +152,11 @@ export default function PaymentScreen() {
       {paymentMethod === "Tarjeta" && (
         <View className="w-11/12 mt-5">
           <TextInput
-            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
+            className={`w-full p-4 rounded-lg mb-4 text-base border ${
+              isDaltonicMode
+                ? "bg-phase2CardsDaltonic border-phase2BordersDaltonic text-phase2SmallTxtDaltonic"
+                : "bg-phase2Cards border-phase2Borders text-phase2SmallTxt"
+            }`}
             placeholder="Número de Tarjeta"
             placeholderTextColor="rgb(120,120,120)"
             keyboardType="numeric"
@@ -121,21 +165,33 @@ export default function PaymentScreen() {
             onChangeText={setCardNumber}
           />
           <TextInput
-            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
+            className={`w-full p-4 rounded-lg mb-4 text-base border ${
+              isDaltonicMode
+                ? "bg-phase2CardsDaltonic border-phase2BordersDaltonic text-phase2SmallTxtDaltonic"
+                : "bg-phase2Cards border-phase2Borders text-phase2SmallTxt"
+            }`}
             placeholder="Nombre del Titular"
             placeholderTextColor="rgb(120,120,120)"
             value={cardHolder}
             onChangeText={setCardHolder}
           />
           <TextInput
-            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
+            className={`w-full p-4 rounded-lg mb-4 text-base border ${
+              isDaltonicMode
+                ? "bg-phase2CardsDaltonic border-phase2BordersDaltonic text-phase2SmallTxtDaltonic"
+                : "bg-phase2Cards border-phase2Borders text-phase2SmallTxt"
+            }`}
             placeholder="Fecha de Expiración (MM/AA)"
             placeholderTextColor="rgb(120,120,120)"
             value={expiryDate}
             onChangeText={setExpiryDate}
           />
           <TextInput
-            className="w-full bg-phase2Cards p-4 rounded-lg mb-4 text-base border border-phase2Borders"
+            className={`w-full p-4 rounded-lg mb-4 text-base border ${
+              isDaltonicMode
+                ? "bg-phase2CardsDaltonic border-phase2BordersDaltonic text-phase2SmallTxtDaltonic"
+                : "bg-phase2Cards border-phase2Borders text-phase2SmallTxt"
+            }`}
             placeholder="CVV"
             placeholderTextColor="rgb(120,120,120)"
             keyboardType="numeric"
@@ -148,10 +204,18 @@ export default function PaymentScreen() {
 
       {/* Botón de Confirmar */}
       <TouchableOpacity
-        className="bg-phase2Buttons rounded-lg py-4 px-6 items-center mt-5 w-11/12 shadow-md"
+        className={`rounded-lg py-4 px-6 items-center mt-5 w-11/12 shadow-md ${
+          isDaltonicMode ? "bg-phase2ButtonsDaltonic" : "bg-phase2Buttons"
+        }`}
         onPress={handlePayment}
       >
-        <Text className="text-phase2SmallTxt font-bold text-base">
+        <Text
+          className={`font-bold text-base ${
+            isDaltonicMode
+              ? "text-phase2SmallTxtDaltonic"
+              : "text-phase2SmallTxt"
+          }`}
+        >
           Confirmar Pago
         </Text>
       </TouchableOpacity>
