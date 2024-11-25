@@ -230,6 +230,16 @@ const MapViewWeb = () => {
           background-color: #f4f7f9;
         }
 
+        .top-header {
+          background: linear-gradient(90deg, #1E90FF, #1C86EE);
+          padding: 20px;
+          color: white;
+          font-size: 24px;
+          text-align: center;
+          border-radius: 5px;
+          margin-bottom: 20px;
+        }
+
         .app-container {
           display: flex;
           flex-direction: column;
@@ -424,7 +434,74 @@ const MapViewWeb = () => {
           text-decoration: none;
           font-size: 12px;
         }
+          .weather-toggle, .forecast-toggle {
+  background: linear-gradient(90deg, #1E90FF, #1C86EE); /* Degradado azul */
+  color: white;
+  padding: 10px 20px;
+  margin: 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s ease;
+}
+
+.weather-toggle:hover, .forecast-toggle:hover {
+  background: linear-gradient(90deg, #1C86EE, #1874CD); /* Degradado azul más oscuro */
+}
+
+.weather-data, .forecast-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f9f9f9, #e6f7ff); /* Fondo con degradado claro azul */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.weather-data h3, .forecast-container h3 {
+  text-align: center;
+  color: white;
+  font-size: 20px;
+  margin-bottom: 15px;
+  background: linear-gradient(90deg, #1E90FF, #1C86EE); /* Degradado azul en títulos */
+  padding: 10px;
+  border-radius: 5px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 auto;
+}
+
+thead th {
+  background: linear-gradient(90deg, #1E90FF, #1C86EE); /* Degradado azul en encabezados */
+  color: white;
+  padding: 10px;
+  text-align: center;
+}
+
+tbody td {
+  padding: 10px;
+  text-align: center;
+  border: 1px solid #ddd;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+tbody tr:hover {
+  background-color: #e6f7ff; /* Fondo azul claro al pasar el cursor */
+}
+
       `}</style>
+{/* Top Header */}
+<div className="top-header" style={{ position: 'absolute', top: 0, right: 0, zIndex: 10, backgroundColor: 'white', padding: '10px' }}>
+  📢 Blueye Map View
+</div>
+
 
       {/* Barra de búsqueda */}
       <div className="search-bar">
