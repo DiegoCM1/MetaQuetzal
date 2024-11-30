@@ -46,7 +46,7 @@ export default function AlarmsScreen() {
       case 2:
         return {
           bgStyle: "bg-phase2bg",
-          buttonStyle: "bg-phase2Cards",
+          buttonStyle: "bg-phase2Buttons",
           text: "🔔\nHuracán Otis\nCategoría 2",
           instructions:
             "-Otis podría instensificarse rápidamente.\n-Tome precaución.\n-Revise suministros y prepárese para posibles evacuaciones.\n-Manténgase atento a los comunicados de CONAGUA y Protección Civil.\n-Evite actividades al aire libre y asegure objetos en el exterior de su hogar."
@@ -153,7 +153,7 @@ export default function AlarmsScreen() {
             <View className="flex-row pb-4 w-5/6 justify-between mb-5">
               <Link href="/">
                 <TouchableOpacity
-                  className={`py-2 px-5 rounded-lg w-32 h-24 justify-center items-center shadow-lg bg-white hover:shadow-xl hover:scale-105 transition-all duration-300 ${categoryStyle.buttonStyle}`}
+                  className={`py-2 px-5 rounded-lg w-32 h-24 justify-center items-center shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ${categoryStyle.buttonStyle}`}
                 >
                   <Text className="font-bold text-phase2Titles text-center text-lg">
                     Más información
@@ -163,7 +163,7 @@ export default function AlarmsScreen() {
 
               <Link href="/chat-ai">
                 <TouchableOpacity
-                  className={`py-2 px-5 rounded-lg w-32 h-24 justify-center items-center shadow-lg bg-white hover:shadow-xl hover:scale-105 transition-all duration-300 ${categoryStyle.buttonStyle}`}
+                  className={`py-2 px-5 rounded-lg w-32 h-24 justify-center items-center shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 ${categoryStyle.buttonStyle}`}
                 >
                   <Text className="font-bold text-phase2Titles text-center text-lg">
                     Ir al chatbot

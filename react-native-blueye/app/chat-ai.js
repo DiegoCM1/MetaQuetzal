@@ -94,19 +94,40 @@ export default function ChatScreen() {
       <FlatList
         data={[
           { sender: "user", text: "Hola" },
-          { sender: "bot", text: "Hola, ¿en qué puedo ayudarte?" },
+          { sender: "bot", text: "Hola, ¿en qué puedo ayudarte? Soy una experta en huracanes." },
           {
             sender: "user",
-            text: "Escuché que se aproxima un huracán, cuentame más",
+            text: "Escuché que hay un huracán llamado Otis, ¿qué tan peligroso es?",
           },
           {
             sender: "bot",
-            text: "Huracán categoría 5 en Acapulco - Pasos rápidos: Evacúa si puedes, ve a un refugio temporal...",
+            text: "Huracán Otis es extremadamente peligroso. Actualmente es categoría 5 y se dirige hacia la costa de Guerrero, México. Se esperan vientos de hasta 260 km/h y lluvias torrenciales. Es importante tomar precauciones inmediatas.",
           },
-          { sender: "user", text: "Okay, muchas gracias!" },
+          { sender: "user", text: "¿Qué áreas están en mayor riesgo?" },
           {
             sender: "bot",
-            text: "De nada, si tienes más dudas estoy aquí para ayudarte! :)",
+            text: "Las áreas más afectadas serán Acapulco y sus alrededores. También hay riesgo elevado en la región costera de Guerrero y zonas montañosas por deslizamientos de tierra debido a las lluvias intensas.",
+          },
+          {
+            sender: "user",
+            text: "¿Qué debo hacer si estoy en Acapulco?",
+          },
+          {
+            sender: "bot",
+            text: "Evacúa si las autoridades lo recomiendan. Busca un refugio seguro, alejado de áreas propensas a inundaciones o deslizamientos. Si no puedes evacuar, refúgiate en una zona interior de tu casa, lejos de ventanas. Prepara un kit de emergencia con agua, alimentos, medicinas y documentos importantes.",
+          },
+          { sender: "user", text: "¿Cuándo se espera que llegue?" },
+          {
+            sender: "bot",
+            text: "El huracán Otis tocará tierra esta noche o en las primeras horas de la madrugada. Las condiciones peligrosas ya podrían estar presentes, como lluvias intensas y fuertes vientos.",
+          },
+          {
+            sender: "user",
+            text: "Gracias por la información, seguiré las recomendaciones.",
+          },
+          {
+            sender: "bot",
+            text: "De nada, mantente a salvo y sigue las indicaciones de Protección Civil. Estoy aquí si necesitas más información.",
           },
         ]}
         keyExtractor={(item, index) => index.toString()}
