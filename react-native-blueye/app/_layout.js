@@ -40,8 +40,8 @@ export default function Layout() {
                         : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
                     }`}
                   >
-                    <Ionicons
-                      name="home"
+                    <MaterialCommunityIcons
+                      name="map"
                       size={28}
                       color={
                         currentRoute === "/"

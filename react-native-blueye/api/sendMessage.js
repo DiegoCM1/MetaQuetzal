@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "https://ai-blueye-production.up.railway.app/ask"; // ✅ replace with your actual deployed URL
+const API_URL = "https://ai-blueye-production.up.railway.app/ask";
 
 export const sendMessage = async (question) => {
   try {
