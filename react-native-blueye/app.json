@@ -8,7 +8,10 @@
     "userInterfaceStyle": "light",
     "scheme": "blueye",
     "newArchEnabled": true,
-    "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+    "permissions": [
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_COARSE_LOCATION"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -23,12 +26,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourname.metaquetzal",
-      "config": {
-        "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-        },
-      },
+      "package": "com.yourname.metaquetzal"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -36,6 +34,20 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
+    }
   }
 }
