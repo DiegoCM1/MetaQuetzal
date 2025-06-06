@@ -12,21 +12,23 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
-import { Audio } from "expo-av";
+import { Audio } from 'expo-audio';
+import { sendMessage } from "../api/sendMessage";
 
 export default function ChatScreen() {
+  // Permissions and state handlers
   const [cameraPermission, setCameraPermission] = useState(null);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [recording, setRecording] = useState(null);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);
 
+  // Camera permission and open handler
   const handleOpenCamera = async () => {
     if (cameraPermission === null) {
       const { status } = await Camera.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permiso denegado",
-          "Por favor habilita el acceso a la cámara."
-        );
+        Alert.alert("Permiso denegado", "Por favor habilita el acceso a la cámara.");
         return;
       }
       setCameraPermission(true);
@@ -34,13 +36,11 @@ export default function ChatScreen() {
     setCameraVisible(true);
   };
 
+  // Image picker from gallery
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permiso denegado",
-        "Por favor habilita el acceso a la galería."
-      );
+      Alert.alert("Permiso denegado", "Por favor habilita el acceso a la galería.");
       return;
     }
 
@@ -55,14 +55,12 @@ export default function ChatScreen() {
     }
   };
 
+  // Audio recording handler
   const handleAudioRecord = async () => {
     try {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Permiso denegado",
-          "Por favor habilita el acceso al micrófono."
-        );
+        Alert.alert("Permiso denegado", "Por favor habilita el acceso al micrófono.");
         return;
       }
 
@@ -76,6 +74,7 @@ export default function ChatScreen() {
     }
   };
 
+  // Stop and save audio
   const handleStopRecording = async () => {
     if (!recording) return;
 
@@ -89,47 +88,22 @@ export default function ChatScreen() {
     }
   };
 
+  // Send text to AI and handle response
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+    const userMessage = { sender: "user", text: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+
+    const aiResponse = await sendMessage(userMessage.text);
+    const botMessage = { sender: "bot", text: aiResponse };
+    setMessages(prev => [...prev, botMessage]);
+  };
+
   return (
     <View className="flex-1 p-4">
       <FlatList
-        data={[
-          { sender: "user", text: "Hola" },
-          { sender: "bot", text: "Hola, ¿en qué puedo ayudarte? Soy una experta en huracanes." },
-          {
-            sender: "user",
-            text: "Escuché que hay un huracán llamado Otis, ¿qué tan peligroso es?",
-          },
-          {
-            sender: "bot",
-            text: "Huracán Otis es extremadamente peligroso. Actualmente es categoría 5 y se dirige hacia la costa de Guerrero, México. Se esperan vientos de hasta 260 km/h y lluvias torrenciales. Es importante tomar precauciones inmediatas.",
-          },
-          { sender: "user", text: "¿Qué áreas están en mayor riesgo?" },
-          {
-            sender: "bot",
-            text: "Las áreas más afectadas serán Acapulco y sus alrededores. También hay riesgo elevado en la región costera de Guerrero y zonas montañosas por deslizamientos de tierra debido a las lluvias intensas.",
-          },
-          {
-            sender: "user",
-            text: "¿Qué debo hacer si estoy en Acapulco?",
-          },
-          {
-            sender: "bot",
-            text: "Evacúa si las autoridades lo recomiendan. Busca un refugio seguro, alejado de áreas propensas a inundaciones o deslizamientos. Si no puedes evacuar, refúgiate en una zona interior de tu casa, lejos de ventanas. Prepara un kit de emergencia con agua, alimentos, medicinas y documentos importantes.",
-          },
-          { sender: "user", text: "¿Cuándo se espera que llegue?" },
-          {
-            sender: "bot",
-            text: "El huracán Otis tocará tierra esta noche o en las primeras horas de la madrugada. Las condiciones peligrosas ya podrían estar presentes, como lluvias intensas y fuertes vientos.",
-          },
-          {
-            sender: "user",
-            text: "Gracias por la información, seguiré las recomendaciones.",
-          },
-          {
-            sender: "bot",
-            text: "De nada, mantente a salvo y sigue las indicaciones de Protección Civil. Estoy aquí si necesitas más información.",
-          },
-        ]}
+        data={messages}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (
           <View
@@ -166,6 +140,8 @@ export default function ChatScreen() {
           className="flex-1 border border-phase2Borders dark:border-phase2BordersDark rounded-lg p-2 bg-white dark:bg-phase2Cards text-phase2Titles"
           placeholder="Escribe un mensaje..."
           placeholderTextColor="rgb(120,120,120)"
+          value={input}
+          onChangeText={setInput}
         />
         <TouchableOpacity
           className="bg-phase2Buttons dark:bg-phase2ButtonsDark py-2 px-4 rounded-lg ml-2"
@@ -176,6 +152,12 @@ export default function ChatScreen() {
             size={20}
             color="white"
           />
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="bg-phase2Buttons dark:bg-phase2ButtonsDark py-2 px-4 rounded-lg ml-2"
+          onPress={handleSendMessage}
+        >
+          <MaterialCommunityIcons name="send" size={20} color="white" />
         </TouchableOpacity>
       </View>
 
