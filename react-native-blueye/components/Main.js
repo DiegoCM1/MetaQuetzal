@@ -9,6 +9,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import axios from "axios";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 // Configuración de íconos para Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -221,23 +222,13 @@ const MapViewWeb = () => {
 
   return (
     <div className="app-container">
-      {/* Estilos */}
+      {/* Estilos CSS */}
       <style>{`
         body, html {
           margin: 0;
           padding: 0;
           font-family: 'Roboto', sans-serif;
           background-color: #f4f7f9;
-        }
-
-        .top-header {
-          background: linear-gradient(90deg, #1E90FF, #1C86EE);
-          padding: 20px;
-          color: white;
-          font-size: 24px;
-          text-align: center;
-          border-radius: 5px;
-          margin-bottom: 20px;
         }
 
         .app-container {
@@ -497,10 +488,6 @@ tbody tr:hover {
 }
 
       `}</style>
-{/* Top Header */}
-<div className="top-header" style={{ position: 'absolute', top: 0, right: 0, zIndex: 10, backgroundColor: 'white', padding: '10px' }}>
-  📢 Blueye Map View
-</div>
 
 
       {/* Barra de búsqueda */}
@@ -515,8 +502,9 @@ tbody tr:hover {
           {loading ? "Buscando..." : "Buscar"}
         </button>
       </div>
+
       {/* Controles de capas */}
-      <div className="controls">
+      {/* <div className="controls">
         <h4>Capas Climáticas</h4>
         {Object.keys(weatherTileURLs).map((layer) => (
           <label key={layer}>
@@ -529,8 +517,10 @@ tbody tr:hover {
             {layer.charAt(0).toUpperCase() + layer.slice(1)}
           </label>
         ))}
-      </div>
-      <div className="contact-container">
+      </div> */}
+
+      {/* Contacts */}
+      {/* <div className="contact-container">
         <h4>Contactos</h4>
         <div className="contact-item">
           <img
@@ -546,9 +536,10 @@ tbody tr:hover {
           />
           <a href="mailto:info@example.com">info@example.com</a>
         </div>
-      </div>
+      </div> */}
 
-      <div className="contact-container">
+        {/* Emergency Contacts */}
+      {/* <div className="contact-container">
         <h4>Contactos de Emergencia</h4>
         <div className="contact-item">
           <img
@@ -564,7 +555,7 @@ tbody tr:hover {
           />
           <a href="mailto:info@example.com">info@example.com</a>
         </div>
-      </div>
+      </div> */}
 
       {/* Mapa */}
       <MapContainer center={userLocation} zoom={5} className="map-container">
