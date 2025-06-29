@@ -3,8 +3,6 @@ import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { TamaguiProvider } from "@tamagui/core";
 import config from "../tamagui.config";
-import { Ionicons } from "@expo/vector-icons";
-import { MaterialIcons } from "@expo/vector-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
 import { ThemeProvider } from "../context/ThemeContext"; // Importa tu ThemeProvider
@@ -31,7 +29,7 @@ export default function Layout() {
               {/* Barra de navegación inferior */}
               <View className="w-full bg-phase2Cards dark:bg-phase2CardsDark border-t border-phase2Borders dark:border-phase2BordersDark">
                 <View className="flex-row">
-                  {/* Botón Inicio */}
+                  {/* Botón Inicio/Mapa */}
                   <Link
                     href="/"
                     className={`flex-1 p-4 items-center text-center ${
@@ -57,7 +55,7 @@ export default function Layout() {
                   <Link
                     href="/chat-ai"
                     className={`flex-1 p-4 items-center text-center ${
-                      currentRoute.startsWith("/chat-ai")
+                      currentRoute === "/chat-ai"
                         ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
                         : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
                     }`}
@@ -76,16 +74,16 @@ export default function Layout() {
                   </Link>
 
                   {/* Botón Configuración */}
-                  <Link
-                    href="/settings"
-                    className={`flex-1 p-4 items-center text-center ${
-                      currentRoute.startsWith("/settings")
+                 <Link
+                    href="/alarms"
+                    className={`flex-1 p-4 items-center text-center justify-center ${
+                      currentRoute === "/settings"
                         ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
                         : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
                     }`}
                   >
-                    <MaterialIcons
-                      name="settings"
+                    <MaterialCommunityIcons
+                      name="bell-alert-outline"
                       size={28}
                       color={
                         currentRoute.startsWith("/settings")
@@ -98,7 +96,7 @@ export default function Layout() {
                   </Link>
 
                   {/* Botón Monetización */}
-                  <Link
+                  {/* <Link
                     href="/monetization"
                     className={`flex-1 p-4 items-center text-center ${
                       currentRoute.startsWith("/monetization")
@@ -117,7 +115,7 @@ export default function Layout() {
                           : "white"
                       }
                     />
-                  </Link>
+                  </Link> */}
                 </View>
               </View>
             </View>

@@ -1,7 +1,8 @@
-Browser view: 
+## Start:
 npx expo start
 
-Emulator:
-
-
-Phone: 
+## Libraries:
+- Material Community Icons
+- Material Icons
+- Tamagui
+- NativeWindCSS
