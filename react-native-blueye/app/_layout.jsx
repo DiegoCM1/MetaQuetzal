@@ -103,9 +103,9 @@ function InnerApp() {
 
           {/* Botón Configuración */}
           <Link
-            href="/alarms"
+            href="/alarms-log"
             className={`flex flex-1 flex-col py-2 items-center text-center justify-center ${
-              currentRoute === "/settings"
+              currentRoute === "/alarms-log"
                 ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
                 : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
             }`}

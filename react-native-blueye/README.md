@@ -7,5 +7,5 @@ npx expo start
 - Tamagui
 - NativeWindCSS
 
-## ReactÑ
+## React
 - React Navigation
