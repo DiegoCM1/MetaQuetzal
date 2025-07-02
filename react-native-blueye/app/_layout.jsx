@@ -1,5 +1,5 @@
 import { Slot, Link, useRouter } from "expo-router";
-import { View } from "react-native";
+import { View, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { TamaguiProvider } from "@tamagui/core";
 import config from "../tamagui.config";
@@ -25,14 +25,31 @@ export default function Layout() {
             <View className="flex-1 bg-phase2bg dark:bg-phase2bgDark">
               {/* Renderizar pantallas */}
               <Slot />
+              {/* Top Bar */}
+              <View className="flex-row items-center fixed p-2 bg-phase2TopBar dark:bg-phase2TopBarDark border border-red-700 dark:border-phase2BordersDark w-full z-10">
+                <MaterialCommunityIcons
+                  name="menu"
+                  size={28}
+                  color={
+                    currentRoute === "/"
+                      ? colorScheme === "dark"
+                        ? "rgb(230, 230, 250)" // phase2TitlesDark
+                        : "rgb(30, 30, 60)" // phase2Titles
+                      : "white"
+                  }
+                />
 
+                <Text className="text-lg font-bold ml-2 text-phase2Titles dark:text-phase2TitlesDark">
+                  BluEye
+                </Text>
+              </View>
               {/* Barra de navegación inferior */}
               <View className="w-full bg-phase2Cards dark:bg-phase2CardsDark border-t border-phase2Borders dark:border-phase2BordersDark">
                 <View className="flex-row">
                   {/* Botón Inicio/Mapa */}
                   <Link
                     href="/"
-                    className={`flex-1 p-4 items-center text-center ${
+                    className={`flex flex-1 flex-col py-2 items-center text-center ${
                       currentRoute === "/"
                         ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
                         : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
@@ -49,12 +66,14 @@ export default function Layout() {
                           : "white"
                       }
                     />
+
+                    <Text className="text-sm">Mapa</Text>
                   </Link>
 
                   {/* Botón Chat-AI */}
                   <Link
                     href="/chat-ai"
-                    className={`flex-1 p-4 items-center text-center ${
+                    className={`flex flex-1 flex-col py-2 items-center text-center ${
                       currentRoute === "/chat-ai"
                         ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
                         : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
@@ -71,12 +90,13 @@ export default function Layout() {
                           : "white"
                       }
                     />
+                    <Text className="text-sm">Chat-AI</Text>
                   </Link>
 
                   {/* Botón Configuración */}
-                 <Link
+                  <Link
                     href="/alarms"
-                    className={`flex-1 p-4 items-center text-center justify-center ${
+                    className={`flex flex-1 flex-col py-2 items-center text-center justify-center ${
                       currentRoute === "/settings"
                         ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
                         : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
@@ -93,29 +113,8 @@ export default function Layout() {
                           : "white"
                       }
                     />
+                    <Text className="text-sm">Alertas</Text>
                   </Link>
-
-                  {/* Botón Monetización */}
-                  {/* <Link
-                    href="/monetization"
-                    className={`flex-1 p-4 items-center text-center ${
-                      currentRoute.startsWith("/monetization")
-                        ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
-                        : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
-                    }`}
-                  >
-                    <MaterialCommunityIcons
-                      name="account-cash"
-                      size={28}
-                      color={
-                        currentRoute.startsWith("/monetization")
-                          ? colorScheme === "dark"
-                            ? "rgb(230, 230, 250)" // phase2TitlesDark
-                            : "rgb(30, 30, 60)" // phase2Titles
-                          : "white"
-                      }
-                    />
-                  </Link> */}
                 </View>
               </View>
             </View>

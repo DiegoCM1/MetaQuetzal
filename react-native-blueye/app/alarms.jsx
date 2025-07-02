@@ -1,5 +1,5 @@
 import "../global.css";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, Modal, TouchableOpacity } from "react-native";
 import { Link } from "expo-router";
 import HurricaneCategory1 from "../components/hurricane-category-1";
@@ -124,10 +124,6 @@ export default function AlarmsScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <Text className="text-xl font-bold text-center my-4">
-        Información de Huracanes
-      </Text>
-
       {/* Renderiza el componente correspondiente */}
       {renderCategory()}
 
