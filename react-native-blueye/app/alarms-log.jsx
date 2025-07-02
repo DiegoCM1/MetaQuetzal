@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-const Alert = ({ header, description, icon, onSelect }) => (
+const Alert = ({ title, description, icon, time, onSelect }) => (
   <View className="p-4 w-full border-y border-x-0">
     <View className="flex-row items-center">
       <MaterialCommunityIcons
@@ -12,7 +12,10 @@ const Alert = ({ header, description, icon, onSelect }) => (
         color="rgb(50, 180, 200)" // phase2Buttons
       />
       <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark ml-2">
-        {header}
+        {title}
+      </Text>
+      <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark ml-auto">
+        {time}
       </Text>
     </View>
     <View className="flex flex-row">
@@ -20,7 +23,7 @@ const Alert = ({ header, description, icon, onSelect }) => (
         {description}
       </Text>
       <TouchableOpacity
-        className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg py-3 items-center mt-4"
+        className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-12 ml-auto"
         onPress={onSelect}
       >
         <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
@@ -37,58 +40,63 @@ export default function SubscriptionScreen() {
   return (
     <View className="flex-1 px-5">
       <StatusBar style="light" />
-      <Text className="text-2xl font-bold text-phase2Titles dark:text-phase2TitlesDark text-center my-5">
+      <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark text-center my-5">
         Historial de alertas
       </Text>
       <View className="flex-1 items-center">
         <Alert
-          header="Huracan 1"
+          title="Huracan 1"
           description="Accede a todas las funciones premium con soporte dedicado y más."
           icon="antenna"
+          time="Hace 2 horas"
           onSelect={() =>
-            router.push({ pathname: "/payment", params: { plan: "Plan Pro" } })
+            router.push({ pathname: "/", params: { plan: "Plan Pro" } })
           }
         />
         <Alert
-          header="Huracan 2"
+          title="Huracan 2"
           description="Disfruta de funciones esenciales para empezar."
           icon="antenna"
+          time="Hace 1 dia"
           onSelect={() =>
             router.push({
-              pathname: "/payment",
+              pathname: "/",
               params: { plan: "Plan Básico" },
             })
           }
         />
         <Alert
-          header="Huracan 3"
+          title="Huracan 3"
           description="Soluciones avanzadas para equipos y empresas."
           icon="antenna"
+          time="Hace 28 horas"
           onSelect={() =>
             router.push({
-              pathname: "/payment",
+              pathname: "/",
               params: { plan: "Plan Empresarial" },
             })
           }
         />
         <Alert
-          header="Huracan 4"
+          title="Huracan 4"
           description="Protege tus datos con cobertura avanzada."
           icon="antenna"
+          time="Hace 34 horas"
           onSelect={() =>
             router.push({
-              pathname: "/payment",
+              pathname: "/",
               params: { plan: "Plan Con Seguro" },
             })
           }
         />
         <Alert
-          header="Huracan 5"
+          title="Huracan 5"
           description="Soluciones avanzadas para instituciones públicas."
           icon="antenna"
+          time="Hace 48 horas"
           onSelect={() =>
             router.push({
-              pathname: "/payment",
+              pathname: "/",
               params: { plan: "Plan De Gobierno" },
             })
           }
