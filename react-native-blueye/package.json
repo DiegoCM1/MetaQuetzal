@@ -12,6 +12,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~4.0.0",
     "@react-native-async-storage/async-storage": "^1.23.1",
+    "@react-navigation/drawer": "^7.5.2",
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/stack": "^7.0.3",
     "@tamagui/config": "^1.116.15",
@@ -33,6 +34,7 @@
     "expo-location": "~18.1.5",
     "expo-router": "3.4.6",
     "expo-status-bar": "~2.2.3",
+    "expo-updates": "~0.28.14",
     "expo-video": "^2.2.0",
     "leaflet": "1.9.4",
     "metro": "^0.81.0",
@@ -43,6 +45,7 @@
     "react-dom": "18.2.0",
     "react-leaflet": "^4.2.1",
     "react-native": "0.76.4",
+    "react-native-drawer-layout": "^2.0.0",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-leaflet": "^0.0.0-reserved",
     "react-native-maps": "1.18.0",
@@ -53,8 +56,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "0.19.13",
     "tailwindcss": "^3.4.15",
-    "tamagui": "^1.116.15",
-    "expo-updates": "~0.28.14"
+    "tamagui": "^1.116.15"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

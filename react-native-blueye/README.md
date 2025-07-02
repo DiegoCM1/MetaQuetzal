@@ -6,3 +6,6 @@ npx expo start
 - Material Icons
 - Tamagui
 - NativeWindCSS
+
+## ReactÑ
+- React Navigation
