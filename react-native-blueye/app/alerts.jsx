@@ -22,14 +22,24 @@ const Alert = ({ title, description, icon, time, onSelect }) => (
       <Text className="text-base text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark my-2">
         {description}
       </Text>
-      <TouchableOpacity
-        className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-12 ml-auto"
-        onPress={onSelect}
-      >
-        <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
-          Ver en mapa
-        </Text>
-      </TouchableOpacity>
+      <View>
+        <TouchableOpacity
+          className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-10 mb-1 ml-auto"
+          onPress={onSelect}
+        >
+          <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
+            Ver en mapa
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-10 ml-auto"
+          onPress={onSelect}
+        >
+          <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
+            Más detalles
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   </View>
 );
@@ -45,7 +55,7 @@ export default function SubscriptionScreen() {
       </Text>
       <View className="flex-1 items-center">
         <Alert
-          title="Huracan 1"
+          title="Alerta 1"
           description="Accede a todas las funciones premium con soporte dedicado y más."
           icon="antenna"
           time="Hace 2 horas"
@@ -54,7 +64,7 @@ export default function SubscriptionScreen() {
           }
         />
         <Alert
-          title="Huracan 2"
+          title="Alerta 2"
           description="Disfruta de funciones esenciales para empezar."
           icon="antenna"
           time="Hace 1 dia"
@@ -66,7 +76,7 @@ export default function SubscriptionScreen() {
           }
         />
         <Alert
-          title="Huracan 3"
+          title="Alerta 3"
           description="Soluciones avanzadas para equipos y empresas."
           icon="antenna"
           time="Hace 28 horas"
@@ -78,7 +88,7 @@ export default function SubscriptionScreen() {
           }
         />
         <Alert
-          title="Huracan 4"
+          title="Alerta 4"
           description="Protege tus datos con cobertura avanzada."
           icon="antenna"
           time="Hace 34 horas"
@@ -90,7 +100,7 @@ export default function SubscriptionScreen() {
           }
         />
         <Alert
-          title="Huracan 5"
+          title="Alerta 5"
           description="Soluciones avanzadas para instituciones públicas."
           icon="antenna"
           time="Hace 48 horas"

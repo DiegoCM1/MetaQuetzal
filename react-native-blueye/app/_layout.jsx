@@ -103,9 +103,9 @@ function InnerApp() {
 
           {/* Botón Configuración */}
           <Link
-            href="/alarms-log"
+            href="/alerts"
             className={`flex flex-1 flex-col py-2 items-center text-center justify-center ${
-              currentRoute === "/alarms-log"
+              currentRoute === "/alerts"
                 ? "bg-phase2Cards dark:bg-phase2CardsDark text-phase2Titles dark:text-phase2TitlesDark"
                 : "bg-phase2Buttons dark:bg-phase2ButtonsDark text-white hover:bg-phase2Borders dark:hover:bg-phase2BordersDark"
             }`}
@@ -136,7 +136,7 @@ export default function Layout() {
       <ThemeProvider>
         <SafeAreaProvider>
           <TamaguiProvider config={config} defaultTheme="light">
-            <NavigationContainer>
+            <NavigationContainer className="bg-phase2Buttons dark:bg-phase2bgDark">
               <Drawer.Navigator screenOptions={{ headerShown: false }}>
                 <Drawer.Screen name="Home" component={InnerApp} />
                 <Drawer.Screen name="Settings" component={SettingsScreen} />
