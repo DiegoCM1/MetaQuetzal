@@ -3,7 +3,14 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-const Alert = ({ title, description, icon, time, onSelect }) => (
+const Alert = ({
+  title,
+  description,
+  icon,
+  time,
+  onSelectMap,
+  onSelectDetails,
+}) => (
   <View className="p-4 w-full border-y border-x-0">
     <View className="flex-row items-center">
       <MaterialCommunityIcons
@@ -25,7 +32,7 @@ const Alert = ({ title, description, icon, time, onSelect }) => (
       <View>
         <TouchableOpacity
           className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-10 mb-1 ml-auto"
-          onPress={onSelect}
+          onPress={onSelectMap}
         >
           <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
             Ver en mapa
@@ -33,7 +40,7 @@ const Alert = ({ title, description, icon, time, onSelect }) => (
         </TouchableOpacity>
         <TouchableOpacity
           className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-10 ml-auto"
-          onPress={onSelect}
+          onPress={onSelectDetails}
         >
           <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
             Más detalles
@@ -59,8 +66,17 @@ export default function SubscriptionScreen() {
           description="Accede a todas las funciones premium con soporte dedicado y más."
           icon="antenna"
           time="Hace 2 horas"
-          onSelect={() =>
-            router.push({ pathname: "/alerts-info", params: { plan: "Plan Pro" } })
+          onSelectDetails={() =>
+            router.push({
+              pathname: "/alerts-info",
+              params: { plan: "Plan Pro" },
+            })
+          }
+          onSelectMap={() =>
+            router.push({
+              pathname: "/",
+              params: { plan: "Plan Pro" },
+            })
           }
         />
         <Alert
@@ -68,10 +84,16 @@ export default function SubscriptionScreen() {
           description="Disfruta de funciones esenciales para empezar."
           icon="antenna"
           time="Hace 1 dia"
-          onSelect={() =>
+          onSelectDetails={() =>
             router.push({
               pathname: "/alerts-info",
               params: { plan: "Plan Básico" },
+            })
+          }
+          onSelectMap={() =>
+            router.push({
+              pathname: "/",
+              params: { plan: "Plan Pro" },
             })
           }
         />
@@ -80,10 +102,16 @@ export default function SubscriptionScreen() {
           description="Soluciones avanzadas para equipos y empresas."
           icon="antenna"
           time="Hace 28 horas"
-          onSelect={() =>
+          onSelectDetails={() =>
             router.push({
               pathname: "/alerts-info",
               params: { plan: "Plan Empresarial" },
+            })
+          }
+          onSelectMap={() =>
+            router.push({
+              pathname: "/",
+              params: { plan: "Plan Pro" },
             })
           }
         />
@@ -92,10 +120,16 @@ export default function SubscriptionScreen() {
           description="Protege tus datos con cobertura avanzada."
           icon="antenna"
           time="Hace 34 horas"
-          onSelect={() =>
+          onSelectDetails={() =>
             router.push({
               pathname: "/alerts-info",
               params: { plan: "Plan Con Seguro" },
+            })
+          }
+          onSelectMap={() =>
+            router.push({
+              pathname: "/",
+              params: { plan: "Plan Pro" },
             })
           }
         />
@@ -104,10 +138,16 @@ export default function SubscriptionScreen() {
           description="Soluciones avanzadas para instituciones públicas."
           icon="antenna"
           time="Hace 48 horas"
-          onSelect={() =>
+          onSelectDetails={() =>
             router.push({
               pathname: "/alerts-info",
               params: { plan: "Plan De Gobierno" },
+            })
+          }
+          onSelectMap={() =>
+            router.push({
+              pathname: "/",
+              params: { plan: "Plan Pro" },
             })
           }
         />

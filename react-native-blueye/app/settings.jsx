@@ -1,5 +1,5 @@
 import "../global.css";
-import React, { useState } from "react";
+import { useState } from "react";
 import { ScrollView, Text, Switch } from "react-native";
 import { YStack, XStack, Separator } from "tamagui";
 import { Link } from "expo-router";
