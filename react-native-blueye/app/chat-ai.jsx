@@ -15,9 +15,9 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
-import { Audio } from 'expo-audio';
+import { Audio } from "expo-audio";
 import { sendMessage } from "../api/sendMessage";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ChatScreen() {
   // Permissions and state handlers
@@ -33,7 +33,10 @@ export default function ChatScreen() {
     if (cameraPermission === null) {
       const { status } = await Camera.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permiso denegado", "Por favor habilita el acceso a la cámara.");
+        Alert.alert(
+          "Permiso denegado",
+          "Por favor habilita el acceso a la cámara."
+        );
         return;
       }
       setCameraPermission(true);
@@ -45,7 +48,10 @@ export default function ChatScreen() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permiso denegado", "Por favor habilita el acceso a la galería.");
+      Alert.alert(
+        "Permiso denegado",
+        "Por favor habilita el acceso a la galería."
+      );
       return;
     }
 
@@ -65,7 +71,10 @@ export default function ChatScreen() {
     try {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permiso denegado", "Por favor habilita el acceso al micrófono.");
+        Alert.alert(
+          "Permiso denegado",
+          "Por favor habilita el acceso al micrófono."
+        );
         return;
       }
 
@@ -96,20 +105,23 @@ export default function ChatScreen() {
   // Persistent storage functions
   const loadMessages = async () => {
     try {
-      const savedMessages = await AsyncStorage.getItem('chat_messages');
+      const savedMessages = await AsyncStorage.getItem("chat_messages");
       if (savedMessages) {
         setMessages(JSON.parse(savedMessages));
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error("Error loading messages:", error);
     }
   };
 
   const saveMessages = async (messagesToSave) => {
     try {
-      await AsyncStorage.setItem('chat_messages', JSON.stringify(messagesToSave));
+      await AsyncStorage.setItem(
+        "chat_messages",
+        JSON.stringify(messagesToSave)
+      );
     } catch (error) {
-      console.error('Error saving messages:', error);
+      console.error("Error saving messages:", error);
     }
   };
 
@@ -126,20 +138,24 @@ export default function ChatScreen() {
   // Send text to AI and handle response
   const handleSendMessage = async () => {
     if (!input.trim()) return;
-    
-    const userMessage = { sender: "user", text: input, timestamp: new Date().toISOString() };
-    setMessages(prev => [...prev, userMessage]);
+
+    const userMessage = {
+      sender: "user",
+      text: input,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
     try {
       const aiResponse = await sendMessage(userMessage.text);
-      const botMessage = { 
-        sender: "bot", 
+      const botMessage = {
+        sender: "bot",
         text: aiResponse,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, botMessage]);
+      setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       Alert.alert("Error", "No se pudo enviar el mensaje. Intente nuevamente.");
     } finally {
@@ -165,14 +181,22 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-phase2Background dark:bg-phase2BackgroundDark">
       <StatusBar barStyle="light-content" />
-      <View className="flex-1 px-4 pt-2 pb-4">
 
+      <View className="flex-1 px-4 pt-2 pb-4">
         {/* Messages List */}
         <FlatList
           data={messages}
           keyExtractor={(item, index) => index.toString()}
           className="flex-1 pt-4"
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
+          ListEmptyComponent={() => (
+            <View className="flex-1 items-center justify-center">
+              <Text className="text-3xl font-semibold text-gray-500 text-center">
+                ¿En que te puedo ayudar?
+                <Text className="text-buttonBlue dark:text-dark-accent">.</Text>
+              </Text>
+            </View>
+          )}
           renderItem={({ item }) => (
             <View
               className={`mb-3 flex-row ${
@@ -215,7 +239,11 @@ export default function ChatScreen() {
                 className="h-10 w-10 rounded-full bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
                 onPress={handlePickImage}
               >
-                <MaterialCommunityIcons name="folder-image" size={20} color="white" />
+                <MaterialCommunityIcons
+                  name="folder-image"
+                  size={20}
+                  color="white"
+                />
               </TouchableOpacity>
             </View>
 

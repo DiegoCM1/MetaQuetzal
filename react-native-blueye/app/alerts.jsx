@@ -60,7 +60,7 @@ export default function SubscriptionScreen() {
           icon="antenna"
           time="Hace 2 horas"
           onSelect={() =>
-            router.push({ pathname: "/", params: { plan: "Plan Pro" } })
+            router.push({ pathname: "/alerts-info", params: { plan: "Plan Pro" } })
           }
         />
         <Alert
@@ -70,7 +70,7 @@ export default function SubscriptionScreen() {
           time="Hace 1 dia"
           onSelect={() =>
             router.push({
-              pathname: "/",
+              pathname: "/alerts-info",
               params: { plan: "Plan Básico" },
             })
           }
@@ -82,7 +82,7 @@ export default function SubscriptionScreen() {
           time="Hace 28 horas"
           onSelect={() =>
             router.push({
-              pathname: "/",
+              pathname: "/alerts-info",
               params: { plan: "Plan Empresarial" },
             })
           }
@@ -94,7 +94,7 @@ export default function SubscriptionScreen() {
           time="Hace 34 horas"
           onSelect={() =>
             router.push({
-              pathname: "/",
+              pathname: "/alerts-info",
               params: { plan: "Plan Con Seguro" },
             })
           }
@@ -106,7 +106,7 @@ export default function SubscriptionScreen() {
           time="Hace 48 horas"
           onSelect={() =>
             router.push({
-              pathname: "/",
+              pathname: "/alerts-info",
               params: { plan: "Plan De Gobierno" },
             })
           }
