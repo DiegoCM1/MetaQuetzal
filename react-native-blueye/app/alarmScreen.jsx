@@ -1,44 +1,40 @@
-// components/alarmScreen.jsx
 import { useState, useEffect } from "react";
 import { Modal, View, Text, TouchableOpacity } from "react-native";
 import { Link, useRouter } from "expo-router";
 
-/* Colores base Tailwind para cada categoría (puedes cambiarlos) */
 const CATEGORY_BG = {
   3: "bg-phase3bg",
   4: "bg-phase4bg",
   5: "bg-phase5bg",
 };
 
-/* Datos mock del huracán cercano */
 const MOCK_ALERT = {
   category: 3,
   title: "Huracán Otis · Categoría 3",
-  message:
-    "Otis se acerca. Vientos sostenidos de 195 km/h. Prepárese para evacuar.",
+  message: "Otis se acerca rápidamente. Prepárese para evacuar.",
+  distanceKm: 185,
+  etaHours: 14,
+  windKmh: 195,
+  gustKmh: 230,
+  pressureMb: 960,
+  rain1h: 12,
+  pop: 0.86,
 };
 
 export default function AlarmScreenMock() {
-  /* 1️⃣ Visibilidad controlada internamente */
   const [visible, setVisible] = useState(false);
-
-  /* 2️⃣ Simula que “detectamos” un huracán al abrir la pantalla */
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), 250); // 0.25 s
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setVisible(true), 250);
+    return () => clearTimeout(t);
   }, []);
 
   const router = useRouter();
-
-  /* 3️⃣ Handlers */
   const handleMap = () => {
     setVisible(false);
-    router.push("/"); // o tu ruta de mapa
+    router.push("/");       // Ruta del mapa
   };
-
   const handleClose = () => setVisible(false);
 
-  /* 4️⃣ Render del modal */
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={handleClose}>
       <View className="flex-1 justify-center items-center bg-black/70">
@@ -52,36 +48,53 @@ export default function AlarmScreenMock() {
             {MOCK_ALERT.title}
           </Text>
 
-          {/* Mensaje */}
-          <Text className="text-base text-phase2Titles text-center mb-8">
+          {/* Mensaje breve */}
+          <Text className="text-base text-phase2Titles text-center mb-6">
             {MOCK_ALERT.message}
           </Text>
 
-          {/* Botones acción */}
+          {/* Datos clave */}
+          <View className="space-y-1 mb-8">
+            <Stat label="Distancia" value={`${MOCK_ALERT.distanceKm} km`} />
+            <Stat label="ETA" value={`${MOCK_ALERT.etaHours} h`} />
+            <Stat label="Viento" value={`${MOCK_ALERT.windKmh} km/h`} />
+            <Stat label="Ráfagas" value={`${MOCK_ALERT.gustKmh} km/h`} />
+            <Stat label="Presión" value={`${MOCK_ALERT.pressureMb} mb`} />
+            <Stat label="Lluvia 1 h" value={`${MOCK_ALERT.rain1h} mm`} />
+            <Stat label="Prob. lluvia" value={`${Math.round(MOCK_ALERT.pop * 100)} %`} />
+          </View>
+
+          {/* Botones */}
           <View className="flex-row justify-between mb-6">
             <TouchableOpacity
               onPress={handleMap}
-              className="flex-1 mr-2 py-3 rounded-lg bg-white/60 items-center"
+              className="flex-1 mr-2 py-3 rounded-lg bg-white/20 items-center"
             >
               <Text className="font-bold text-phase2Titles">Ver en el mapa</Text>
             </TouchableOpacity>
 
             <Link href="/alerts-info" asChild>
-              <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-white/60 items-center">
+              <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-white/20 items-center">
                 <Text className="font-bold text-phase2Titles">Más información</Text>
               </TouchableOpacity>
             </Link>
           </View>
 
           {/* Cerrar */}
-          <TouchableOpacity
-            onPress={handleClose}
-            className="py-2 rounded-lg bg-white items-center"
-          >
+          <TouchableOpacity onPress={handleClose} className="py-2 rounded-lg bg-white items-center">
             <Text className="font-bold text-phase2Titles">Cerrar</Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <Text className="text-phase2Titles">
+      <Text className="font-bold">{label}: </Text>
+      {value}
+    </Text>
   );
 }
