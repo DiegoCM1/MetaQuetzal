@@ -2,6 +2,7 @@ import { StatusBar } from "expo-status-bar";
 import { View, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import PageTitle from "../components/PageTitle";
 
 const Alert = ({
   title,
@@ -11,7 +12,7 @@ const Alert = ({
   onSelectMap,
   onSelectDetails,
 }) => (
-  <View className="p-4 w-full border-y border-x-0">
+  <View className="p-4 w-full border-b border-x-0">
     <View className="flex-row items-center">
       <MaterialCommunityIcons
         name={icon}
@@ -57,9 +58,7 @@ export default function SubscriptionScreen() {
   return (
     <View className="flex-1 px-5">
       <StatusBar style="light" />
-      <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark text-center my-5">
-        Historial de alertas
-      </Text>
+      <PageTitle>Historial de alertas</PageTitle>
       <View className="flex-1 items-center">
         <Alert
           title="Alerta 1"

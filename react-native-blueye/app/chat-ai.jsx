@@ -18,6 +18,7 @@ import { Camera } from "expo-camera";
 import { Audio } from "expo-audio";
 import { sendMessage } from "../api/sendMessage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import PageTitle from "../components/PageTitle";
 
 export default function ChatScreen() {
   // Permissions and state handlers
@@ -181,7 +182,7 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-phase2Background dark:bg-phase2BackgroundDark">
       <StatusBar barStyle="light-content" />
-
+      <PageTitle>Chat con IA</PageTitle>
       <View className="flex-1 px-4 pt-2 pb-4">
         {/* Messages List */}
         <FlatList

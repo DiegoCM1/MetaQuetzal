@@ -4,6 +4,7 @@ import { ScrollView, Text, Switch } from "react-native";
 import { YStack, XStack, Separator } from "tamagui";
 import { Link } from "expo-router";
 import { useColorScheme } from "nativewind";
+import PageTitle from "../components/PageTitle";
 
 export default function SettingsScreen() {
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -42,17 +43,10 @@ export default function SettingsScreen() {
           : "bg-phase2bg dark:bg-phase2bgDark" // Fondo normal y modo oscuro
       }`}
     >
+      <PageTitle>Ajustes</PageTitle>
+
       <YStack className="p-6 space-y-8">
         {/* Header */}
-        <Text
-          className={`text-3xl font-extrabold ${
-            isDaltonicMode
-              ? "text-phase2TitlesDaltonic" // Texto en modo daltónico
-              : "text-phase2Titles dark:text-phase2TitlesDark" // Texto normal y oscuro
-          }`}
-        >
-          Ajustes
-        </Text>
 
         <Separator
           className={`h-1 ${
@@ -93,7 +87,7 @@ export default function SettingsScreen() {
 
           {/* Alarmas */}
           <XStack className="items-center justify-between">
-            <Text 
+            <Text
               className={`text-lg ${
                 isDaltonicMode
                   ? "text-phase2SmallTxtDaltonic"

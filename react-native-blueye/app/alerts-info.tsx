@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import PageTitle from "../components/PageTitle";
 
 /**
  * Props opcionales para inyectar datos reales
@@ -52,7 +53,8 @@ export default function AlertInfoScreen({ data }: Props) {
   };
 
   return (
-    <ScrollView className="flex-1 bg-phase2bg dark:bg-phase2bgDark px-4 py-6 space-y-4">
+    <ScrollView className="flex-1 bg-phase2bg dark:bg-phase2bgDark">
+      <PageTitle>Información de la Alerta</PageTitle>
       {/* Encabezado */}
       <View
         className={`rounded-2xl p-5 shadow-lg ${catColors[info.category]} flex-row justify-between items-center`}
