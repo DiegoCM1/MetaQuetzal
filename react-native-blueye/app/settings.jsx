@@ -93,7 +93,7 @@ export default function SettingsScreen() {
 
           {/* Alarmas */}
           <XStack className="items-center justify-between">
-            <Text
+            <Text 
               className={`text-lg ${
                 isDaltonicMode
                   ? "text-phase2SmallTxtDaltonic"
@@ -103,7 +103,7 @@ export default function SettingsScreen() {
               Alarmas
             </Text>
             <Link
-              href="./alarms"
+              href="/alerts-info"
               className={`font-bold ${
                 isDaltonicMode
                   ? "text-phase2ButtonsDaltonic"
