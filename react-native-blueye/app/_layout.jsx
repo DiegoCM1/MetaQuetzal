@@ -19,12 +19,6 @@ import alarmScreen from "./alarmScreen"; // ajusta la ruta si está en otro sub-
 
 const Drawer = createDrawerNavigator(); // Create a Drawer Navigator
 
-const PlaceholderScreen = () => (
-  <View className="flex-1 items-center justify-center">
-    <Text>En construcción</Text>
-  </View>
-);
-
 function InnerApp() {
   const router = useRouter();
   const currentRoute = router?.pathname || "";
@@ -196,7 +190,6 @@ export default function Layout() {
               <Drawer.Navigator screenOptions={{ headerShown: false }}>
                 <Drawer.Screen name="Home" component={InnerApp} />
                 <Drawer.Screen name="Settings" component={SettingsScreen} />
-                <Drawer.Screen name="Feedback" component={PlaceholderScreen} />
                 <Drawer.Screen name="Alarm Notification" component={alarmScreen} />
               </Drawer.Navigator>
             </NavigationContainer>

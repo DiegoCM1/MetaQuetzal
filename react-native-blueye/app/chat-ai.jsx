@@ -65,6 +65,9 @@ export default function ChatScreen() {
     if (!result.canceled) {
       Alert.alert("Imagen seleccionada", `Ruta: ${result.assets[0].uri}`);
     }
+
+    AsyncStorage.clear(); // Clear AsyncStorage for demo purposes
+
   };
 
   // Audio recording handler
@@ -194,7 +197,6 @@ export default function ChatScreen() {
             <View className="flex-1 items-center justify-center">
               <Text className="text-3xl font-semibold text-gray-500 text-center">
                 ¿En que te puedo ayudar?
-                <Text className="text-buttonBlue dark:text-dark-accent">.</Text>
               </Text>
             </View>
           )}
