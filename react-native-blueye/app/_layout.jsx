@@ -8,7 +8,6 @@ import { useColorScheme } from "nativewind";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import {
-  NavigationContainer,
   DrawerActions,
   useNavigation,
 } from "@react-navigation/native";
@@ -18,12 +17,6 @@ import alarmScreen from "./alarmScreen"; // ajusta la ruta si está en otro sub-
 
 
 const Drawer = createDrawerNavigator(); // Create a Drawer Navigator
-
-const PlaceholderScreen = () => (
-  <View className="flex-1 items-center justify-center">
-    <Text>En construcción</Text>
-  </View>
-);
 
 function InnerApp() {
   const router = useRouter();
@@ -192,14 +185,11 @@ export default function Layout() {
       <ThemeProvider>
         <SafeAreaProvider>
           <TamaguiProvider config={config} defaultTheme="light">
-            <NavigationContainer className="bg-phase2Buttons dark:bg-phase2bgDark">
               <Drawer.Navigator screenOptions={{ headerShown: false }}>
-                <Drawer.Screen name="Home" component={InnerApp} />
-                <Drawer.Screen name="Settings" component={SettingsScreen} />
-                <Drawer.Screen name="Feedback" component={PlaceholderScreen} />
-                <Drawer.Screen name="Alarm Notification" component={alarmScreen} />
+                <Drawer.Screen name="index" component={InnerApp} />
+                <Drawer.Screen name="settings" component={SettingsScreen} />
+                <Drawer.Screen name="alarmScreen" component={alarmScreen} />
               </Drawer.Navigator>
-            </NavigationContainer>
           </TamaguiProvider>
         </SafeAreaProvider>
       </ThemeProvider>
