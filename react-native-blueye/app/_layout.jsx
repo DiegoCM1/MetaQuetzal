@@ -206,12 +206,12 @@ export default function Layout() {
       <ThemeProvider>
         <SafeAreaProvider>
           <TamaguiProvider config={config} defaultTheme="light">
-            <Drawer screenOptions={{ headerShown: false }}>
+            <Drawer className="flex-1" screenOptions={{ headerShown: false }}>
               <Drawer.Screen name="index" />
               <Drawer.Screen name="settings" />
               <Drawer.Screen name="alarmScreen" />
             </Drawer>
-            <View className="flex-1 bg-phase2bg dark:bg-phase2bgDark">
+            <View className=" bg-phase2bg dark:bg-phase2bgDark">
               {/* Top Bar */}
               <View className="fixed top-0 left-0 right-0 flex-row items-center p-4 bg-phase2TopBar dark:bg-phase2TopBarDark z-10">
                 <MaterialCommunityIcons
@@ -228,9 +228,8 @@ export default function Layout() {
                 />
               </View>
 
-
               {/* Bottom Tabs */}
-              <View className="w-full bg-phase2Cards dark:bg-phase2CardsDark border-t border-phase2Borders dark:border-phase2BordersDark">
+              <View className="fixed bottom-0 left-0 right-0 bg-phase2Cards dark:bg-phase2CardsDark border-t border-phase2Borders dark:border-phase2BordersDark">
                 <View className="flex-row">
                   {/* Botón Inicio/Mapa */}
                   <Link
