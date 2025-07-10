@@ -2,7 +2,7 @@ import { StatusBar } from "expo-status-bar";
 import { View, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import PageTitle from "../components/PageTitle";
+import PageTitle from "../../components/PageTitle";
 
 const Alert = ({
   title,

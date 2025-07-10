@@ -1,4 +1,4 @@
-import "../global.css";
+import "../../global.css";
 import React, { useState } from "react";
 import {
   View,
@@ -16,9 +16,9 @@ import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
 import { Audio } from "expo-audio";
-import { sendMessage } from "../api/sendMessage";
+import { sendMessage } from "../../api/sendMessage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import PageTitle from "../components/PageTitle";
+import PageTitle from "../../components/PageTitle";
 
 export default function ChatScreen() {
   // Permissions and state handlers
