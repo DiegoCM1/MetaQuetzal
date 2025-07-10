@@ -1,4 +1,3 @@
-// feedback.jsx
 import React, { useState } from "react";
 import {
   View,
@@ -12,33 +11,29 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from "nativewind";
 import PageTitle from "../components/PageTitle";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const API_URL = "https://your-api.com/feedback"; // ← replace with your real endpoint
 
 export default function Feedback() {
   const { colorScheme } = useColorScheme();
-  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [rating, setRating] = useState(0);
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Basic client-side validation
+  // Validation
   const validate = () => {
     const newErrors = {};
-    if (!form.name.trim()) newErrors.name = "El nombre es obligatorio.";
-    if (!form.email.trim()) newErrors.email = "El correo es obligatorio.";
-    else if (!/\S+@\S+\.\S+/.test(form.email))
+    if (rating === 0) newErrors.rating = "Por favor selecciona una calificación.";
+    if (!email.trim()) newErrors.email = "El correo es obligatorio.";
+    else if (!/\S+@\S+\.\S+/.test(email))
       newErrors.email = "Formato de correo inválido.";
-    if (!form.message.trim())
-      newErrors.message = "El mensaje no puede estar vacío.";
+    if (!message.trim()) newErrors.message = "El mensaje no puede estar vacío.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  // Update form state and clear field error
-  const handleChange = (field, value) => {
-    setForm((f) => ({ ...f, [field]: value }));
-    if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }));
   };
 
   // Submit handler
@@ -50,12 +45,14 @@ export default function Feedback() {
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ rating, email, message }),
       });
       if (!res.ok) throw new Error("Error en el servidor");
 
       setSuccess(true);
-      setForm({ name: "", email: "", message: "" });
+      setRating(0);
+      setEmail("");
+      setMessage("");
     } catch (err) {
       Alert.alert("¡Ups!", err.message);
     } finally {
@@ -70,35 +67,57 @@ export default function Feedback() {
       />
 
       <PageTitle>Déjanos tu feedback</PageTitle>
+      <View className="px-6">
+        <Text className="text-lg my-4 text-phase2Titles dark:text-phase2TitlesDark">
+          Cuéntanos qué te gusta, qué podemos mejorar o reporta algún error.
+        </Text>
+      </View>
 
       <View className="flex-1 p-6">
-        {/* Nombre */}
-        <TextInput
-          value={form.name}
-          onChangeText={(t) => handleChange("name", t)}
-          placeholder="Nombre"
-          accessibilityLabel="Nombre"
-          className="mb-1 p-3 border rounded-lg bg-white dark:bg-phase2CardsDark border-phase2Borders dark:border-phase2BordersDark text-phase2Titles dark:text-phase2TitlesDark"
-        />
-        {errors.name && <Text className="text-red-500 mb-2">{errors.name}</Text>}
+        {/* Star Rating */}
+        <Text className="text-base mb-2 text-phase2Titles dark:text-phase2TitlesDark">
+          ¿Cómo nos calificas?
+        </Text>
+        <View className="flex-row mb-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <TouchableOpacity key={i} onPress={() => setRating(i)}>
+              <MaterialCommunityIcons
+                name={i <= rating ? "star" : "star-outline"}
+                size={32}
+                color={
+                  i <= rating
+                    ? "#FFD700"
+                    : colorScheme === "dark"
+                    ? "#888"
+                    : "#ccc"
+                }
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+        {errors.rating && (
+          <Text className="text-red-500 mb-2">{errors.rating}</Text>
+        )}
 
-        {/* Correo */}
+        {/* Email Input */}
         <TextInput
-          value={form.email}
-          onChangeText={(t) => handleChange("email", t)}
+          value={email}
+          onChangeText={setEmail}
           placeholder="Correo electrónico"
           keyboardType="email-address"
           autoCapitalize="none"
           accessibilityLabel="Correo electrónico"
           className="mb-1 p-3 border rounded-lg bg-white dark:bg-phase2CardsDark border-phase2Borders dark:border-phase2BordersDark text-phase2Titles dark:text-phase2TitlesDark"
         />
-        {errors.email && <Text className="text-red-500 mb-2">{errors.email}</Text>}
+        {errors.email && (
+          <Text className="text-red-500 mb-2">{errors.email}</Text>
+        )}
 
-        {/* Mensaje */}
+        {/* Feedback Message */}
         <TextInput
-          value={form.message}
-          onChangeText={(t) => handleChange("message", t)}
-          placeholder="Escribe tu mensaje..."
+          value={message}
+          onChangeText={setMessage}
+          placeholder="Escribe tus pensamientos..."
           multiline
           numberOfLines={4}
           accessibilityLabel="Mensaje"
@@ -108,7 +127,7 @@ export default function Feedback() {
           <Text className="text-red-500 mb-2">{errors.message}</Text>
         )}
 
-        {/* Enviar */}
+        {/* Submit Button */}
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={loading}
@@ -125,7 +144,7 @@ export default function Feedback() {
           )}
         </TouchableOpacity>
 
-        {/* Mensaje de éxito */}
+        {/* Success Message */}
         {success && (
           <Text className="mt-4 text-center text-green-600">
             ¡Gracias por tu feedback!
