@@ -8,7 +8,7 @@ import { useColorScheme } from "nativewind";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { DrawerActions, useNavigation } from "@react-navigation/native";
-import { useDrawerStatus } from "@react-navigation/drawer";
+import { useEffect, useState } from "react";
 import { Drawer } from "expo-router/drawer";
 
 /* ---------- Layout raíz ---------- */
@@ -17,7 +17,16 @@ export default function Layout() {
   const currentRoute = router?.pathname || "";
   const { colorScheme } = useColorScheme();
   const navigation = useNavigation();
-  const drawerStatus = useDrawerStatus();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const openSub = navigation.addListener("drawerOpen", () => setDrawerOpen(true));
+    const closeSub = navigation.addListener("drawerClose", () => setDrawerOpen(false));
+    return () => {
+      openSub();
+      closeSub();
+    };
+  }, [navigation]);
   const MAIN_TABS = ["", "chat-ai", "alerts"];
 
   const isMainTab = MAIN_TABS.some((path) => currentRoute.startsWith(path));
@@ -79,7 +88,7 @@ export default function Layout() {
             </Drawer>
             <View className=" bg-phase2bg dark:bg-phase2bgDark">
               {/* Top Bar */}
-              {drawerStatus !== "open" && (
+              {!drawerOpen && (
                 <View className="fixed top-0 left-0 right-0 flex-row items-center p-4 bg-phase2TopBar dark:bg-phase2TopBarDark z-10">
                   <MaterialCommunityIcons
                     name={isMainTab ? "menu" : "arrow-left"}
