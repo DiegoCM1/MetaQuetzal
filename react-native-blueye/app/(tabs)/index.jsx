@@ -1,9 +1,9 @@
 // index.js
-import "../global.css";
+import "../../global.css";
 import { StatusBar } from "expo-status-bar";
 import { TamaguiProvider } from "@tamagui/core"; // Importa TamaguiProvider
-import config from "../tamagui.config"; // Importa la configuración de Tamagui
-import Main from "../components/Main"; // Importa el componente Main
+import config from "../../tamagui.config"; // Importa la configuración de Tamagui
+import Main from "../../components/Main"; // Importa el componente Main
 
 const App = () => {
   return (
