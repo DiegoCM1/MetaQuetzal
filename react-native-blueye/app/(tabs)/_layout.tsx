@@ -6,6 +6,9 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: "rgb(255, 255, 255)", // tailwind `phase2Buttons`
+        tabBarInactiveTintColor: "rgb(200, 200, 200)", // tailwind `phase2Buttons`
+        tabBarStyle: { backgroundColor: "rgb(50, 180, 200)" }, // tailwind `phase2bg`
       }}
     >
       <Tabs.Screen
@@ -22,7 +25,11 @@ export default function TabsLayout() {
         options={{
           title: "Chat-AI",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="robot-happy" color={color} size={size} />
+            <MaterialCommunityIcons
+              name="robot-happy"
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -31,7 +38,11 @@ export default function TabsLayout() {
         options={{
           title: "Alertas",
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bell-alert-outline" color={color} size={size} />
+            <MaterialCommunityIcons
+              name="bell-alert-outline"
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
