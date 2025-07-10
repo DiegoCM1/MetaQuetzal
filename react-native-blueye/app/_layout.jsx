@@ -48,6 +48,10 @@ export default function Layout() {
                 name="alarmScreen"
                 options={{ drawerLabel: "Alarma" }}
               />
+                            <Drawer.Screen
+                name="feedback"
+                options={{ drawerLabel: "Feedback" }}
+              />
 
               {/* Hide every other route that expo-router auto-adds */}
               <Drawer.Screen
@@ -58,19 +62,19 @@ export default function Layout() {
                 name="alerts"
                 options={{ drawerItemStyle: { display: "none" } }}
               />
-                            <Drawer.Screen
+              <Drawer.Screen
                 name="payment"
                 options={{ drawerItemStyle: { display: "none" } }}
               />
-                            <Drawer.Screen
+              <Drawer.Screen
                 name="alerts-info"
                 options={{ drawerItemStyle: { display: "none" } }}
               />
-                            <Drawer.Screen
+              <Drawer.Screen
                 name="monetization"
                 options={{ drawerItemStyle: { display: "none" } }}
               />
-                            <Drawer.Screen
+              <Drawer.Screen
                 name="SubscriptionScreen"
                 options={{ drawerItemStyle: { display: "none" } }}
               />
@@ -91,7 +95,6 @@ export default function Layout() {
                   }
                 />
               </View>
-
             </View>
           </TamaguiProvider>
         </SafeAreaProvider>

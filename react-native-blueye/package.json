@@ -43,7 +43,7 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-leaflet": "^4.2.1",
-    "react-native": "0.76.4",
+    "react-native": "0.79.5",
     "react-native-drawer-layout": "^2.0.0",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-leaflet": "^0.0.0-reserved",
