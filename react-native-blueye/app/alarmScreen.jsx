@@ -8,17 +8,13 @@ const CATEGORY_BG = {
   5: "bg-phase5bg",
 };
 
+const distanceKm = 100
+const etaHours = 14
+
 const MOCK_ALERT = {
   category: 3,
   title: "Huracán Otis · Categoría 3",
-  message: "Otis se acerca rápidamente. Prepárese para evacuar.",
-  distanceKm: 185,
-  etaHours: 14,
-  windKmh: 195,
-  gustKmh: 230,
-  pressureMb: 960,
-  rain1h: 12,
-  pop: 0.86,
+  message: "Otis está cada vez más cerca: solo " + distanceKm + "km y se estima que llegará en " + etaHours + " horas. Prepárate para evacuar y sigue las indicaciones oficiales.",
 };
 
 export default function AlarmScreenMock() {
@@ -54,7 +50,7 @@ export default function AlarmScreenMock() {
           </Text>
 
           {/* Datos clave */}
-          <View className="space-y-1 mb-8">
+          {/* <View className="space-y-1 mb-8">
             <Stat label="Distancia" value={`${MOCK_ALERT.distanceKm} km`} />
             <Stat label="ETA" value={`${MOCK_ALERT.etaHours} h`} />
             <Stat label="Viento" value={`${MOCK_ALERT.windKmh} km/h`} />
@@ -62,19 +58,19 @@ export default function AlarmScreenMock() {
             <Stat label="Presión" value={`${MOCK_ALERT.pressureMb} mb`} />
             <Stat label="Lluvia 1 h" value={`${MOCK_ALERT.rain1h} mm`} />
             <Stat label="Prob. lluvia" value={`${Math.round(MOCK_ALERT.pop * 100)} %`} />
-          </View>
+          </View> */}
 
           {/* Botones */}
           <View className="flex-row justify-between mb-6">
             <TouchableOpacity
               onPress={handleMap}
-              className="flex-1 mr-2 py-3 rounded-lg bg-white/20 items-center"
+              className="flex-1 mr-2 py-3 rounded-lg bg-white/60 items-center"
             >
               <Text className="font-bold text-phase2Titles">Ver en el mapa</Text>
             </TouchableOpacity>
 
             <Link href="/alerts-info" asChild>
-              <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-white/20 items-center">
+              <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-white/60 items-center">
                 <Text className="font-bold text-phase2Titles">Más información</Text>
               </TouchableOpacity>
             </Link>
