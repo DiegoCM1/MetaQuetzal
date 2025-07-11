@@ -1,66 +1,27 @@
-# BluEye MVP📱🌀
+# BluEye
 
-**BluEye** is a cross-platform mobile app for hurricane prevention and response.  
-It leverages real-time geolocation, official weather APIs, and on-device LLaMA-powered AI to deliver personalized alerts, safe-route guidance, and shelter information before, during, and after a storm.
+BluEye es una aplicación móvil multiplataforma enfocada en la prevención y respuesta ante huracanes. Utiliza geolocalización en tiempo real, datos de OpenWeather y un asistente de IA disponible en [ai-blueye](https://github.com/DiegoCM1/ai-blueye) para ofrecer alertas personalizadas y recomendaciones seguras.
 
----
+## Características principales
+- **Alertas en tiempo real** con información meteorológica oficial.
+- **Guía asistida por IA** para preguntas de emergencia.
+- **Mapeo de rutas seguras y refugios públicos**.
+- **Funcionamiento sin conexión** usando los últimos datos guardados.
 
-## 🚀 Features
+## Estructura del repositorio
+- **frontend/** - Aplicación React Native con Expo. Contiene pantallas, componentes y la conexión con la IA.
+- **backend/** - Servidor Express que calcula el riesgo meteorológico y almacena retroalimentación.
+- **README.md** - Este documento.
 
-- **Real-time Alerts**  
-  - Watches official weather feeds for hurricane watches/warnings  
-  - Pushes urgent notifications based on user location  
+## Cómo empezar
+1. Clona este repositorio y el proyecto [ai-blueye](https://github.com/DiegoCM1/ai-blueye).
+2. Instala dependencias en cada carpeta con `npm install`.
+3. En `frontend/` ejecuta `npx expo start` para arrancar la app.
+4. En `backend/` ejecuta `npm start` para iniciar la API.
 
-- **AI-Driven Guidance**  
-  - Uses a fine-tuned LLaMA model to answer “what to do” questions  
-  - Crafts personalized checklists and safety tips  
+## Contribución
+1. Haz un *fork* del repositorio y crea una rama para tus cambios.
+2. Envía un *pull request* describiendo la mejora o corrección.
+3. Si encuentras problemas, abre un *issue* para poder revisarlo.
 
-- **Safe-Route & Shelter Finder**  
-  - Maps nearest public shelters and evacuation routes  
-  - Updates dynamically as conditions evolve  
-
-- **Offline Fallback**  
-  - Caches last known weather data and safety advice  
-  - Continues to serve critical guidance when connectivity is lost  
-
----
-
-## 🧱 Tech Stack
-
-| Layer                   | Technology                                         |
-|-------------------------|----------------------------------------------------|
-| **Mobile App**          | React Native, JavaScript, Expo                     |
-| **Styling**             | React Native Stylesheets, NativeWindCSS   |
-| **AI Inference**        | Open Router LLaMA model  |
-| **Weather & Geo APIs**  | OpenWeatherMap, Google Maps Geocoding              |
-| **Backend Scripts**     | Python 3.9+, `httpx`, `python-dotenv`              |
-| **Data Processing**     | Custom Python modules: `apiOpenWeather.py`, etc.   |
-
----
-
-## 📂 Repository Structure
-
-```
-/
-├── react-native-blueye/         # React Native Expo app
-│   ├── App.js
-│   ├── package.json
-│   ├── assets/
-│   └── src/
-│       ├── screens/
-│       ├── components/
-│       └── llama/               # Native LLaMA integration
-│
-├── CubaOpenWeather/              # (Optional) sample region configs
-├── apiOpenWeather.py             # Python helper for weather API calls
-├── adivinanzaUpi.py              # Demo/chatbot script
-├── open.py                       # Early PoC scripts
-├── open1.py
-├── open3.py
-├── open6.py
-│
-├── .gitignore
-└── README.md                     # ← you are here
-```
-
-“Prepared today, secure tomorrow.” 🌀
+“Preparados hoy, seguros mañana”. 🌀
