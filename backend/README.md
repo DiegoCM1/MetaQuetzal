@@ -18,7 +18,7 @@ The server listens on the port defined in `.env` (`PORT`, default `3002`).
 
 ## Endpoints
 
-- `POST /risk` — Compute hurricane risk for given `lat`/`lon` (placeholder implementation).
+- `POST /risk` — Analyze meteorological risk for given `lat`/`lon` using OpenWeather data. Returns alerts, banner and recommendations.
 - `GET /alerts` — List stored alerts.
 - `GET /alerts/:id` — Get a single alert.
 - `POST /feedback` — Submit user feedback (rating, email, message). Returns `201` with `{ success, id }`.
