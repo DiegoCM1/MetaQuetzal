@@ -29,19 +29,7 @@ export default function Layout() {
                   options={{ drawerLabel: "Feedback" }}
                 />
                 <Drawer.Screen
-                  name="payment"
-                  options={{ drawerItemStyle: { display: "none" } }}
-                />
-                <Drawer.Screen
                   name="alerts-info"
-                  options={{ drawerItemStyle: { display: "none" } }}
-                />
-                <Drawer.Screen
-                  name="monetization"
-                  options={{ drawerItemStyle: { display: "none" } }}
-                />
-                <Drawer.Screen
-                  name="SubscriptionScreen"
                   options={{ drawerItemStyle: { display: "none" } }}
                 />
                 <Drawer.Screen
