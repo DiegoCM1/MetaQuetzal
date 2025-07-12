@@ -16,8 +16,9 @@ BluEye es una aplicación móvil multiplataforma enfocada en la prevención y re
 ## Cómo empezar
 1. Clona este repositorio y el proyecto [ai-blueye](https://github.com/DiegoCM1/ai-blueye).
 2. Instala dependencias en cada carpeta con `npm install`.
-3. En `frontend/` ejecuta `npx expo start` para arrancar la app.
-4. En `backend/` ejecuta `npm start` para iniciar la API.
+3. Copia `frontend/.env.example` a `frontend/.env` y coloca tu clave de OpenWeather.
+4. En `frontend/` ejecuta `npx expo start` para arrancar la app.
+5. En `backend/` ejecuta `npm start` para iniciar la API.
 
 ## Contribución
 1. Haz un *fork* del repositorio y crea una rama para tus cambios.
