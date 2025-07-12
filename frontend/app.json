@@ -41,7 +41,8 @@
       },
       "eas": {
         "projectId": "ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
-      }
+      },
+      "EXPO_PUBLIC_OPENWEATHER_API_KEY": "73d3f6f15ce8ce7055f93bb64dde8486"
     },
     "runtimeVersion": {
       "policy": "appVersion"
