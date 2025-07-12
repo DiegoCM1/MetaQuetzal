@@ -3,7 +3,7 @@ import { View, Pressable, Text, ActivityIndicator, StyleSheet } from 'react-nati
 import MapView, { UrlTile, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 
-const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
+const OWM_API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY;
 
 export default function WeatherMapNativewind() {
   const [region, setRegion] = useState(null);

@@ -11,7 +11,7 @@ import L from "leaflet";
 import axios from "axios";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
+const OWM_API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY;
 
 // Configuración de íconos para Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
