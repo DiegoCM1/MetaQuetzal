@@ -11,6 +11,8 @@ import L from "leaflet";
 import axios from "axios";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
+
 // Configuración de íconos para Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -42,16 +44,16 @@ const MapViewWeb = () => {
 
   const weatherTileURLs = {
     temperature:
-      "https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+      `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
     precipitation:
-      "https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+      `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
     humidity:
-      "https://tile.openweathermap.org/map/humidity_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
-    wind: "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+      `https://tile.openweathermap.org/map/humidity_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
+    wind: `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
     pressure:
-      "https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486",
+      `https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
     hurricaneRadar:
-      "https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=73d3f6f15ce8ce7055f93bb64dde8486", // Usando la capa de viento para huracanes
+      `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
   };
 
   const HurricaneMap = () => {
@@ -76,7 +78,7 @@ const MapViewWeb = () => {
   };
 
   const obtenerClima = async (lat, lon) => {
-    const API_KEY = "73d3f6f15ce8ce7055f93bb64dde8486";
+    const API_KEY = OWM_API_KEY;
     const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
 
     try {
@@ -102,7 +104,7 @@ const MapViewWeb = () => {
   };
 
   const obtenerPronostico = async (lat, lon) => {
-    const API_KEY = "73d3f6f15ce8ce7055f93bb64dde8486";
+    const API_KEY = OWM_API_KEY;
     const BASE_URL = "https://api.openweathermap.org/data/2.5/forecast";
 
     try {
