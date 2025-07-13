@@ -97,7 +97,7 @@ export default function SettingsScreen() {
               Alarmas
             </Text>
             <Link
-              href="/alerts-info"
+              href="/AlertDetailsScreen"
               className={`font-bold ${
                 isDaltonicMode
                   ? "text-phase2ButtonsDaltonic"

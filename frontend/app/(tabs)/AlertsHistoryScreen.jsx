@@ -54,7 +54,7 @@ const Alert = ({
   </View>
 );
 
-export default function SubscriptionScreen() {
+export default function AlertsHistoryScreen() {
   const router = useRouter();
 
   return (
@@ -70,13 +70,13 @@ export default function SubscriptionScreen() {
             time="Hace 2 horas"
             onSelectDetails={() =>
               router.push({
-                pathname: "/alerts-info",
+                pathname: "/AlertDetailsScreen",
                 params: { plan: "Plan Pro" },
               })
             }
             onSelectMap={() =>
               router.push({
-                pathname: "/",
+                pathname: "/MapScreen",
                 params: { plan: "Plan Pro" },
               })
             }
@@ -88,13 +88,13 @@ export default function SubscriptionScreen() {
             time="Hace 1 dia"
             onSelectDetails={() =>
               router.push({
-                pathname: "/alerts-info",
+                pathname: "/AlertDetailsScreen",
                 params: { plan: "Plan Básico" },
               })
             }
             onSelectMap={() =>
               router.push({
-                pathname: "/",
+                pathname: "/MapScreen",
                 params: { plan: "Plan Pro" },
               })
             }
@@ -106,13 +106,13 @@ export default function SubscriptionScreen() {
             time="Hace 28 horas"
             onSelectDetails={() =>
               router.push({
-                pathname: "/alerts-info",
+                pathname: "/AlertDetailsScreen",
                 params: { plan: "Plan Empresarial" },
               })
             }
             onSelectMap={() =>
               router.push({
-                pathname: "/",
+                pathname: "/MapScreen",
                 params: { plan: "Plan Pro" },
               })
             }
@@ -124,13 +124,13 @@ export default function SubscriptionScreen() {
             time="Hace 34 horas"
             onSelectDetails={() =>
               router.push({
-                pathname: "/alerts-info",
+                pathname: "/AlertDetailsScreen",
                 params: { plan: "Plan Con Seguro" },
               })
             }
             onSelectMap={() =>
               router.push({
-                pathname: "/",
+                pathname: "/MapScreen",
                 params: { plan: "Plan Pro" },
               })
             }
@@ -142,13 +142,13 @@ export default function SubscriptionScreen() {
             time="Hace 48 horas"
             onSelectDetails={() =>
               router.push({
-                pathname: "/alerts-info",
+                pathname: "/AlertDetailsScreen",
                 params: { plan: "Plan De Gobierno" },
               })
             }
             onSelectMap={() =>
               router.push({
-                pathname: "/",
+                pathname: "/MapScreen",
                 params: { plan: "Plan Pro" },
               })
             }

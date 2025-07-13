@@ -3,7 +3,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import PageTitle from "../components/PageTitle";
 
 // ────────────────── componente principal ──────────────────
-export default function AlertInfoScreen({ data }) {
+export default function AlertDetailsScreen({ data }) {
   // Mock por defecto
   const info =
     data || {

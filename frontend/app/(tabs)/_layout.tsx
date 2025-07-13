@@ -12,7 +12,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="MapScreen"
         options={{
           title: "Mapa",
           tabBarIcon: ({ color, size }) => (
@@ -21,7 +21,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="chat-ai"
+        name="ChatAIScreen"
         options={{
           title: "Chat-AI",
           tabBarIcon: ({ color, size }) => (
@@ -34,7 +34,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="alerts"
+        name="AlertsHistoryScreen"
         options={{
           title: "Alertas",
           tabBarIcon: ({ color, size }) => (

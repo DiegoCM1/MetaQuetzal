@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const API_URL = "https://your-api.com/feedback"; // ← replace with your real endpoint
 
-export default function Feedback() {
+export default function FeedbackScreen() {
   const { colorScheme } = useColorScheme();
   const [rating, setRating] = useState(0);
   const [email, setEmail] = useState("");
