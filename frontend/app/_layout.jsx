@@ -17,27 +17,27 @@ export default function Layout() {
               <Drawer screenOptions={{ headerShown: true }}>
                 <Drawer.Screen name="(tabs)" options={{ title: "Inicio" }} />
                 <Drawer.Screen
-                  name="settings"
+                  name="SettingsScreen"
                   options={{ drawerLabel: "Ajustes" }}
                 />
                 <Drawer.Screen
-                  name="alarmScreen"
+                  name="AlarmScreen"
                   options={{ drawerLabel: "Alarma" }}
                 />
                 <Drawer.Screen
-                  name="feedback"
+                  name="FeedbackScreen"
                   options={{ drawerLabel: "Feedback" }}
                 />
                 <Drawer.Screen
-                  name="alerts-info"
+                  name="AlertDetailsScreen"
                   options={{ drawerItemStyle: { display: "none" } }}
                 />
                 <Drawer.Screen
-                  name="chat-ai"
+                  name="ChatAIScreen"
                   options={{ drawerItemStyle: { display: "none" } }}
                 />
                 <Drawer.Screen
-                  name="alerts"
+                  name="AlertsHistoryScreen"
                   options={{ drawerItemStyle: { display: "none" } }}
                 />
               </Drawer>

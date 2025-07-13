@@ -5,7 +5,7 @@ import { TamaguiProvider } from "@tamagui/core"; // Importa TamaguiProvider
 import config from "../../tamagui.config"; // Importa la configuración de Tamagui
 import Main from "../../components/Main"; // Importa el componente Main
 
-const App = () => {
+const MapScreen = () => {
   return (
     <TamaguiProvider config={config}>
       <StatusBar style="light" />
@@ -14,4 +14,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default MapScreen;

@@ -17,7 +17,7 @@ const MOCK_ALERT = {
   message: "Otis está cada vez más cerca: solo " + distanceKm + "km y se estima que llegará en " + etaHours + " horas. Prepárate para evacuar y sigue las indicaciones oficiales.",
 };
 
-export default function AlarmScreenMock() {
+export default function AlarmScreen() {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 250);
@@ -27,7 +27,7 @@ export default function AlarmScreenMock() {
   const router = useRouter();
   const handleMap = () => {
     setVisible(false);
-    router.push("/");       // Ruta del mapa
+    router.push("/MapScreen");       // Ruta del mapa
   };
   const handleClose = () => setVisible(false);
 
@@ -69,7 +69,7 @@ export default function AlarmScreenMock() {
               <Text className="font-bold text-phase2Titles">Ver en el mapa</Text>
             </TouchableOpacity>
 
-            <Link href="/alerts-info" asChild>
+            <Link href="/AlertDetailsScreen" asChild>
               <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-white/60 items-center">
                 <Text className="font-bold text-phase2Titles">Más información</Text>
               </TouchableOpacity>

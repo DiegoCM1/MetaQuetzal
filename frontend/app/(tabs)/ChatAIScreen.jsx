@@ -20,7 +20,7 @@ import { sendMessage } from "../../api/sendMessage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PageTitle from "../../components/PageTitle";
 
-export default function ChatScreen() {
+export default function ChatAIScreen() {
   // Permissions and state handlers
   const [cameraPermission, setCameraPermission] = useState(null);
   const [cameraVisible, setCameraVisible] = useState(false);
