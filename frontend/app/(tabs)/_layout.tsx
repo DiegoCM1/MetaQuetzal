@@ -46,6 +46,19 @@ export default function TabsLayout() {
           ),
         }}
       />
+       <Tabs.Screen
+        name="MoreScreen"
+        options={{
+          title: "Más",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="menu"
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
