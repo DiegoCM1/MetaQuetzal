@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";

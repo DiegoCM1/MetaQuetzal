@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from "nativewind";
-import PageTitle from "../components/PageTitle";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const API_URL = "https://your-api.com/feedback"; // ← replace with your real endpoint
@@ -65,8 +64,6 @@ export default function FeedbackScreen() {
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
       />
-
-      <PageTitle>Déjanos tu feedback</PageTitle>
       <View className="px-6">
         <Text className="text-lg my-4 text-phase2Titles dark:text-phase2TitlesDark">
           Cuéntanos qué te gusta, qué podemos mejorar o reporta algún error.

@@ -4,7 +4,6 @@ import { ScrollView, Text, Switch } from "react-native";
 import { YStack, XStack, Separator } from "tamagui";
 import { Link } from "expo-router";
 import { useColorScheme } from "nativewind";
-import PageTitle from "../components/PageTitle";
 
 export default function SettingsScreen() {
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -43,8 +42,6 @@ export default function SettingsScreen() {
           : "bg-phase2bg dark:bg-phase2bgDark" // Fondo normal y modo oscuro
       }`}
     >
-      <PageTitle>Ajustes</PageTitle>
-
       <YStack className="p-6 space-y-8">
         {/* Header */}
 

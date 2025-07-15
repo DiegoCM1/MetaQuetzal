@@ -1,6 +1,5 @@
 import { View, Text, ScrollView } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import PageTitle from "../components/PageTitle";
 
 // ────────────────── componente principal ──────────────────
 export default function AlertDetailsScreen({ data }) {
@@ -30,8 +29,6 @@ export default function AlertDetailsScreen({ data }) {
 
   return (
     <ScrollView className="flex-1 bg-phase2bg dark:bg-phase2bgDark">
-      <PageTitle>Información de la alerta</PageTitle>
-
       {/* Encabezado */}
       <View
         className={`rounded-2xl p-5 shadow-lg ${catColors[info.category]} flex-row justify-between items-center mx-4 mt-4`}
