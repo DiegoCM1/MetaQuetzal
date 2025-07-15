@@ -1,4 +1,5 @@
-import { Drawer } from "expo-router/drawer";
+import { Stack } from "expo-router";
+// import { Drawer } from "expo-router/drawer";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { TamaguiProvider } from "@tamagui/core";
 import config from "../tamagui.config";
@@ -14,33 +15,21 @@ export default function Layout() {
         <ThemeProvider>
           <SafeAreaProvider>
             <TamaguiProvider config={config} defaultTheme="light">
-              <Drawer screenOptions={{ headerShown: true }}>
-                <Drawer.Screen name="(tabs)" options={{ title: "Inicio" }} />
-                <Drawer.Screen
-                  name="SettingsScreen"
-                  options={{ drawerLabel: "Ajustes" }}
+               <Stack screenOptions={{ headerShown: true }}>
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{ headerShown: false }}
                 />
-                <Drawer.Screen
-                  name="AlarmScreen"
-                  options={{ drawerLabel: "Alarma" }}
-                />
-                <Drawer.Screen
-                  name="FeedbackScreen"
-                  options={{ drawerLabel: "Feedback" }}
-                />
-                <Drawer.Screen
+                 <Stack.Screen name="SettingsScreen" options={{ title: "Ajustes" }} />
+                <Stack.Screen name="AlarmScreen" options={{ title: "Alarma" }} />
+                <Stack.Screen name="FeedbackScreen" options={{ title: "Feedback" }} />
+                <Stack.Screen
                   name="AlertDetailsScreen"
-                  options={{ drawerItemStyle: { display: "none" } }}
+                         options={{ presentation: "modal" }}
                 />
-                <Drawer.Screen
-                  name="ChatAIScreen"
-                  options={{ drawerItemStyle: { display: "none" } }}
-                />
-                <Drawer.Screen
-                  name="AlertsHistoryScreen"
-                  options={{ drawerItemStyle: { display: "none" } }}
-                />
-              </Drawer>
+                                <Stack.Screen name="ChatAIScreen" options={{ title: "Chat-AI" }} />
+                <Stack.Screen name="AlertsHistoryScreen" options={{ title: "Alertas" }} />
+              </Stack>
             </TamaguiProvider>
           </SafeAreaProvider>
         </ThemeProvider>
