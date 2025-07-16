@@ -11,7 +11,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
@@ -28,6 +28,8 @@ export default function ChatAIScreen() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const insets = useSafeAreaInsets();   // ← gives you { top, bottom, left, right }
+
 
   // Camera permission and open handler
   const handleOpenCamera = async () => {
@@ -126,6 +128,26 @@ export default function ChatAIScreen() {
     }
   };
 
+  const restartConversation = async () => {
+    Alert.alert(
+      "Reiniciar conversación",
+      "¿Estás seguro de que deseas reiniciar la conversación?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Reiniciar",
+          onPress: () => {
+            setMessages([]);
+            saveMessages([]);
+          },
+        },
+      ]
+    );
+  };
+
   // Load messages when component mounts
   React.useEffect(() => {
     loadMessages();
@@ -183,6 +205,13 @@ export default function ChatAIScreen() {
     <SafeAreaView className="flex-1 bg-phase2Background dark:bg-phase2BackgroundDark">
       <StatusBar barStyle="light-content" />
       <PageTitle>Chat con IA</PageTitle>
+      <TouchableOpacity
+        className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
+        style={{ top: insets.top + 38}}   // safe‑area padding + 38px for the button
+        onPress={restartConversation}
+      >
+        <MaterialCommunityIcons name="reload" size={20} color="white" />
+      </TouchableOpacity>
       <View className="flex-1 px-4 pt-2 pb-4">
         {/* Messages List */}
         <FlatList
