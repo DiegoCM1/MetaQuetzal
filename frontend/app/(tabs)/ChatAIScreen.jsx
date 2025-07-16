@@ -10,28 +10,31 @@ import {
   Modal,
   StatusBar,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
+// import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Camera } from "expo-camera";
-import { Audio } from "expo-audio";
+// import { Camera } from "expo-camera";
+// import { Audio } from "expo-audio";
 import { sendMessage } from "../../api/sendMessage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PageTitle from "../../components/PageTitle";
 
 export default function ChatAIScreen() {
   // Permissions and state handlers
-  const [cameraPermission, setCameraPermission] = useState(null);
-  const [cameraVisible, setCameraVisible] = useState(false);
-  const [recording, setRecording] = useState(null);
+  // const [cameraPermission, setCameraPermission] = useState(null);
+  // const [cameraVisible, setCameraVisible] = useState(false);
+  // const [recording, setRecording] = useState(null);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const insets = useSafeAreaInsets();   // ← gives you { top, bottom, left, right }
 
 
-  // Camera permission and open handler
+  /* Camera permission and open handler disabled 
+
   const handleOpenCamera = async () => {
     if (cameraPermission === null) {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -48,6 +51,7 @@ export default function ChatAIScreen() {
   };
 
   // Image picker from gallery
+/*
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -68,8 +72,11 @@ export default function ChatAIScreen() {
       Alert.alert("Imagen seleccionada", `Ruta: ${result.assets[0].uri}`);
     }
   };
+*/
+
 
   // Audio recording handler
+/*
   const handleAudioRecord = async () => {
     try {
       const { status } = await Audio.requestPermissionsAsync();
@@ -90,8 +97,11 @@ export default function ChatAIScreen() {
       console.error("Error al grabar audio:", err);
     }
   };
+*/
+
 
   // Stop and save audio
+/*
   const handleStopRecording = async () => {
     if (!recording) return;
 
@@ -104,6 +114,8 @@ export default function ChatAIScreen() {
       console.error("Error al detener la grabación:", err);
     }
   };
+*/
+
 
   // Persistent storage functions
   const loadMessages = async () => {
@@ -212,6 +224,11 @@ export default function ChatAIScreen() {
       >
         <MaterialCommunityIcons name="reload" size={20} color="white" />
       </TouchableOpacity>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={20}
+      >
       <View className="flex-1 px-4 pt-2 pb-4">
         {/* Messages List */}
         <FlatList
@@ -257,26 +274,6 @@ export default function ChatAIScreen() {
         {/* Input Area */}
         <View className="pt-4 border-t border-phase2Borders dark:border-phase2BordersDark">
           <View className="flex-row items-center space-x-2">
-            {/* Media Buttons */}
-            <View className="flex-row space-x-2">
-              <TouchableOpacity
-                className="h-10 w-10 rounded-full bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
-                onPress={handleOpenCamera}
-              >
-                <MaterialCommunityIcons name="camera" size={20} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="h-10 w-10 rounded-full bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
-                onPress={handlePickImage}
-              >
-                <MaterialCommunityIcons
-                  name="folder-image"
-                  size={20}
-                  color="white"
-                />
-              </TouchableOpacity>
-            </View>
-
             {/* Text Input */}
             <View className="flex-1 flex-row items-center text-center bg-white dark:bg-phase2Cards rounded-full border border-phase2Borders dark:border-phase2BordersDark">
               <TextInput
@@ -286,7 +283,7 @@ export default function ChatAIScreen() {
                 value={input}
                 onChangeText={setInput}
               />
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 className="h-10 w-10 items-center justify-center"
                 onPress={recording ? handleStopRecording : handleAudioRecord}
               >
@@ -295,7 +292,7 @@ export default function ChatAIScreen() {
                   size={20}
                   color="rgb(156,163,175)"
                 />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
 
             {/* Send Button */}
@@ -303,8 +300,10 @@ export default function ChatAIScreen() {
           </View>
         </View>
       </View>
+      </KeyboardAvoidingView>
 
       {/* Camera Modal */}
+/*
       {cameraVisible && (
         <Modal
           animationType="slide"
@@ -323,6 +322,7 @@ export default function ChatAIScreen() {
           </View>
         </Modal>
       )}
+*/
     </SafeAreaView>
   );
 }
