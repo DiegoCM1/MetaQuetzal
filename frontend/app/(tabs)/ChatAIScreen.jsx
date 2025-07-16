@@ -13,7 +13,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 // import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 // import { Camera } from "expo-camera";
@@ -30,8 +33,7 @@ export default function ChatAIScreen() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const insets = useSafeAreaInsets();   // ← gives you { top, bottom, left, right }
-
+  const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
 
   /* Camera permission and open handler disabled 
 
@@ -74,9 +76,8 @@ export default function ChatAIScreen() {
   };
 */
 
-
   // Audio recording handler
-/*
+  /*
   const handleAudioRecord = async () => {
     try {
       const { status } = await Audio.requestPermissionsAsync();
@@ -99,9 +100,8 @@ export default function ChatAIScreen() {
   };
 */
 
-
   // Stop and save audio
-/*
+  /*
   const handleStopRecording = async () => {
     if (!recording) return;
 
@@ -115,7 +115,6 @@ export default function ChatAIScreen() {
     }
   };
 */
-
 
   // Persistent storage functions
   const loadMessages = async () => {
@@ -217,9 +216,10 @@ export default function ChatAIScreen() {
     <SafeAreaView className="flex-1 bg-phase2Background dark:bg-phase2BackgroundDark">
       <StatusBar barStyle="light-content" />
       <PageTitle>Chat con IA</PageTitle>
+      {/* Restart Conversation Button */}
       <TouchableOpacity
         className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
-        style={{ top: insets.top + 38}}   // safe‑area padding + 38px for the button
+        style={{ top: insets.top + 38 }} // safe‑area padding + 38px for the button
         onPress={restartConversation}
       >
         <MaterialCommunityIcons name="reload" size={20} color="white" />
@@ -227,63 +227,64 @@ export default function ChatAIScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={20}
+        keyboardVerticalOffset={5}
       >
-      <View className="flex-1 px-4 pt-2 pb-4">
-        {/* Messages List */}
-        <FlatList
-          data={messages}
-          keyExtractor={(item, index) => index.toString()}
-          className="flex-1 pt-4"
-          contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
-          ListEmptyComponent={() => (
-            <View className="flex-1 items-center justify-center">
-              <Text className="text-3xl font-semibold text-gray-500 text-center">
-                ¿En que te puedo ayudar?
-                <Text className="text-buttonBlue dark:text-dark-accent">.</Text>
-              </Text>
-            </View>
-          )}
-          renderItem={({ item }) => (
-            <View
-              className={`mb-3 flex-row ${
-                item.sender === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <View
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                  item.sender === "user"
-                    ? "bg-phase2Buttons rounded-tr-none"
-                    : "bg-phase2Cards dark:bg-phase2CardsDark rounded-tl-none"
-                }`}
-              >
-                <Text
-                  className={`text-base ${
-                    item.sender === "user"
-                      ? "text-white"
-                      : "text-phase2Titles dark:text-white"
-                  }`}
-                >
-                  {item.text}
+        <View className="flex-1 px-4 pt-2">
+          {/* Messages List */}
+          <FlatList
+            data={messages}
+            keyExtractor={(item, index) => index.toString()}
+            className="flex-1 pt-4"
+            contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
+            ListEmptyComponent={() => (
+              <View className="flex-1 items-center justify-center">
+                <Text className="text-3xl font-semibold text-gray-500 text-center">
+                  ¿En qué te puedo ayudar?
                 </Text>
               </View>
-            </View>
-          )}
-        />
+            )}
+            renderItem={({ item }) => (
+              <View
+                className={`mb-3 flex-row ${
+                  item.sender === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <View
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    item.sender === "user"
+                      ? "bg-phase2Buttons rounded-tr-none"
+                      : "bg-phase2Cards dark:bg-phase2CardsDark rounded-tl-none"
+                  }`}
+                >
+                  <Text
+                    className={`text-base ${
+                      item.sender === "user"
+                        ? "text-white"
+                        : "text-phase2Titles dark:text-white"
+                    }`}
+                  >
+                    {item.text}
+                  </Text>
+                </View>
+              </View>
+            )}
+          />
 
-        {/* Input Area */}
-        <View className="pt-4 border-t border-phase2Borders dark:border-phase2BordersDark">
-          <View className="flex-row items-center space-x-2">
-            {/* Text Input */}
-            <View className="flex-1 flex-row items-center text-center bg-white dark:bg-phase2Cards rounded-full border border-phase2Borders dark:border-phase2BordersDark">
-              <TextInput
-                className="flex-1 px-4 py-2 text-phase2Titles dark:text-white border-none items-center outline-none"
-                placeholder="Escribe un mensaje..."
-                placeholderTextColor="rgb(156,163,175)"
-                value={input}
-                onChangeText={setInput}
-              />
-              {/* <TouchableOpacity
+          {/* Input Area */}
+          <View
+            className="pt-4 border-t border-phase2Borders dark:border-phase2BordersDark"
+          >
+            <View className="flex-row items-center space-x-2">
+              {/* Text Input */}
+              <View className="flex-1 flex-row items-center text-center bg-white dark:bg-phase2Cards rounded-full border border-phase2Borders dark:border-phase2BordersDark">
+                <TextInput
+                  className="flex-1 px-4 py-2 text-phase2Titles dark:text-white border-none items-center outline-none"
+                  placeholder="Escribe un mensaje..."
+                  placeholderTextColor="rgb(156,163,175)"
+                  value={input}
+                  onChangeText={setInput}
+                />
+                {/* <TouchableOpacity
                 className="h-10 w-10 items-center justify-center"
                 onPress={recording ? handleStopRecording : handleAudioRecord}
               >
@@ -293,18 +294,17 @@ export default function ChatAIScreen() {
                   color="rgb(156,163,175)"
                 />
               </TouchableOpacity> */}
-            </View>
+              </View>
 
-            {/* Send Button */}
-            <SendButton />
+              {/* Send Button */}
+              <SendButton />
+            </View>
           </View>
         </View>
-      </View>
       </KeyboardAvoidingView>
 
       {/* Camera Modal */}
-/*
-      {cameraVisible && (
+      {/* {cameraVisible && (
         <Modal
           animationType="slide"
           transparent={false}
@@ -321,8 +321,7 @@ export default function ChatAIScreen() {
             </TouchableOpacity>
           </View>
         </Modal>
-      )}
-*/
+      )} */}
     </SafeAreaView>
   );
 }
