@@ -38,7 +38,7 @@ const Alert = ({
           className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-10 mb-1 ml-auto"
           onPress={onSelectMap}
         >
-          <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
+          <Text className="text-white dark:text-phase2TitlesDark font-bold text-base px-2">
             Ver en mapa
           </Text>
         </TouchableOpacity>
@@ -46,7 +46,7 @@ const Alert = ({
           className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-lg justify-center items-center w-auto h-10 ml-auto"
           onPress={onSelectDetails}
         >
-          <Text className="text-phase2SmallTxt dark:text-phase2TitlesDark font-bold text-base px-2">
+          <Text className="text-white dark:text-phase2TitlesDark font-bold text-base px-2">
             Más detalles
           </Text>
         </TouchableOpacity>

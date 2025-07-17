@@ -18,7 +18,7 @@ export default function Layout() {
               <SafeAreaView style={{ flex: 1 }} edges={["top"]} className="bg-phase2ButtonsDark dark:bg-phase2bgDark">
                 <Stack
                   screenOptions={{
-                    headerStyle: { backgroundColor: "rgb(50,180,200)" },
+                    headerStyle: { backgroundColor: "rgb(60, 200, 220)" },
                     headerTintColor: "#fff",
                     headerTitleStyle: { fontWeight: "bold" },
                   }}

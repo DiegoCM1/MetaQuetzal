@@ -223,7 +223,7 @@ export default function ChatAIScreen() {
       {/* Restart Conversation Button */}
       <TouchableOpacity
         className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
-        style={{ top: insets.top + 38 }} // safe‑area padding + 38px for the button
+        style={{ top: insets.top }} // safe‑area padding
         onPress={restartConversation}
       >
         <MaterialCommunityIcons name="reload" size={20} color="white" />
