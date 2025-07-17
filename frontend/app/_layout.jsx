@@ -15,9 +15,18 @@ export default function Layout() {
         <ThemeProvider>
           <SafeAreaProvider>
             <TamaguiProvider config={config} defaultTheme="light">
-              <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-                <Stack screenOptions={{ headerShown: true }}>
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <SafeAreaView style={{ flex: 1 }} edges={["top"]} className="bg-phase2ButtonsDark dark:bg-phase2bgDark">
+                <Stack
+                  screenOptions={{
+                    headerStyle: { backgroundColor: "rgb(50,180,200)" },
+                    headerTintColor: "#fff",
+                    headerTitleStyle: { fontWeight: "bold" },
+                  }}
+                >
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ headerShown: false }}
+                  />
                   <Stack.Screen
                     name="SettingsScreen"
                     options={{ title: "Ajustes" }}

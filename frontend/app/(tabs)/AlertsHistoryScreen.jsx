@@ -63,11 +63,10 @@ export default function AlertsHistoryScreen() {
       className="flex-1 bg-white dark:bg-neutral-900"
       edges={["left", "right", "bottom"]}
     >
-      {" "}
+      <PageTitle>Historial de alertas</PageTitle>
       <ScrollView className="w-full">
         <View className="flex-1 px-5">
           <StatusBar style="light" />
-          <PageTitle>Historial de alertas</PageTitle>
           <View className="flex-1 items-center">
             <Alert
               title="Alerta 1"
