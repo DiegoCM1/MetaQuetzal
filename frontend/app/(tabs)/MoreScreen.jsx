@@ -17,6 +17,8 @@ export default function MoreScreen() {
       icon: "chatbox-ellipses-outline",
       screen: "FeedbackScreen",
     },
+    { label: "Acerca de nosotros", icon: "information-circle-outline", screen: "AboutScreen" },
+
   ];
 
   return (

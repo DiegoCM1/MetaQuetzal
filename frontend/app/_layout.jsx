@@ -41,6 +41,10 @@ export default function Layout() {
                   name="AlertsHistoryScreen"
                   options={{ title: "Alertas" }}
                 />
+                <Stack.Screen
+                  name="AboutScreen"
+                  options={{ title: "Acerca de nosotros" }}
+                />
               </Stack>
             </TamaguiProvider>
           </SafeAreaProvider>
