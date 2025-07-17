@@ -1,141 +1,169 @@
 import "../global.css";
 import { useState } from "react";
-import { ScrollView, Text, Switch, Alert, Pressable } from "react-native";
-import { YStack, XStack, Separator } from "tamagui";
+import { ScrollView, Text, Switch, Pressable, Alert, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
 
 export default function SettingsScreen() {
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
-
   const { colorScheme, toggleColorScheme } = useColorScheme();
 
-  const showComingSoon = () => {
+  const showComingSoon = () =>
     Alert.alert("¡Próximamente!", "Esta opción estará disponible muy pronto.");
-  };
 
-  // Modo daltónico aún no implementado
-  const handleDaltonicToggle = () => {
+  const handleDaltonicToggle = () =>
     Alert.alert("¡Próximamente!", "Esta función estará disponible muy pronto.");
-  };
 
-  // Manejar el cambio del modo oscuro
-  const handleDarkModeToggle = () => {
-    toggleColorScheme();
-  };
+  const handleDarkModeToggle = () => toggleColorScheme();
+
+  /** Shared row style (matches “More” screen) */
+  const row =
+    "flex-row items-center px-5 py-3 border-b border-gray-200 dark:border-neutral-700";
+
+  /** Chevron used on rows without a Switch */
+  const Chevron = () => (
+    <MaterialCommunityIcons
+      name="chevron-right"
+      size={24}
+      className="text-gray-400 dark:text-gray-500"
+    />
+  );
 
   return (
-    <ScrollView className="flex-1 bg-phase2bg dark:bg-phase2bgDark">
-      <YStack className="p-6 space-y-8">
-        {/* Header */}
+    <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900">
+        {/* ──────────────────────── NOTIFICACIONES ──────────────────────── */}
+        <View className={row}>
+          <Ionicons
+            name="notifications-outline"
+            size={22}
+            className="mr-4 text-gray-700 dark:text-gray-200"
+          />
+          <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
+            Notificaciones
+          </Text>
+          <Switch
+            value={isNotificationsEnabled}
+            onValueChange={setNotificationsEnabled}
+            thumbColor={colorScheme === "dark" ? "#111" : "#fff"}
+            trackColor={{ false: "#9ca3af", true: "rgb(50,180,200)" }}
+            ios_backgroundColor="#9ca3af"
+          />
+        </View>
 
-        <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+        {/* ──────────────────────── ALARMAS ──────────────────────── */}
+        <Pressable
+          android_ripple={{ color: "#e5e7eb" }}
+          className={row}
+          onPress={() => {
+            showComingSoon;
+          }}
+        >
+          <Ionicons
+            name="alarm-outline"
+            size={22}
+            className="mr-4 text-gray-700 dark:text-gray-200"
+          />
+          <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
+            Alarmas
+          </Text>
+          <Link href="/AlertDetailsScreen" asChild>
+            <Chevron />
+          </Link>
+        </Pressable>
 
-        {/* Opciones */}
-        <YStack className="space-y-6">
-          {/* Notificaciones */}
-          <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
-              Notificaciones
-            </Text>
-            <Switch
-              value={isNotificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              thumbColor="white"
-              trackColor={{ false: "#ccc", true: "rgb(50, 180, 200)" }}
-            />
-          </XStack>
+        {/* ──────────────────────── MODO OSCURO ──────────────────────── */}
+        <View className={row}>
+          <Ionicons
+            name="moon-outline"
+            size={22}
+            className="mr-4 text-gray-700 dark:text-gray-200"
+          />
+          <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
+            Modo oscuro
+          </Text>
+          <Switch
+            value={colorScheme === "dark"}
+            onValueChange={handleDarkModeToggle}
+            thumbColor={colorScheme === "dark" ? "#111" : "#fff"}
+            trackColor={{ false: "#9ca3af", true: "rgb(50,180,200)" }}
+            ios_backgroundColor="#9ca3af"
+          />
+        </View>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+        {/* ──────────────────────── DALTONISMO ──────────────────────── */}
+        <View className={row}>
+          <Ionicons
+            name="eye-outline"
+            size={22}
+            className="mr-4 text-gray-700 dark:text-gray-200"
+          />
+          <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
+            Daltonismo
+          </Text>
+          <Switch
+            value={false}
+            onValueChange={showComingSoon}
+            thumbColor={colorScheme === "dark" ? "#111" : "#fff"}
+            trackColor={{ false: "#9ca3af", true: "rgb(50,180,200)" }}
+            ios_backgroundColor="#9ca3af"
+          />
+        </View>
 
-          {/* Alarmas */}
-          <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
-              Alarmas
-            </Text>
-            <Link
-              href="/AlertDetailsScreen"
-              className="font-bold text-phase2Buttons dark:text-phase2ButtonsDark"
-            >
-              Editar alarmas
-            </Link>
-          </XStack>
+        {/* ──────────────────────── IDIOMA ──────────────────────── */}
+        <Pressable
+          android_ripple={{ color: "#e5e7eb" }}
+          className={row}
+          onPress={showComingSoon}
+        >
+          <Ionicons
+            name="globe-outline"
+            size={22}
+            className="mr-4 text-gray-700 dark:text-gray-200"
+          />
+          <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
+            Idioma
+          </Text>
+          <Text className="mr-2 text-sm text-gray-500 dark:text-gray-400">
+            Español
+          </Text>
+          <Chevron />
+        </Pressable>
 
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
+        {/* ──────────────────────── CUENTA ──────────────────────── */}
+        <Pressable
+          android_ripple={{ color: "#e5e7eb" }}
+          className={row}
+          onPress={showComingSoon}
+        >
+          <Ionicons
+            name="person-outline"
+            size={22}
+            className="mr-4 text-gray-700 dark:text-gray-200"
+          />
+          <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
+            Cuenta
+          </Text>
+          <Chevron />
+        </Pressable>
 
-          {/* Opción para el modo oscuro */}
-          <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
-              Modo Oscuro
-            </Text>
-            <Switch
-              value={colorScheme === "dark"}
-              onValueChange={handleDarkModeToggle}
-            />
-          </XStack>
-
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
-
-          {/* Tema Daltonismo */}
-          <XStack className="items-center justify-between">
-            <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
-              Daltonismo
-            </Text>
-            <Switch value={false} onValueChange={handleDaltonicToggle} />
-          </XStack>
-
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
-
-          {/* Idioma */}
-          <XStack className="items-center justify-between">
-            <Pressable
-              onPress={showComingSoon}
-              className="flex-row flex-1 justify-between items-center"
-            >
-              <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
-                Idioma
-              </Text>
-              <Text className="font-bold text-phase2Buttons dark:text-phase2ButtonsDark">
-                Español
-              </Text>
-            </Pressable>
-          </XStack>
-
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
-
-          {/* Cuenta */}
-          <XStack className="items-center justify-between">
-            <Pressable
-              onPress={showComingSoon}
-              className="flex-row flex-1 justify-between items-center"
-            >
-              <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
-                Cuenta
-              </Text>
-              <Text className="font-bold text-phase2Buttons dark:text-phase2ButtonsDark">
-                Editar mis datos
-              </Text>
-            </Pressable>
-          </XStack>
-
-          <Separator className="h-1 bg-phase2Borders dark:bg-phase2BordersDark" />
-
-          {/* Familiares */}
-          <XStack className="items-center justify-between">
-            <Pressable
-              onPress={showComingSoon}
-              className="flex-row flex-1 justify-between items-center"
-            >
-              <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
-                Familia
-              </Text>
-              <Text className="font-bold text-phase2Buttons dark:text-phase2ButtonsDark">
-                Editar familiares
-              </Text>
-            </Pressable>
-          </XStack>
-        </YStack>
-      </YStack>
-    </ScrollView>
+        {/* ──────────────────────── FAMILIA ──────────────────────── */}
+        <Pressable
+          android_ripple={{ color: "#e5e7eb" }}
+          className={row}
+          onPress={showComingSoon}
+        >
+          <Ionicons
+            name="people-outline"
+            size={22}
+            className="mr-4 text-gray-700 dark:text-gray-200"
+          />
+          <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
+            Familia
+          </Text>
+          <Chevron />
+        </Pressable>
+    </SafeAreaView>
   );
 }
