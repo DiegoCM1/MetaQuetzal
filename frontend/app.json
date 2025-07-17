@@ -19,14 +19,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourname.metaquetzal"
+      "bundleIdentifier": "mobile.blueye.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourname.metaquetzal"
+      "package": "mobile.blueye.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",
