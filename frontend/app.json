@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "BluEye",
-    "slug": "BluEye",
-    "version": "1.0.0",
+    "slug": "react-native-blueye",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -49,6 +49,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
-    }
+    },
+    "owner": "diegodcm"
   }
 }
