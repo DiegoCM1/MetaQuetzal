@@ -2,6 +2,7 @@
   "cli": { "appVersionSource": "remote" },
   "build": {
     "preview": {
+      "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1" },
       "android": { "buildType": "apk" }
     }
   }

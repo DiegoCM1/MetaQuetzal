@@ -13,6 +13,30 @@ BluEye es una aplicación móvil multiplataforma enfocada en la prevención y re
 - **backend/** - Servidor Express que calcula el riesgo meteorológico y almacena retroalimentación.
 - **README.md** - Este documento.
 
+## Building for Android
+
+Para generar un APK de prueba se utiliza **Expo EAS**:
+
+1. Instala la CLI con `npm install -g eas-cli`.
+2. Dentro de `frontend/` crea un archivo `eas.json` (ya incluido) con:
+
+   ```json
+   {
+     "cli": { "appVersionSource": "remote" },
+     "build": {
+       "preview": { "android": { "buildType": "apk" } }
+     }
+   }
+   ```
+
+3. Inicia sesión con `eas login` y ejecuta:
+
+   ```bash
+   eas build --profile preview --platform android
+   ```
+
+EAS subirá el proyecto y te entregará un enlace para descargar el APK.
+
 ## Cómo empezar
 1. Clona este repositorio y el proyecto [ai-blueye](https://github.com/DiegoCM1/ai-blueye).
 2. Instala dependencias en cada carpeta con `npm install`.
