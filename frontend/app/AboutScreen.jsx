@@ -28,14 +28,14 @@ const hitos = [
   },
 ];
 
-const AboutTimeline = () => (
+const AboutScreen = () => (
   <ScrollView
     className="flex-1 bg-phase2bg dark:bg-phase2bgDark px-6 py-10 mb-6"
     showsVerticalScrollIndicator={false}
   >
     {/* Encabezado motivacional */}
     <Text className="text-2xl font-bold text-phase2Titles dark:text-phase2TitlesDark mb-6">
-      Nuestra Historia Tecnológica
+      Nuestra Historia
     </Text>
 
     {/* Línea de tiempo */}
@@ -73,4 +73,4 @@ const AboutTimeline = () => (
   </ScrollView>
 );
 
-export default AboutTimeline;
+export default AboutScreen;
