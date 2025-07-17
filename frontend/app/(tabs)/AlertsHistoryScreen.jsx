@@ -59,7 +59,11 @@ export default function AlertsHistoryScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView>
+    <SafeAreaView
+      className="flex-1 bg-white dark:bg-neutral-900"
+      edges={["left", "right", "bottom"]}
+    >
+      {" "}
       <ScrollView className="w-full">
         <View className="flex-1 px-5">
           <StatusBar style="light" />

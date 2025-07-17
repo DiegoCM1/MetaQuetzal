@@ -213,7 +213,11 @@ export default function ChatAIScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-phase2Background dark:bg-phase2BackgroundDark">
+    <SafeAreaView
+      className="flex-1 bg-white dark:bg-neutral-900"
+      edges={["left", "right", "bottom"]}
+    >
+      {" "}
       <StatusBar barStyle="light-content" />
       <PageTitle>Chat con IA</PageTitle>
       {/* Restart Conversation Button */}
@@ -271,9 +275,7 @@ export default function ChatAIScreen() {
           />
 
           {/* Input Area */}
-          <View
-            className="pt-4 border-t border-phase2Borders dark:border-phase2BordersDark"
-          >
+          <View className="pt-4 border-t border-phase2Borders dark:border-phase2BordersDark">
             <View className="flex-row items-center space-x-2">
               {/* Text Input */}
               <View className="flex-1 flex-row items-center text-center bg-white dark:bg-phase2Cards rounded-full border border-phase2Borders dark:border-phase2BordersDark">
@@ -302,7 +304,6 @@ export default function ChatAIScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
-
       {/* Camera Modal */}
       {/* {cameraVisible && (
         <Modal
