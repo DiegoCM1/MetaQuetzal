@@ -231,7 +231,8 @@ export default function ChatAIScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={insets.bottom + insets.bottom + 5}      >
+        keyboardVerticalOffset={insets.bottom + insets.bottom + 5}
+      >
         <View className="flex-1 px-4 pt-2">
           {/* Messages List */}
           <FlatList
@@ -240,10 +241,12 @@ export default function ChatAIScreen() {
             className="flex-1 pt-4"
             contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
             ListEmptyComponent={() => (
-              <View className="flex-1 items-center justify-center">
+              <View className="flex-1 flex-row items-center justify-center">
+                <Text className="text-3xl font-semibold text-phase2Buttons text-center">¿</Text>
                 <Text className="text-3xl font-semibold text-gray-500 text-center">
-                  ¿En qué te puedo ayudar?
+                  En qué te puedo ayudar
                 </Text>
+                <Text className="text-3xl font-semibold text-phase2Buttons text-center">?</Text>
               </View>
             )}
             renderItem={({ item }) => (

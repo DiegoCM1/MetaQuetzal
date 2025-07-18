@@ -17,7 +17,7 @@ export default function PageTitle({ children }) {
         marginRight: -insets.right,
         paddingHorizontal: 16, // your own inner padding
       }}
-      className="border-b border-phase2Borders dark:border-phase2BordersDark bg-phase2ButtonsDark"
+      className="border-b border-phase2Borders dark:border-phase2BordersDark bg-phase2ButtonsDark dark:bg-phase2CardsDark"
     >
       <Text className="text-2xl font-bold text-white dark:text-phase2TitlesDark text-center pb-2">
         {children}
