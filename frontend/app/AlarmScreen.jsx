@@ -3,9 +3,9 @@ import { Modal, View, Text, TouchableOpacity } from "react-native";
 import { Link, useRouter } from "expo-router";
 
 const CATEGORY_BG = {
-  3: "bg-phase3bg",
-  4: "bg-phase4bg",
-  5: "bg-phase5bg",
+  3: "bg-phase3bg dark:bg-phase2CardsDark",
+  4: "bg-phase4bg dark:bg-phase2CardsDark",
+  5: "bg-phase5bg dark:bg-phase2CardsDark",
 };
 
 const distanceKm = 100
@@ -40,12 +40,12 @@ export default function AlarmScreen() {
           }`}
         >
           {/* Título */}
-          <Text className="text-2xl font-extrabold text-phase2Titles text-center mb-4">
+          <Text className="text-2xl font-extrabold text-phase2Titles dark:text-phase2TitlesDark text-center mb-4">
             {MOCK_ALERT.title}
           </Text>
 
           {/* Mensaje breve */}
-          <Text className="text-base text-phase2Titles text-center mb-6">
+          <Text className="text-base text-phase2Titles dark:text-phase2TitlesDark text-center mb-6">
             {MOCK_ALERT.message}
           </Text>
 
@@ -64,21 +64,21 @@ export default function AlarmScreen() {
           <View className="flex-row justify-between mb-6">
             <TouchableOpacity
               onPress={handleMap}
-              className="flex-1 mr-2 py-3 rounded-lg bg-white/60 items-center"
-            >
-              <Text className="font-bold text-phase2Titles">Ver en el mapa</Text>
-            </TouchableOpacity>
+              className="flex-1 mr-2 py-3 rounded-lg bg-phase2Buttons dark:bg-phase2ButtonsDark items-center"
+              >
+              <Text className="font-bold text-white">Ver en el mapa</Text>
+              </TouchableOpacity>
 
             <Link href="/AlertDetailsScreen" asChild>
-              <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-white/60 items-center">
-                <Text className="font-bold text-phase2Titles">Más información</Text>
-              </TouchableOpacity>
+                <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-phase2Buttons dark:bg-phase2ButtonsDark items-center">
+                  <Text className="font-bold text-white">Más información</Text>
+                </TouchableOpacity>
             </Link>
           </View>
 
           {/* Cerrar */}
-          <TouchableOpacity onPress={handleClose} className="py-2 rounded-lg bg-white items-center">
-            <Text className="font-bold text-phase2Titles">Cerrar</Text>
+          <TouchableOpacity onPress={handleClose} className="py-2 rounded-lg bg-phase2Buttons dark:bg-phase2ButtonsDark items-center">
+            <Text className="font-bold text-white">Cerrar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -88,7 +88,7 @@ export default function AlarmScreen() {
 
 function Stat({ label, value }) {
   return (
-    <Text className="text-phase2Titles">
+    <Text className="text-phase2Titles dark:text-phase2TitlesDark">
       <Text className="font-bold">{label}: </Text>
       {value}
     </Text>
