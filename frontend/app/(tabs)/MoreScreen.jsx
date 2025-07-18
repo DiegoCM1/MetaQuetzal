@@ -41,7 +41,7 @@ export default function MoreScreen() {
           <Ionicons
             name={icon}
             size={22}
-            className="mr-4 text-gray-700 dark:text-gray-200"
+            className="mr-4 text-gray-700 dark:text-phase2Buttons"
           />
           <Text className="flex-1 text-base text-gray-800 dark:text-gray-100">
             {label}
@@ -49,7 +49,7 @@ export default function MoreScreen() {
           <MaterialCommunityIcons
             name="chevron-right"
             size={24}
-            className="text-gray-400 dark:text-gray-500"
+            className="text-gray-400 dark:text-phase2Buttons"
           />
         </Pressable>
       ))}
