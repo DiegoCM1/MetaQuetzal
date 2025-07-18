@@ -34,7 +34,7 @@ const hitos = [
 
 const AboutScreen = () => (
   <ScrollView
-    className="flex-1 bg-phase2Background dark:bg-phase2BackgroundDark px-6 py-10 mb-6"
+    className="flex-1 px-6 py-10 mb-6 bg-white dark:bg-neutral-900"
     showsVerticalScrollIndicator={false}
   >
     {/* Mensaje de bienvenida */}
