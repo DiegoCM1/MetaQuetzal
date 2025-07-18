@@ -12,9 +12,9 @@ export default function SettingsScreen() {
   const { colorScheme, toggleColorScheme } = useColorScheme(); // "light" | "dark"
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
-  const iconColor  = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑ish / gray‑800
+  const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑ish / gray‑800
   const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF"; // blue‑ish / gray‑400
-  const textColor  = colorScheme === "dark" ? "rgb(230, 230, 250)"           : "#111827"; // gray‑400 / gray‑900
+  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827"; // gray‑400 / gray‑900
 
   /* ──────────────── helpers ──────────────── */
   const showComingSoon = () =>
@@ -31,15 +31,14 @@ export default function SettingsScreen() {
 
   /** chevron icon */
   const Chevron = () => (
-    <MaterialCommunityIcons
-      name="chevron-right"
-      size={24}
-      color={arrowColor}
-    />
+    <MaterialCommunityIcons name="chevron-right" size={24} color={arrowColor} />
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900">
+    <SafeAreaView
+      className="flex-1 bg-white dark:bg-neutral-900"
+      edges={["left", "right", "bottom"]}
+    >
       {/* ───────────────────── NOTIFICACIONES ───────────────────── */}
       <View className={row}>
         <Ionicons
@@ -135,10 +134,7 @@ export default function SettingsScreen() {
         <Text className="flex-1 text-base" style={{ color: textColor }}>
           Idioma
         </Text>
-        <Text
-          className="mr-2 text-sm"
-          style={{ color: arrowColor }}
-        >
+        <Text className="mr-2 text-sm" style={{ color: arrowColor }}>
           Español
         </Text>
         <Chevron />

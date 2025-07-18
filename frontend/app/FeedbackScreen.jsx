@@ -26,7 +26,8 @@ export default function FeedbackScreen() {
   // Validation
   const validate = () => {
     const newErrors = {};
-    if (rating === 0) newErrors.rating = "Por favor selecciona una calificación.";
+    if (rating === 0)
+      newErrors.rating = "Por favor selecciona una calificación.";
     if (!email.trim()) newErrors.email = "El correo es obligatorio.";
     else if (!/\S+@\S+\.\S+/.test(email))
       newErrors.email = "Formato de correo inválido.";
@@ -60,12 +61,15 @@ export default function FeedbackScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900">
+    <SafeAreaView
+      className="flex-1 bg-white dark:bg-neutral-900"
+      edges={["left", "right", "bottom"]}
+    >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
       />
-      <View className="px-6">
-        <Text className="text-lg my-4 text-phase2Titles dark:text-phase2TitlesDark">
+      <View className="px-6 py-6">
+        <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
           Cuéntanos qué te gusta, qué podemos mejorar o reporta algún error.
         </Text>
       </View>
@@ -85,8 +89,8 @@ export default function FeedbackScreen() {
                   i <= rating
                     ? "#FFD700"
                     : colorScheme === "dark"
-                    ? "#888"
-                    : "#ccc"
+                      ? "#888"
+                      : "#ccc"
                 }
               />
             </TouchableOpacity>
