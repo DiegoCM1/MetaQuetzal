@@ -7,7 +7,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "rgb(255, 255, 255)", // tailwind `phase2Buttons`
-        tabBarInactiveTintColor: "rgb(200, 200, 200)", // tailwind `phase2Buttons`
+        tabBarInactiveTintColor: "rgb(220, 220, 220)", // tailwind `phase2Buttons`
         tabBarStyle: { backgroundColor: "rgb(60, 200, 220)" }, // tailwind `phase2bg`
         tabBarHideOnKeyboard: true, // Hide the tab bar when the keyboard is open so it doesn't overlap the text input on Android builds
       }}

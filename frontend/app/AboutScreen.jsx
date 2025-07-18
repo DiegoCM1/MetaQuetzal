@@ -2,41 +2,49 @@ import React from "react";
 import { View, Text, ScrollView, Linking, TouchableOpacity } from "react-native";
 
 /**
- * Componente "Acerca de BluEye" — Línea de Tiempo Tecnológica
- * Destaca cómo la tecnología y la innovación impulsan cada hito.
- * Paleta de colores definida en tailwind.config.js (phase2...)
+ * Acerca de BluEye — Línea de Tiempo
+ * Celebramos la innovación impulsada por personas motivadas y orientadas a resultados.
+ * Colores definidos en tailwind.config.js (phase2…)
  */
 
 const hitos = [
   {
-    fecha: "T3 2024",
+    fecha: "Jul‑Sep 2024",
     titulo: "Victoria en el Hackathon de Meta",
     descripcion:
-      "Nuestro prototipo—alertas tempranas, mapa de riesgo con capas climáticas y chatbot offline potenciado por Llama—se lleva el primer lugar por su potencial de impacto social.",
+      "Con talento, pasión y tecnología ganamos el primer lugar: alertas tempranas, mapa de riesgo y un chatbot offline potenciado por Llama que prometen salvar vidas.",
   },
   {
-    fecha: "T1 2025",
-    titulo: "Impact Grant PANAM: 100 000 USD",
+    fecha: "Ene‑Mar 2025",
+    titulo: "Impact Grant PANAM — 100 000 USD",
     descripcion:
-      "Meta reconoce nuestro proyecto como uno de los más prometedores de la región PANAM y otorga una beca de USD 100k para escalar la tecnología y llegar a más personas.",
+      "Meta respalda nuestra misión con un grant de 100 000 USD para escalar BluEye y proteger a miles de familias en zonas vulnerables.",
   },
   {
-    fecha: "Hoy (T3 2025)",
-    titulo: "Construyendo el Futuro",
+    fecha: `A día de hoy (${new Intl.DateTimeFormat("es-MX", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(new Date())})`,
+    titulo: "Construyendo el futuro",
     descripcion:
-      "Estamos afinando modelos multimodales en RunPod, integrando RAG y LlamaGuard, y diseñando una experiencia móvil accesible que pueda salvar vidas en la próxima temporada de huracanes.",
+      "Ponemos la IA al servicio de las personas: unimos modelos avanzados de IA con una experiencia móvil realmente accesible para que, juntos, marquemos la diferencia en la próxima temporada de huracanes.",
   },
 ];
 
 const AboutScreen = () => (
   <ScrollView
-    className="flex-1 bg-phase2bg dark:bg-phase2bgDark px-6 py-10 mb-6"
+    className="flex-1 bg-phase2Background dark:bg-phase2BackgroundDark px-6 py-10 mb-6"
     showsVerticalScrollIndicator={false}
   >
-    {/* Encabezado motivacional */}
-    <Text className="text-2xl font-bold text-phase2Titles dark:text-phase2TitlesDark mb-6">
-      Nuestra Historia
-    </Text>
+    {/* Mensaje de bienvenida */}
+    <View className="mb-8">
+      <Text className="text-base text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark text-center mt-2">
+        En BluEye reunimos a personas talentosas y con propósito para que, junto
+        a la tecnología, puedas sentirte seguro antes, durante y después de un
+        huracán. Tu tranquilidad es nuestro resultado.
+      </Text>
+    </View>
 
     {/* Línea de tiempo */}
     <View className="border-l-2 border-phase2Buttons dark:border-phase2ButtonsDark ml-2">
@@ -67,7 +75,7 @@ const AboutScreen = () => (
       accessibilityLabel="Visitar sitio web de BluEye"
     >
       <Text className="text-base font-semibold text-white">
-        ¡Descubre más acerca de BluEye!
+        ¡Conoce más acerca de nosotros!
       </Text>
     </TouchableOpacity>
   </ScrollView>
