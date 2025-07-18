@@ -2,7 +2,7 @@
   "expo": {
     "name": "BluEye",
     "slug": "react-native-blueye",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -26,7 +26,7 @@
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+          "apiKey": "AIzaSyCnJQJAIvATM2Vlcs-Atss8_tA2MYj_Hg4"
         }
       }
     },
