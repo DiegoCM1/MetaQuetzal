@@ -17,6 +17,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 // import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 // import { Camera } from "expo-camera";
@@ -34,6 +35,7 @@ export default function ChatAIScreen() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
+  const tabBarHeight = useBottomTabBarHeight();
 
   /* Camera permission and open handler disabled 
 
@@ -231,7 +233,7 @@ export default function ChatAIScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={insets.bottom + insets.bottom + 5}
+        keyboardVerticalOffset={insets.bottom + tabBarHeight + 5}
       >
         <View className="flex-1 px-4 pt-2">
           {/* Messages List */}
