@@ -200,7 +200,7 @@ export default function ChatAIScreen() {
   // Update the Send Button JSX
   const SendButton = () => (
     <TouchableOpacity
-      className="h-10 w-10 rounded-full bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
+      className="h-10 w-10 rounded-full bg-phase2Buttons dark:bg-phase2CardsDark items-center justify-center"
       onPress={handleSendMessage}
       disabled={isLoading}
     >
@@ -222,7 +222,7 @@ export default function ChatAIScreen() {
       <PageTitle>Chat con IA</PageTitle>
       {/* Restart Conversation Button */}
       <TouchableOpacity
-        className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2ButtonsDark items-center justify-center"
+        className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2CardsDark items-center justify-center"
         style={{ top: insets.top }} // safe‑area padding
         onPress={restartConversation}
       >
@@ -242,11 +242,11 @@ export default function ChatAIScreen() {
             contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
             ListEmptyComponent={() => (
               <View className="flex-1 flex-row items-center justify-center">
-                <Text className="text-3xl font-semibold text-phase2Buttons text-center">¿</Text>
+                <Text className="text-3xl font-semibold text-phase2Buttons dark:text-phase2TitlesDark text-center">¿</Text>
                 <Text className="text-3xl font-semibold text-gray-500 text-center">
-                  En qué te puedo ayudar
+                  En qué puedo ayudar
                 </Text>
-                <Text className="text-3xl font-semibold text-phase2Buttons text-center">?</Text>
+                <Text className="text-3xl font-semibold text-phase2Buttons dark:text-phase2TitlesDark text-center">?</Text>
               </View>
             )}
             renderItem={({ item }) => (
@@ -278,9 +278,9 @@ export default function ChatAIScreen() {
 
           {/* Input Area */}
           <View className="pt-4 border-t border-phase2Borders dark:border-phase2BordersDark">
-            <View className="flex-row items-center space-x-2">
+            <View className="flex-row items-center justify-center space-x-2">
               {/* Text Input */}
-              <View className="flex-1 flex-row items-center text-center bg-white dark:bg-phase2Cards rounded-full border border-phase2Borders dark:border-phase2BordersDark">
+              <View className="flex-1 flex-row items-center text-center bg-white dark:bg-phase2CardsDark rounded-full border border-phase2Borders dark:border-phase2BordersDark">
                 <TextInput
                   className="flex-1 px-4 py-2 text-phase2Titles dark:text-white border-none items-center outline-none"
                   placeholder="Escribe un mensaje..."
