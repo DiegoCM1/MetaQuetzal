@@ -2,7 +2,7 @@
   "expo": {
     "name": "BluEye",
     "slug": "react-native-blueye",
-    "version": "1.5.0",
+    "version": "1.7.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -41,8 +41,7 @@
       },
       "eas": {
         "projectId": "ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
-      },
-      "EXPO_PUBLIC_OPENWEATHER_API_KEY": "9e916d578f32394c3a29b97e78b694e9"
+      }
     },
     "runtimeVersion": {
       "policy": "appVersion"
