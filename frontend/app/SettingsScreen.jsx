@@ -9,6 +9,8 @@ import { useColorScheme } from "nativewind";
 export default function SettingsScreen() {
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { colorScheme, toggleColorScheme } = useColorScheme();
+  const headerBg =
+    colorScheme === "dark" ? "rgb(40, 60, 80)" : "rgb(60, 200, 220)";
 
   const showComingSoon = () =>
     Alert.alert("¡Próximamente!", "Esta opción estará disponible muy pronto.");
@@ -32,7 +34,10 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900">
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: headerBg }}
+      edges={["left", "right", "bottom"]}
+    >
         {/* ──────────────────────── NOTIFICACIONES ──────────────────────── */}
         <View className={row}>
           <Ionicons
@@ -47,7 +52,7 @@ export default function SettingsScreen() {
             value={isNotificationsEnabled}
             onValueChange={setNotificationsEnabled}
             thumbColor={colorScheme === "dark" ? "#111" : "#fff"}
-            trackColor={{ false: "#9ca3af", true: "rgb(50,180,200)" }}
+            trackColor={{ false: "#9ca3af", true: headerBg }}
             ios_backgroundColor="#9ca3af"
           />
         </View>
@@ -87,7 +92,7 @@ export default function SettingsScreen() {
             value={colorScheme === "dark"}
             onValueChange={handleDarkModeToggle}
             thumbColor={colorScheme === "dark" ? "#111" : "#fff"}
-            trackColor={{ false: "#9ca3af", true: "rgb(50,180,200)" }}
+            trackColor={{ false: "#9ca3af", true: headerBg }}
             ios_backgroundColor="#9ca3af"
           />
         </View>
@@ -106,7 +111,7 @@ export default function SettingsScreen() {
             value={false}
             onValueChange={showComingSoon}
             thumbColor={colorScheme === "dark" ? "#111" : "#fff"}
-            trackColor={{ false: "#9ca3af", true: "rgb(50,180,200)" }}
+            trackColor={{ false: "#9ca3af", true: headerBg }}
             ios_backgroundColor="#9ca3af"
           />
         </View>
