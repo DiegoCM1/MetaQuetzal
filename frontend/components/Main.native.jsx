@@ -60,16 +60,7 @@ export default function WeatherMapNativewind() {
             maximumZ={12}
             tileSize={256}
             zIndex={1}
-            opacity={0.6}
-          />
-        )}
-        {showTemp && (
-          <UrlTile
-            urlTemplate={`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`}
-            maximumZ={12}
-            tileSize={256}
-            zIndex={2}
-            opacity={0.5}
+            opacity={1}
           />
         )}
         {showPrecip && (
@@ -78,16 +69,7 @@ export default function WeatherMapNativewind() {
             maximumZ={12}
             tileSize={256}
             zIndex={3}
-            opacity={0.5}
-          />
-        )}
-        {showSea && (
-          <UrlTile
-            urlTemplate={`https://tile.openweathermap.org/map/pressure_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`}
-            maximumZ={12}
-            tileSize={256}
-            zIndex={4}
-            opacity={0.5}
+            opacity={1}
           />
         )}
         {showClouds && (
@@ -96,7 +78,7 @@ export default function WeatherMapNativewind() {
             maximumZ={12}
             tileSize={256}
             zIndex={5}
-            opacity={0.5}
+            opacity={1}
           />
         )}
       </MapView>
@@ -119,11 +101,9 @@ export default function WeatherMapNativewind() {
           <View className="bg-white p-6 rounded-t-2xl">
             <Text className="text-lg font-bold mb-4 text-center">Map Layers</Text>
             {[
-              { label: 'Wind', state: showWind, setter: setShowWind, icon: 'weather-windy' },
-              { label: 'Temperature', state: showTemp, setter: setShowTemp, icon: 'thermometer' },
-              { label: 'Precipitation', state: showPrecip, setter: setShowPrecip, icon: 'weather-rainy' },
-              { label: 'Sea Level', state: showSea, setter: setShowSea, icon: 'waves' },
-              { label: 'Clouds', state: showClouds, setter: setShowClouds, icon: 'weather-cloudy' },
+              { label: 'Viento', state: showWind, setter: setShowWind, icon: 'weather-windy' },
+              { label: 'Precipitación', state: showPrecip, setter: setShowPrecip, icon: 'weather-rainy' },
+              { label: 'Nubes', state: showClouds, setter: setShowClouds, icon: 'weather-cloudy' },
             ].map(({ label, state, setter, icon }) => (
               <View key={label} className="flex-row justify-between items-center mb-3">
                 <View className="flex-row items-center">
