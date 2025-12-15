@@ -43,19 +43,36 @@ export default function Layout() {
   useEffect(() => {
     setForegroundNotificationHandler();
 
-    // 👇 Cuando el usuario pulse la notificación
+    // 👇 Cuando el usuario pulse la notificación (o llegue automáticamente si es critical)
     const sub = addNotificationResponseListener(async (data) => {
       if (data?.alertId) {
         await initAnalytics();
         track("push_open", {
           alertId: String(data.alertId),
           alertLevel: data.alertLevel ? Number(data.alertLevel) : undefined,
+          fullScreen: data.fullScreen === 'true',
           origin: "listener",
         });
-        router.push({
-          pathname: "AlertDetailsScreen",
-          params: { id: data.alertId },
-        });
+
+        // Si es full-screen (crítica cat 3+) → AlarmScreen
+        // Si no → AlertDetailsScreen normal
+        if (data.fullScreen === 'true') {
+          router.push({
+            pathname: "AlarmScreen",
+            params: {
+              alertId: data.alertId,
+              category: data.category || data.alertLevel,
+              title: data.alertTitle || "Alerta de huracán",
+              message: data.alertMessage || "Diríjase a un refugio seguro",
+              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
+            },
+          });
+        } else {
+          router.push({
+            pathname: "AlertDetailsScreen",
+            params: { id: data.alertId },
+          });
+        }
       }
     });
 
@@ -66,20 +83,37 @@ export default function Layout() {
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
-      const alertId = initial?.notification?.request?.content?.data?.alertId;
-      const alertLevel =
-        initial?.notification?.request?.content?.data?.alertLevel;
+      const data = initial?.notification?.request?.content?.data;
+      const alertId = data?.alertId;
+
       if (alertId) {
         await initAnalytics();
         track("push_open", {
           alertId: String(alertId),
-          alertLevel: alertLevel ? Number(alertLevel) : undefined,
+          alertLevel: data?.alertLevel ? Number(data.alertLevel) : undefined,
+          fullScreen: data?.fullScreen === 'true',
           origin: "initial",
         });
-        router.push({
-          pathname: "AlertDetailsScreen",
-          params: { id: alertId },
-        });
+
+        // Si es full-screen (crítica cat 3+) → AlarmScreen
+        // Si no → AlertDetailsScreen normal
+        if (data?.fullScreen === 'true') {
+          router.push({
+            pathname: "AlarmScreen",
+            params: {
+              alertId: data.alertId,
+              category: data.category || data.alertLevel,
+              title: data.alertTitle || "Alerta de huracán",
+              message: data.alertMessage || "Diríjase a un refugio seguro",
+              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
+            },
+          });
+        } else {
+          router.push({
+            pathname: "AlertDetailsScreen",
+            params: { id: alertId },
+          });
+        }
       }
     })();
   }, []);

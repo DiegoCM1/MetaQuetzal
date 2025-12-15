@@ -19,7 +19,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "mobile.blueye.app"
+      "bundleIdentifier": "mobile.blueye.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -29,7 +32,12 @@
       },
 
       "package": "mobile.blueye.app",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "USE_FULL_SCREEN_INTENT",
+        "SYSTEM_ALERT_WINDOW"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyCnJQJAIvATM2Vlcs-Atss8_tA2MYj_Hg4"
