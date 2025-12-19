@@ -12,6 +12,7 @@
   "dependencies": {
     "@expo/metro-runtime": "^5.0.4",
     "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-community/slider": "^5.1.1",
     "@tamagui/config": "^1.116.15",
     "@tamagui/core": "^1.116.15",
     "@tamagui/metro-plugin": "^1.116.15",
