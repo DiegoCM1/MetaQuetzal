@@ -1,9 +1,10 @@
 // SettingsScreen.jsx
 import "../global.css";
+import { clearOnboardingData } from './onboarding/_services/onboardingService';
 import { useState } from "react";
 import { Alert, Pressable, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColorScheme } from "nativewind";
 import { track } from "../utils/analytics";
@@ -38,6 +39,24 @@ export default function SettingsScreen() {
   const Chevron = () => (
     <MaterialCommunityIcons name="chevron-right" size={24} color={arrowColor} />
   );
+
+  const handleResetOnboarding = async () => {
+    Alert.alert(
+      'Reiniciar Onboarding',
+      '¿Estás seguro? Esto borrará tus datos y mostrará el wizard de nuevo.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Reiniciar',
+          style: 'destructive',
+          onPress: async () => {
+            await clearOnboardingData();
+            router.replace('/onboarding/step1');
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView
@@ -177,6 +196,24 @@ export default function SettingsScreen() {
         />
         <Text className="flex-1 text-base" style={{ color: textColor }}>
           Familia
+        </Text>
+        <Chevron />
+      </Pressable>
+
+      {/* ────────────── REINICIAR ONBOARDING (DEV) ────────────── */}
+      <Pressable
+        android_ripple={{ color: "rgba(0,0,0,0.07)" }}
+        className={row}
+        onPress={handleResetOnboarding}
+      >
+        <Ionicons
+          name="refresh-outline"
+          size={22}
+          color={iconColor}
+          style={{ marginRight: 16 }}
+        />
+        <Text className="flex-1 text-base" style={{ color: textColor }}>
+          Reiniciar Onboarding
         </Text>
         <Chevron />
       </Pressable>
