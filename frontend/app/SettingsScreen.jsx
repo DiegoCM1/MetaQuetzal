@@ -200,6 +200,27 @@ export default function SettingsScreen() {
         </Text>
         <Chevron />
       </Pressable>
+
+      {/* ────────────── VER ALERTA DE EMERGENCIA (DEMO) ────────────── */}
+      <Pressable
+        android_ripple={{ color: "rgba(0,0,0,0.07)" }}
+        className={row}
+        onPress={() => {
+          track('demo_alarm_view');
+          router.push('/AlarmScreen');
+        }}
+      >
+        <Ionicons
+          name="warning-outline"
+          size={22}
+          color="#EF4444"
+          style={{ marginRight: 16 }}
+        />
+        <Text className="flex-1 text-base" style={{ color: textColor }}>
+          Ver Alerta de Emergencia
+        </Text>
+        <Chevron />
+      </Pressable>
     </SafeAreaView>
   );
 }
