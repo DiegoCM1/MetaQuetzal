@@ -15,7 +15,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#DCF0FF"
     },
     "ios": {
       "supportsTablet": true,
@@ -28,7 +28,7 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#DCF0FF"
       },
 
       "package": "mobile.blueye.app",

@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService";
+
+// Keep the splash screen visible while we check onboarding status
+SplashScreen.preventAutoHideAsync();
 
 export default function Index() {
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -29,12 +33,14 @@ export default function Index() {
       // On error, default to onboarding for safety
       router.replace("/onboarding/step1");
     } finally {
-      setIsChecking(false);
+      // Mark as ready and hide splash screen
+      setIsReady(true);
+      await SplashScreen.hideAsync();
     }
   };
 
-  // Show nothing while checking (Expo splash screen will display)
-  if (isChecking) {
+  // Return null while loading (splash screen is visible)
+  if (!isReady) {
     return null;
   }
 
