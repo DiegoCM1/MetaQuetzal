@@ -10,6 +10,7 @@ import { useColorScheme } from "nativewind";
 import { track } from "../utils/analytics";
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { colorScheme, toggleColorScheme } = useColorScheme(); // "light" | "dark"
 
