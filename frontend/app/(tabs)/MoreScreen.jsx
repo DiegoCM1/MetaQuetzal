@@ -1,12 +1,12 @@
 // MoreScreen.jsx
 import React from "react";
 import { Text, Pressable, useColorScheme } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MoreScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const colorScheme = useColorScheme(); // "light" | "dark"
 
   // palette
@@ -15,10 +15,10 @@ export default function MoreScreen() {
   const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827"; // blue‑100 / gray‑900
 
   const items = [
-    { label: "Ajustes", icon: "cog-outline", screen: "SettingsScreen" },
-    { label: "Feedback", icon: "message-reply-outline", screen: "FeedbackScreen" },
-    { label: "Plan Familiar", icon: "account-group-outline", screen: "SubscriptionScreen" },
-    { label: "Contenido Educativo", icon: "book-outline", screen: "EducationalContentScreen" },
+    { label: "Ajustes", icon: "cog-outline", route: "/SettingsScreen" },
+    { label: "Feedback", icon: "message-reply-outline", route: "/FeedbackScreen" },
+    { label: "Plan Familiar", icon: "account-group-outline", route: "/subscription" },
+    { label: "Contenido Educativo", icon: "book-outline", route: "/educational" },
   ];
 
   return (
@@ -26,10 +26,10 @@ export default function MoreScreen() {
       edges={["top", "left", "right", "bottom"]}
       className="flex-1 bg-white dark:bg-neutral-900"
     >
-      {items.map(({ label, icon, screen }) => (
+      {items.map(({ label, icon, route }) => (
         <Pressable
-          key={screen}
-          onPress={() => navigation.navigate(screen)}
+          key={route}
+          onPress={() => router.push(route)}
           android_ripple={{ color: "rgba(0,0,0,0.07)" }}
           className="flex-row items-center px-5 py-3 border-b border-gray-200 dark:border-neutral-700"
         >
