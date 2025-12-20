@@ -177,7 +177,7 @@ export default function ChatAIScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={insets.bottom + tabBarHeight + 5}
+        keyboardVerticalOffset={Platform.OS === "ios" ? tabBarHeight : 0}
       >
         <View className="flex-1 px-2 pt-2">
           {/* Messages List */}
