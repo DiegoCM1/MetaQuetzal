@@ -1,13 +1,15 @@
 import '../../global.css';
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { track } from '../../utils/analytics';
 import PlanCard from './_components/PlanCard';
 import { getPlans } from './_services/subscriptionService';
 import { Plan, BillingPeriod } from './_types';
 
 export default function SubscriptionScreen() {
+  const router = useRouter();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   // State independiente por cada plan
@@ -47,12 +49,8 @@ export default function SubscriptionScreen() {
       billingPeriod,
     });
 
-    // TODO: Implement actual subscription flow
-    Alert.alert(
-      'Próximamente',
-      `Función de pago en desarrollo. Plan seleccionado: ${planId} (${billingPeriod})`,
-      [{ text: 'OK' }]
-    );
+    // Navigate to manage subscription screen (demo)
+    router.push('/subscription/manage');
   };
 
   if (loading) {

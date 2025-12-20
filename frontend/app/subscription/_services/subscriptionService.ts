@@ -1,6 +1,6 @@
 // Subscription service with mock data
 
-import { Plan } from '../_types';
+import { Plan, FamilyMember } from '../_types';
 
 export const PLANS: Plan[] = [
   {
@@ -62,4 +62,52 @@ export const calculateAnnualSavings = (plan: Plan): number => {
   const monthlyTotal = plan.monthlyPrice * 12;
   const savings = monthlyTotal - plan.annualPrice;
   return Math.round(savings * 100) / 100;
+};
+
+// Mock family members data
+export const MOCK_FAMILY_MEMBERS: FamilyMember[] = [
+  {
+    id: '1',
+    name: 'Persona 1',
+    initials: 'AA',
+    distance: 3,
+    distanceUnit: 'km',
+    avatarColor: '#9CA3AF',
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    name: 'Persona 2',
+    initials: 'AA',
+    distance: 16,
+    distanceUnit: 'km',
+    avatarColor: '#3B82F6',
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: '3',
+    name: 'Persona 3',
+    initials: 'AA',
+    distance: 20,
+    distanceUnit: 'km',
+    avatarColor: '#A855F7',
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: '4',
+    name: 'Persona 4',
+    initials: 'AA',
+    distance: 50,
+    distanceUnit: 'mts',
+    avatarColor: '#EF4444',
+    lastUpdated: new Date().toISOString(),
+  },
+];
+
+/**
+ * Get family members
+ */
+export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  return MOCK_FAMILY_MEMBERS;
 };

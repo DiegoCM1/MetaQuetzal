@@ -19,6 +19,7 @@ export default function SubscriptionLayout() {
       }}
     >
       <Stack.Screen name="index" />
+      <Stack.Screen name="manage" />
     </Stack>
   );
 }

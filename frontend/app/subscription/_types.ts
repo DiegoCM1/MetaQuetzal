@@ -22,3 +22,13 @@ export interface Subscription {
   startDate: string;
   endDate: string;
 }
+
+export interface FamilyMember {
+  id: string;
+  name: string;
+  initials: string;
+  distance: number; // in kilometers
+  distanceUnit: 'km' | 'mts';
+  avatarColor: string;
+  lastUpdated: string;
+}
