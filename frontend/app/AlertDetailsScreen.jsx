@@ -24,8 +24,17 @@ export default function AlertDetailsScreen() {
   const [loading, setLoad] = useState(true);
   const [error, setError] = useState(null);
 
-    const showComingSoon = () =>
-      Alert.alert("¡Próximamente!", "Esta opción estará disponible muy pronto.");
+  const handleOpenBoletin = async () => {
+    const url = "https://preparados.gob.mx/SIAT-CT/";
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    } catch (error) {
+      console.error("Error opening URL:", error);
+    }
+  };
 
   /* fetch */
   useEffect(() => {
@@ -194,7 +203,7 @@ export default function AlertDetailsScreen() {
               level: Number(alert.level),
               score: Number(alert.score ?? 0),
             });
-            showComingSoon();
+            handleOpenBoletin();
           }}
         >
           <Text className="text-white dark:text-phase2TitlesDark font-bold">
