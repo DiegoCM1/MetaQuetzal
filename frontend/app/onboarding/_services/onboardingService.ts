@@ -10,6 +10,7 @@ const ONBOARDING_COMPLETED_KEY = '@blueye_onboarding_completed';
 export const hasCompletedOnboarding = async (): Promise<boolean> => {
   try {
     const value = await AsyncStorage.getItem(ONBOARDING_COMPLETED_KEY);
+    console.log('📦 AsyncStorage read - Key:', ONBOARDING_COMPLETED_KEY, 'Value:', value);
     return value === 'true';
   } catch (error) {
     console.error('Error checking onboarding status:', error);
@@ -24,8 +25,13 @@ export const saveOnboardingData = async (data: OnboardingData): Promise<void> =>
   try {
     await AsyncStorage.setItem(ONBOARDING_KEY, JSON.stringify(data));
     await AsyncStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
+    console.log('✅ Onboarding data saved successfully');
+
+    // Verify it was saved
+    const verified = await AsyncStorage.getItem(ONBOARDING_COMPLETED_KEY);
+    console.log('🔍 Verification - Completed flag:', verified);
   } catch (error) {
-    console.error('Error saving onboarding data:', error);
+    console.error('❌ Error saving onboarding data:', error);
     throw error;
   }
 };

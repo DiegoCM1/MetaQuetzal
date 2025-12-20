@@ -13,16 +13,19 @@ export default function Index() {
   const checkOnboardingStatus = async () => {
     try {
       const completed = await hasCompletedOnboarding();
+      console.log('🔍 App startup - Onboarding completed?', completed);
 
       if (completed) {
         // User has completed onboarding, go to main app
+        console.log('✅ Redirecting to MapScreen');
         router.replace("/(tabs)/MapScreen");
       } else {
         // First time user, show onboarding
+        console.log('⚠️ Redirecting to Onboarding');
         router.replace("/onboarding/step1");
       }
     } catch (error) {
-      console.error("Error checking onboarding:", error);
+      console.error("❌ Error checking onboarding:", error);
       // On error, default to onboarding for safety
       router.replace("/onboarding/step1");
     } finally {
