@@ -173,6 +173,14 @@ export default function Layout() {
                     options={{ title: "Ajustes" }}
                   />
                   <Stack.Screen
+                    name="SubscriptionScreen"
+                    options={{ title: "Plan Familiar" }}
+                  />
+                  <Stack.Screen
+                    name="EducationalContentScreen"
+                    options={{ title: "Contenido Educativo" }}
+                  />
+                  <Stack.Screen
                     name="AlarmScreen"
                     options={{ title: "Alarma" }}
                   />

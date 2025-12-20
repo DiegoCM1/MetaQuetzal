@@ -183,24 +183,6 @@ export default function SettingsScreen() {
         <Chevron />
       </Pressable>
 
-      {/* ─────────────────────── FAMILIA ─────────────────────── */}
-      <Pressable
-        android_ripple={{ color: "rgba(0,0,0,0.07)" }}
-        className={row}
-        onPress={showComingSoon}
-      >
-        <Ionicons
-          name="people-outline"
-          size={22}
-          color={iconColor}
-          style={{ marginRight: 16 }}
-        />
-        <Text className="flex-1 text-base" style={{ color: textColor }}>
-          Familia
-        </Text>
-        <Chevron />
-      </Pressable>
-
       {/* ────────────── REINICIAR ONBOARDING (DEV) ────────────── */}
       <Pressable
         android_ripple={{ color: "rgba(0,0,0,0.07)" }}

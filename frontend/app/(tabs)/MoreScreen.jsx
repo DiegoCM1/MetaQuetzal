@@ -17,11 +17,9 @@ export default function MoreScreen() {
 
   const items = [
     { label: "Ajustes", icon: "cog-outline", screen: "SettingsScreen" },
-    {
-      label: "Feedback",
-      icon: "message-reply-outline",
-      screen: "FeedbackScreen",
-    }
+    { label: "Feedback", icon: "message-reply-outline", screen: "FeedbackScreen" },
+    { label: "Plan Familiar", icon: "account-group-outline", screen: "SubscriptionScreen" },
+    { label: "Contenido Educativo", icon: "book-outline", screen: "EducationalContentScreen" },
   ];
 
   return (
