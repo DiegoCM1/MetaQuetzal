@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface FormSliderProps {
   label: string;
@@ -16,7 +16,7 @@ interface FormSliderProps {
 }
 
 /**
- * Slider component with labels and current value display
+ * Custom slider component using buttons (Expo Go compatible)
  * Used for nervousness and weather info levels (1-10)
  */
 export const FormSlider: React.FC<FormSliderProps> = ({
@@ -31,43 +31,98 @@ export const FormSlider: React.FC<FormSliderProps> = ({
   showValue = true,
   error,
 }) => {
+  const handleDecrease = () => {
+    if (value > minimumValue) {
+      onValueChange(value - step);
+    }
+  };
+
+  const handleIncrease = () => {
+    if (value < maximumValue) {
+      onValueChange(value + step);
+    }
+  };
+
+  // Calculate percentage for visual bars
+  const percentage = ((value - minimumValue) / (maximumValue - minimumValue)) * 100;
+  const totalBars = maximumValue - minimumValue + 1;
+
   return (
     <View className="mb-6">
-      {/* Label with Value */}
+      {/* Label */}
+      <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+        {label}
+      </Text>
+
+      {/* Control Row */}
       <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          {label}
-        </Text>
-        {showValue && (
-          <View className="bg-blue-100 dark:bg-blue-900 px-3 py-1 rounded-full">
-            <Text className="text-sm font-bold text-blue-700 dark:text-blue-300">
+        {/* Decrease Button */}
+        <TouchableOpacity
+          onPress={handleDecrease}
+          disabled={value <= minimumValue}
+          className={`w-12 h-12 rounded-full items-center justify-center ${
+            value <= minimumValue
+              ? 'bg-gray-200 dark:bg-gray-700'
+              : 'bg-blue-500 dark:bg-blue-600'
+          }`}
+          accessibilityLabel="Disminuir valor"
+        >
+          <Ionicons
+            name="remove"
+            size={24}
+            color={value <= minimumValue ? '#9CA3AF' : '#FFFFFF'}
+          />
+        </TouchableOpacity>
+
+        {/* Value Display */}
+        <View className="flex-1 mx-4 items-center">
+          <View className="bg-blue-100 dark:bg-blue-900 px-6 py-3 rounded-2xl">
+            <Text className="text-3xl font-bold text-blue-700 dark:text-blue-300">
               {value}
             </Text>
           </View>
-        )}
+        </View>
+
+        {/* Increase Button */}
+        <TouchableOpacity
+          onPress={handleIncrease}
+          disabled={value >= maximumValue}
+          className={`w-12 h-12 rounded-full items-center justify-center ${
+            value >= maximumValue
+              ? 'bg-gray-200 dark:bg-gray-700'
+              : 'bg-blue-500 dark:bg-blue-600'
+          }`}
+          accessibilityLabel="Aumentar valor"
+        >
+          <Ionicons
+            name="add"
+            size={24}
+            color={value >= maximumValue ? '#9CA3AF' : '#FFFFFF'}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Slider */}
-      <Slider
-        value={value}
-        onValueChange={onValueChange}
-        minimumValue={minimumValue}
-        maximumValue={maximumValue}
-        step={step}
-        minimumTrackTintColor="#3B82F6" // blue-500
-        maximumTrackTintColor="#D1D5DB" // gray-300
-        thumbTintColor="#3B82F6" // blue-500
-        accessibilityLabel={label}
-        accessibilityValue={{
-          min: minimumValue,
-          max: maximumValue,
-          now: value,
-        }}
-      />
+      {/* Visual Progress Bars */}
+      <View className="flex-row justify-between mb-2" style={{ gap: 4 }}>
+        {Array.from({ length: totalBars }).map((_, index) => {
+          const barValue = minimumValue + index;
+          const isActive = barValue <= value;
+          return (
+            <View
+              key={index}
+              className={`flex-1 h-2 rounded-full ${
+                isActive
+                  ? 'bg-blue-500 dark:bg-blue-400'
+                  : 'bg-gray-200 dark:bg-gray-700'
+              }`}
+            />
+          );
+        })}
+      </View>
 
       {/* Min/Max Labels */}
       {(minimumLabel || maximumLabel) && (
-        <View className="flex-row justify-between mt-1">
+        <View className="flex-row justify-between">
           <Text className="text-xs text-gray-500 dark:text-gray-400">
             {minimumLabel || minimumValue}
           </Text>
