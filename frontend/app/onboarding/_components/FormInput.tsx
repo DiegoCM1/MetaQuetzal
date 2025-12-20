@@ -46,7 +46,7 @@ export const FormInput: React.FC<FormInputProps> = ({
           error
             ? 'border-2 border-red-500 bg-red-50 dark:bg-red-900/20'
             : isFocused
-            ? 'border-2 border-blue-500 bg-white dark:bg-gray-800'
+            ? 'border-2 border-phase2Buttons bg-white dark:bg-gray-800'
             : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
         }`}
         accessibilityLabel={label}

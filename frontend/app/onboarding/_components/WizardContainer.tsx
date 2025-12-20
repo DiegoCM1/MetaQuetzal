@@ -48,7 +48,7 @@ export const WizardContainer: React.FC<WizardContainerProps> = ({
         className="flex-1"
       >
         {/* Header with Progress */}
-        <View className="bg-blue-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <View className="bg-phase2Cards dark:bg-phase2CardsDark border-b border-gray-200 dark:border-gray-700">
           <ProgressIndicator totalSteps={totalSteps} currentStep={currentStep} />
         </View>
 
@@ -102,7 +102,7 @@ export const WizardContainer: React.FC<WizardContainerProps> = ({
               } ${
                 nextDisabled || isLoading
                   ? 'bg-gray-300 dark:bg-gray-600'
-                  : 'bg-blue-500 dark:bg-blue-600'
+                  : 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
               }`}
               accessibilityRole="button"
               accessibilityLabel={nextLabel}

@@ -165,8 +165,8 @@ export const Step1Screen: React.FC = () => {
       {/* Section: Personal Data */}
       <View className="mb-6">
         <View className="flex-row items-center mb-3">
-          <Ionicons name="person-circle" size={24} color="#3B82F6" />
-          <Text className="ml-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
+          <Ionicons name="person-circle" size={24} color="rgb(50, 180, 200)" />
+          <Text className="ml-2 text-lg font-semibold text-phase2Titles dark:text-phase2TitlesDark">
             Datos Personales
           </Text>
         </View>
@@ -200,7 +200,7 @@ export const Step1Screen: React.FC = () => {
           </View>
         </View>
 
-        <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mt-1">
           Usaremos tu nombre para personalizar las alertas
         </Text>
       </View>
@@ -209,8 +209,8 @@ export const Step1Screen: React.FC = () => {
       <View className="mb-6">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
-            <Ionicons name="location" size={24} color="#3B82F6" />
-            <Text className="ml-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
+            <Ionicons name="location" size={24} color="rgb(50, 180, 200)" />
+            <Text className="ml-2 text-lg font-semibold text-phase2Titles dark:text-phase2TitlesDark">
               Tu Ubicación
             </Text>
           </View>
@@ -219,7 +219,7 @@ export const Step1Screen: React.FC = () => {
           <TouchableOpacity
             onPress={handleUseLocation}
             disabled={isLoadingLocation}
-            className="flex-row items-center bg-blue-500 dark:bg-blue-600 px-3 py-2 rounded-lg"
+            className="flex-row items-center bg-phase2Buttons dark:bg-phase2ButtonsDark px-3 py-2 rounded-lg"
           >
             {isLoadingLocation ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -288,7 +288,7 @@ export const Step1Screen: React.FC = () => {
           </View>
         </View>
 
-        <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mt-1">
           Necesitamos tu ubicación para enviarte alertas relevantes de tu zona
         </Text>
       </View>

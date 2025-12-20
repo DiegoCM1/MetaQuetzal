@@ -63,7 +63,7 @@ export const FormSlider: React.FC<FormSliderProps> = ({
           className={`w-12 h-12 rounded-full items-center justify-center ${
             value <= minimumValue
               ? 'bg-gray-200 dark:bg-gray-700'
-              : 'bg-blue-500 dark:bg-blue-600'
+              : 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
           }`}
           accessibilityLabel="Disminuir valor"
         >
@@ -76,8 +76,8 @@ export const FormSlider: React.FC<FormSliderProps> = ({
 
         {/* Value Display */}
         <View className="flex-1 mx-4 items-center">
-          <View className="bg-blue-100 dark:bg-blue-900 px-6 py-3 rounded-2xl">
-            <Text className="text-3xl font-bold text-blue-700 dark:text-blue-300">
+          <View className="bg-phase2Cards dark:bg-phase2CardsDark px-6 py-3 rounded-2xl">
+            <Text className="text-3xl font-bold text-phase2Buttons dark:text-phase2ButtonsDark">
               {value}
             </Text>
           </View>
@@ -90,7 +90,7 @@ export const FormSlider: React.FC<FormSliderProps> = ({
           className={`w-12 h-12 rounded-full items-center justify-center ${
             value >= maximumValue
               ? 'bg-gray-200 dark:bg-gray-700'
-              : 'bg-blue-500 dark:bg-blue-600'
+              : 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
           }`}
           accessibilityLabel="Aumentar valor"
         >
@@ -112,7 +112,7 @@ export const FormSlider: React.FC<FormSliderProps> = ({
               key={index}
               className={`flex-1 h-2 rounded-full ${
                 isActive
-                  ? 'bg-blue-500 dark:bg-blue-400'
+                  ? 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
                   : 'bg-gray-200 dark:bg-gray-700'
               }`}
             />

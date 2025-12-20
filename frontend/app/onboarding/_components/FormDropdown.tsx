@@ -111,14 +111,14 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
                     <Text
                       className={`text-base ${
                         item === value
-                          ? 'font-semibold text-blue-600 dark:text-blue-400'
+                          ? 'font-semibold text-phase2Buttons dark:text-phase2ButtonsDark'
                           : 'text-gray-900 dark:text-white'
                       }`}
                     >
                       {item}
                     </Text>
                     {item === value && (
-                      <Ionicons name="checkmark" size={20} color="#3B82F6" />
+                      <Ionicons name="checkmark" size={20} color="rgb(50, 180, 200)" />
                     )}
                   </View>
                 </TouchableOpacity>

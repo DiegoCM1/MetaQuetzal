@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { WizardContainer } from '../_components/WizardContainer';
 import { FormSlider } from '../_components/FormSlider';
 import { FormDropdown } from '../_components/FormDropdown';
@@ -65,40 +66,95 @@ export const Step2Screen: React.FC = () => {
       backLabel="Atrás"
       isLoading={isSubmitting}
     >
-      {/* Nervousness Level Slider */}
-      <FormSlider
-        label="¿Qué tan nervioso eres del 1 al 10?"
-        value={data.nervousnessLevel}
-        onValueChange={(value) => updateField('nervousnessLevel', value)}
-        minimumValue={1}
-        maximumValue={10}
-        minimumLabel="Nada"
-        maximumLabel="Mucho"
-        error={errors.nervousnessLevel}
-      />
+      {/* Section: About You */}
+      <View className="mb-6">
+        <View className="flex-row items-center mb-3">
+          <Ionicons name="person-circle" size={24} color="rgb(50, 180, 200)" />
+          <Text className="ml-2 text-lg font-semibold text-phase2Titles dark:text-phase2TitlesDark">
+            Sobre Ti
+          </Text>
+        </View>
 
-      {/* Age Range Dropdown */}
-      <FormDropdown
-        label="¿Qué edad tienes?"
-        value={data.age}
-        onValueChange={(value) => updateField('age', value)}
-        options={AGE_RANGES}
-        placeholder="Elige tu edad"
-        error={errors.age}
-        required
-      />
+        {/* Age Range Dropdown */}
+        <FormDropdown
+          label="¿Qué edad tienes?"
+          value={data.age}
+          onValueChange={(value) => updateField('age', value)}
+          options={AGE_RANGES}
+          placeholder="Selecciona tu rango"
+          error={errors.age}
+          required
+        />
 
-      {/* Weather Info Level Slider */}
-      <FormSlider
-        label="¿Qué tan informado quieres estar acerca de las condiciones de tiempo?"
-        value={data.weatherInfoLevel}
-        onValueChange={(value) => updateField('weatherInfoLevel', value)}
-        minimumValue={1}
-        maximumValue={10}
-        minimumLabel="Poco"
-        maximumLabel="Muy informado"
-        error={errors.weatherInfoLevel}
-      />
+        <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mt-1">
+          Esto nos ayuda a personalizar las alertas según tu grupo de edad
+        </Text>
+      </View>
+
+      {/* Section: Your Preferences */}
+      <View className="mb-6">
+        <View className="flex-row items-center mb-3">
+          <Ionicons name="settings" size={24} color="rgb(50, 180, 200)" />
+          <Text className="ml-2 text-lg font-semibold text-phase2Titles dark:text-phase2TitlesDark">
+            Tus Preferencias
+          </Text>
+        </View>
+
+        {/* Nervousness Level Slider */}
+        <View className="mb-6">
+          <View className="flex-row items-center mb-2">
+            <Text className="text-sm font-medium text-phase2Titles dark:text-phase2TitlesDark">
+              😰 Nivel de Ansiedad ante Emergencias
+            </Text>
+          </View>
+          <FormSlider
+            label=""
+            value={data.nervousnessLevel}
+            onValueChange={(value) => updateField('nervousnessLevel', value)}
+            minimumValue={1}
+            maximumValue={10}
+            minimumLabel="Tranquilo"
+            maximumLabel="Muy nervioso"
+            error={errors.nervousnessLevel}
+          />
+          <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mt-1">
+            Ajustaremos el tono de las alertas según tu nivel de ansiedad
+          </Text>
+        </View>
+
+        {/* Weather Info Level Slider */}
+        <View className="mb-4">
+          <View className="flex-row items-center mb-2">
+            <Text className="text-sm font-medium text-phase2Titles dark:text-phase2TitlesDark">
+              📊 Nivel de Detalle en Información
+            </Text>
+          </View>
+          <FormSlider
+            label=""
+            value={data.weatherInfoLevel}
+            onValueChange={(value) => updateField('weatherInfoLevel', value)}
+            minimumValue={1}
+            maximumValue={10}
+            minimumLabel="Solo lo básico"
+            maximumLabel="Todos los detalles"
+            error={errors.weatherInfoLevel}
+          />
+          <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mt-1">
+            Define cuánta información técnica quieres recibir en las alertas
+          </Text>
+        </View>
+      </View>
+
+      {/* Info Card */}
+      <View className="bg-phase2Cards dark:bg-phase2CardsDark border border-phase2Borders dark:border-phase2BordersDark rounded-lg p-4 mb-4">
+        <View className="flex-row items-start">
+          <Ionicons name="information-circle" size={20} color="rgb(50, 180, 200)" />
+          <Text className="ml-2 text-xs text-phase2Titles dark:text-phase2TitlesDark flex-1">
+            Estas preferencias nos ayudan a enviarte alertas más relevantes y adaptadas a ti.
+            Puedes cambiarlas en cualquier momento desde Configuración.
+          </Text>
+        </View>
+      </View>
     </WizardContainer>
   );
 };
