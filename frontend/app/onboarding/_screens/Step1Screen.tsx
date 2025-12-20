@@ -23,40 +23,84 @@ export const Step1Screen: React.FC = () => {
 
   const handleUseLocation = async () => {
     setIsLoadingLocation(true);
+    console.log('🌍 Starting location request...');
+
     try {
-      // Request location permissions
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      // Check if already has permissions
+      const existingStatus = await Location.getForegroundPermissionsAsync();
+      console.log('📋 Existing permission status:', existingStatus.status);
+
+      let status = existingStatus.status;
+
+      // If not granted, request permissions
+      if (status !== 'granted') {
+        console.log('📍 Requesting permissions...');
+        const permissionResponse = await Location.requestForegroundPermissionsAsync();
+        status = permissionResponse.status;
+        console.log('✅ Permission status:', status);
+      }
 
       if (status !== 'granted') {
-        Alert.alert(
-          'Permisos necesarios',
-          'Necesitamos acceso a tu ubicación para autocompletar tu estado y código postal.'
-        );
+        const canAskAgain = existingStatus.canAskAgain;
+
+        if (canAskAgain) {
+          Alert.alert(
+            'Permisos necesarios',
+            'Por favor acepta el permiso de ubicación en el siguiente cuadro de diálogo.'
+          );
+        } else {
+          // User denied permanently, need to go to settings
+          Alert.alert(
+            'Permisos denegados',
+            'Los permisos de ubicación fueron denegados. Ve a Configuración de la app para habilitarlos.',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Ir a Configuración',
+                onPress: () => {
+                  // This will be handled by the OS
+                  console.log('User should go to settings manually');
+                }
+              }
+            ]
+          );
+        }
+
         setIsLoadingLocation(false);
         return;
       }
 
       // Get current location
+      console.log('📡 Getting current position...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
+      console.log('✅ Location obtained:', location.coords.latitude, location.coords.longitude);
 
       // Reverse geocode to get address details
-      const [address] = await Location.reverseGeocodeAsync({
+      console.log('🔍 Reverse geocoding...');
+      const addresses = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
+      console.log('✅ Addresses received:', addresses);
+
+      const address = addresses[0];
 
       if (address) {
+        console.log('📦 Address details:', address);
+
         // Update state and postal code
         const updates: any = {};
 
         if (address.region) {
           updates.state = address.region;
+          console.log('State found:', address.region);
         }
 
         if (address.postalCode) {
           updates.zipCode = address.postalCode;
+          console.log('Postal code found:', address.postalCode);
         }
 
         if (address.street && address.streetNumber) {
@@ -65,22 +109,26 @@ export const Step1Screen: React.FC = () => {
           updates.address1 = address.street;
         }
 
+        console.log('📝 Updating fields with:', updates);
         updateMultipleFields(updates);
 
         track('onboarding_location_used', {
           state: address.region,
           hasPostalCode: !!address.postalCode,
         });
-
-        Alert.alert('¡Listo!', 'Hemos autocompletado tu ubicación. Verifica que sea correcta.');
+      } else {
+        console.log('⚠️ No address found in geocode result');
+        Alert.alert('Error', 'No pudimos obtener los detalles de tu ubicación.');
       }
-    } catch (error) {
-      console.error('Error getting location:', error);
+    } catch (error: any) {
+      console.error('❌ Error getting location:', error);
+      console.error('Error details:', error.message, error.code);
       Alert.alert(
         'Error',
-        'No pudimos obtener tu ubicación. Por favor ingresa los datos manualmente.'
+        `No pudimos obtener tu ubicación: ${error.message || 'Error desconocido'}`
       );
     } finally {
+      console.log('🏁 Location request finished');
       setIsLoadingLocation(false);
     }
   };
