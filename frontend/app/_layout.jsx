@@ -165,6 +165,10 @@ export default function Layout() {
                     options={{ headerShown: false }}
                   />
                   <Stack.Screen
+                    name="onboarding"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
                     name="SettingsScreen"
                     options={{ title: "Ajustes" }}
                   />
