@@ -71,22 +71,36 @@ export default function AlarmScreen() {
   // No renderizar hasta tener alerta seleccionada
   if (!currentAlert) return null;
 
-  const backgroundColor = `${colorForLevel(currentAlert.category)}E6`; // E6 = 90% opacity
+  const baseColor = colorForLevel(currentAlert.category);
+  const buttonColor = `${baseColor}50`; // 50 = 31% opacity (semitransparente)
+  const categoryBadgeColor = `${baseColor}90`; // 90 = 56% opacity (más visible para el badge)
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={handleClose}>
       <View className="flex-1 justify-center items-center bg-black/70">
         <View
-          className="w-11/12 max-w-md rounded-2xl p-6 shadow-xl"
-          style={{ backgroundColor }}
+          className="w-11/12 max-w-md rounded-2xl p-6 shadow-xl bg-white"
+          style={{ borderColor: baseColor, borderWidth: 2 }}
         >
+          {/* Badge de categoría */}
+          <View className="flex-row justify-center mb-4">
+            <View
+              className="px-4 py-2 rounded-full"
+              style={{ backgroundColor: categoryBadgeColor }}
+            >
+              <Text className="text-white font-bold text-sm">
+                Categoría {currentAlert.category}
+              </Text>
+            </View>
+          </View>
+
           {/* Título */}
-          <Text className="text-2xl font-extrabold text-phase2Titles dark:text-phase2TitlesDark text-center mb-4">
+          <Text className="text-2xl font-extrabold text-center mb-4" style={{ color: '#111827' }}>
             {currentAlert.title}
           </Text>
 
           {/* Mensaje breve */}
-          <Text className="text-base text-phase2Titles dark:text-phase2TitlesDark text-center mb-6">
+          <Text className="text-base text-center mb-6" style={{ color: '#374151' }}>
             {currentAlert.message}
           </Text>
 
@@ -105,21 +119,29 @@ export default function AlarmScreen() {
           <View className="flex-row justify-between mb-6">
             <TouchableOpacity
               onPress={handleMap}
-              className="flex-1 mr-2 py-3 rounded-lg bg-phase2Buttons dark:bg-phase2ButtonsDark items-center"
-              >
-              <Text className="font-bold text-white">Ver en el mapa</Text>
-              </TouchableOpacity>
+              className="flex-1 mr-2 py-3 rounded-lg items-center"
+              style={{ backgroundColor: buttonColor }}
+            >
+              <Text className="font-bold" style={{ color: baseColor }}>Ver en el mapa</Text>
+            </TouchableOpacity>
 
             <Link href={`/AlertDetailsScreen?id=${currentAlert.id}`} asChild>
-                <TouchableOpacity className="flex-1 ml-2 py-3 rounded-lg bg-phase2Buttons dark:bg-phase2ButtonsDark items-center">
-                  <Text className="font-bold text-white">Más información</Text>
-                </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-1 ml-2 py-3 rounded-lg items-center"
+                style={{ backgroundColor: buttonColor }}
+              >
+                <Text className="font-bold" style={{ color: baseColor }}>Más información</Text>
+              </TouchableOpacity>
             </Link>
           </View>
 
           {/* Cerrar */}
-          <TouchableOpacity onPress={handleClose} className="py-2 rounded-lg bg-phase2Buttons dark:bg-phase2ButtonsDark items-center">
-            <Text className="font-bold text-white">Cerrar</Text>
+          <TouchableOpacity
+            onPress={handleClose}
+            className="py-2 rounded-lg items-center border-2"
+            style={{ borderColor: baseColor }}
+          >
+            <Text className="font-bold" style={{ color: baseColor }}>Cerrar</Text>
           </TouchableOpacity>
         </View>
       </View>

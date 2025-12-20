@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
-  Alert
+  Linking
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
