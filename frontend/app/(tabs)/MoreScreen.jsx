@@ -4,7 +4,6 @@ import { Text, Pressable, useColorScheme } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import PageTitle from "../../components/PageTitle";
 
 export default function MoreScreen() {
   const navigation = useNavigation();
@@ -24,11 +23,9 @@ export default function MoreScreen() {
 
   return (
     <SafeAreaView
-      edges={["left", "right", "bottom"]}
+      edges={["top", "left", "right", "bottom"]}
       className="flex-1 bg-white dark:bg-neutral-900"
     >
-      <PageTitle>Más</PageTitle>
-
       {items.map(({ label, icon, screen }) => (
         <Pressable
           key={screen}

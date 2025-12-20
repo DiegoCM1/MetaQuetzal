@@ -3,7 +3,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import useAlerts from "../../hooks/useAlerts";
 import AlertCard from "../../components/AlertCard";
-import PageTitle from "../../components/PageTitle";
 
 export default function AlertsHistoryScreen() {
   const router = useRouter();
@@ -36,9 +35,8 @@ export default function AlertsHistoryScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={["bottom"]}
+      edges={["top", "left", "right", "bottom"]}
     >
-      <PageTitle>Historial de alertas</PageTitle>
       <FlatList
         contentContainerStyle={{ padding: 12 }}
         data={data}

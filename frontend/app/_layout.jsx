@@ -149,17 +149,13 @@ export default function Layout() {
         <ThemeProvider>
           <SafeAreaProvider>
             <TamaguiProvider config={config} defaultTheme="light">
-              <SafeAreaView
-                style={{ flex: 1, backgroundColor: headerBg }}
-                edges={["top"]}
+              <Stack
+                screenOptions={{
+                  headerStyle: { backgroundColor: headerBg },
+                  headerTintColor: headerTint,
+                  headerTitleStyle: { fontWeight: "bold" },
+                }}
               >
-                <Stack
-                  screenOptions={{
-                    headerStyle: { backgroundColor: headerBg },
-                    headerTintColor: headerTint,
-                    headerTitleStyle: { fontWeight: "bold" },
-                  }}
-                >
                   <Stack.Screen
                     name="(tabs)"
                     options={{ headerShown: false }}
@@ -193,7 +189,6 @@ export default function Layout() {
                     options={{ title: "Detalles de Alerta" }}
                   />
                 </Stack>
-              </SafeAreaView>
               <Toast />
             </TamaguiProvider>
           </SafeAreaProvider>

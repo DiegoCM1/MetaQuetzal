@@ -3,7 +3,6 @@ import {
   View,
   Pressable,
   Text,
-  ActivityIndicator,
   StyleSheet,
   Switch,
   Modal,
@@ -14,44 +13,68 @@ import * as Location from "expo-location";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
+// Default region: Mexico
+const DEFAULT_REGION = {
+  latitude: 23.6345, // Mexico center
+  longitude: -102.5528,
+  latitudeDelta: 12,
+  longitudeDelta: 12,
+};
+
 export default function WeatherMapNativewind() {
-  const [region, setRegion] = useState(null);
+  const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
-  const [showTemp, setShowTemp] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
-  const [showSea, setShowSea] = useState(false);
   const [showClouds, setShowClouds] = useState(false);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
 
   useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        console.warn("Location permission denied");
-        setLoading(false);
-        return;
-      }
-      const { coords } = await Location.getCurrentPositionAsync({});
-      setRegion({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
-      });
-      setLoading(false);
-    })();
-  }, []);
+    let timeoutId;
 
-  if (loading || !region) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-100">
-        <ActivityIndicator size="large" color="#333" />
-        <Text className="mt-2 text-gray-600">Getting your location…</Text>
-      </View>
-    );
-  }
+    (async () => {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.warn("Location permission denied - using default region");
+          return;
+        }
+
+        // Timeout promise: reject after 15 seconds
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Location timeout')), 15000);
+        });
+
+        // Race between getting location and timeout
+        const { coords } = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          timeoutPromise,
+        ]);
+
+        clearTimeout(timeoutId);
+
+        const userRegion = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        };
+
+        setRegion(userRegion);
+
+        // Animate to user's location
+        mapRef.current?.animateToRegion(userRegion, 1000);
+
+        console.log("✅ User location obtained:", coords.latitude, coords.longitude);
+      } catch (error) {
+        console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
+      }
+    })();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
 
   return (
     <View className="flex-1">
