@@ -12,7 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import MapView, { UrlTile, PROVIDER_GOOGLE, Circle } from "react-native-maps";
+import MapView, { UrlTile, PROVIDER_GOOGLE, Circle, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
 import { loadRedZones, saveRedZone, generateZoneId } from "../services/redZonesService";
@@ -94,7 +94,9 @@ export default function WeatherMapNativewind() {
   // Load red zones on mount
   useEffect(() => {
     (async () => {
+      console.log('🗺️ [Map] Loading red zones on mount...');
       const zones = await loadRedZones();
+      console.log('🗺️ [Map] Setting', zones.length, 'zones to state');
       setRedZones(zones);
     })();
   }, []);
@@ -156,7 +158,9 @@ export default function WeatherMapNativewind() {
 
     const success = await saveRedZone(newZone);
     if (success) {
-      setRedZones([...redZones, newZone]);
+      const updatedZones = [...redZones, newZone];
+      setRedZones(updatedZones);
+      console.log('🗺️ [Map] Zone added to state. Total zones now:', updatedZones.length);
       Toast.show({
         type: 'success',
         text1: 'Zona roja reportada',
@@ -225,20 +229,38 @@ export default function WeatherMapNativewind() {
           />
         )}
 
-        {/* Red zones circles */}
+        {/* Red zones: Marker (always visible) + Circle (area) */}
         {redZones.map((zone) => (
-          <Circle
-            key={zone.id}
-            center={{
-              latitude: zone.latitude,
-              longitude: zone.longitude,
-            }}
-            radius={zone.radius}
-            fillColor="rgba(239, 68, 68, 0.3)" // red with 30% opacity
-            strokeColor="#EF4444" // solid red
-            strokeWidth={2}
-            onPress={() => handleCirclePress(zone)}
-          />
+          <React.Fragment key={zone.id}>
+            {/* Pin/Icon - Always visible, fixed size */}
+            <Marker
+              coordinate={{
+                latitude: zone.latitude,
+                longitude: zone.longitude,
+              }}
+              onPress={() => handleCirclePress(zone)}
+            >
+              <View className="items-center justify-center bg-white rounded-full p-1 shadow-lg">
+                <MaterialCommunityIcons
+                  name="alert-circle"
+                  size={28}
+                  color="#EF4444"
+                />
+              </View>
+            </Marker>
+
+            {/* Circle - Shows affected area, scales with zoom */}
+            <Circle
+              center={{
+                latitude: zone.latitude,
+                longitude: zone.longitude,
+              }}
+              radius={zone.radius}
+              fillColor="rgba(239, 68, 68, 0.2)" // red with 20% opacity
+              strokeColor="#EF4444" // solid red
+              strokeWidth={2}
+            />
+          </React.Fragment>
         ))}
       </MapView>
 
