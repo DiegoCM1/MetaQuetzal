@@ -6,13 +6,13 @@ import { Alert, Pressable, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useColorScheme } from "nativewind";
+import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
-  const { colorScheme, toggleColorScheme } = useColorScheme(); // "light" | "dark"
+  const { colorScheme, toggleColorScheme } = useTheme(); // Using ThemeContext with persistence
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
   const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑ish / gray‑800

@@ -34,9 +34,9 @@ export const validateStep1 = (data: Partial<OnboardingData>): ValidationResult =
     errors.zipCode = 'Debe ser un código postal de 5 dígitos';
   }
 
-  // City validation
-  if (!data.city || data.city.trim().length === 0) {
-    errors.city = 'La ciudad es requerida';
+  // State validation
+  if (!data.state || data.state.trim().length === 0) {
+    errors.state = 'El estado es requerido';
   }
 
   return {

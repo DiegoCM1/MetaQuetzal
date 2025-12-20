@@ -10,7 +10,7 @@ const initialData: OnboardingData = {
   address1: '',
   address2: '',
   zipCode: '',
-  city: '',
+  state: '',
   nervousnessLevel: 5,
   age: '',
   weatherInfoLevel: 5,
