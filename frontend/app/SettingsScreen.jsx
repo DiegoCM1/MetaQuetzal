@@ -62,7 +62,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={["left", "right", "bottom"]}
+      edges={["bottom"]}
     >
       {/* ───────────────────── NOTIFICACIONES ───────────────────── */}
       <View className={row}>
