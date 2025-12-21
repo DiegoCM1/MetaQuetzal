@@ -72,15 +72,28 @@ async function checkRisk() {
   );
 
   // 5) Enviar notificación
+  const isCritical = level >= 3; // Cat 3+ son críticas
   const title = level >= 4 ? '🚨 ¡Alerta roja de huracán!' : '⚠️ Alerta meteorológica';
   const body = `Nivel ${level} – vientos y lluvia intensos.`;
+
+  // URL del boletín oficial (puedes cambiar esto a la URL real de tu gobierno/NOAA)
+  const bulletinUrl = `https://www.nhc.noaa.gov/`;
+
   await sendAllNotifications({
     title,
     body,
-    data: { alertId: id, alertLevel: level },
+    data: {
+      alertId: id,
+      alertLevel: String(level), // Debe ser string
+      category: String(level),    // Categoría Saffir-Simpson
+      alertTitle: title,
+      alertMessage: body,
+      bulletinUrl,
+    },
+    fullScreen: isCritical, // Full-screen solo para cat 3+
   });
 
-  console.log('[checkRisk] Nueva alerta nivel', level, 'enviada ✔️');
+  console.log('[checkRisk] Nueva alerta nivel', level, `enviada ${isCritical ? '(CRÍTICA - full-screen)' : ''} ✔️`);
 }
 
 checkRisk()

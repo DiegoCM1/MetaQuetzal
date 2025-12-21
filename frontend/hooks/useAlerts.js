@@ -10,6 +10,7 @@ const fetcher = async () => {
     const res = await fetch(`${API_URL}/alerts?limit=50`);
     if (!res.ok) throw new Error("Error fetching alerts");
     const data = await res.json();
+
     track("alerts_fetch_success", {
       duration_ms: Date.now() - start,
       list_count: Array.isArray(data) ? data.length : 0,

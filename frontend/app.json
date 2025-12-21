@@ -15,21 +15,29 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#DCF0FF"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "mobile.blueye.app"
+      "bundleIdentifier": "mobile.blueye.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#DCF0FF"
       },
 
       "package": "mobile.blueye.app",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "USE_FULL_SCREEN_INTENT",
+        "SYSTEM_ALERT_WINDOW"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyCnJQJAIvATM2Vlcs-Atss8_tA2MYj_Hg4"
@@ -49,9 +57,7 @@
         "projectId": "ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.7.0",
     "updates": {
       "url": "https://u.expo.dev/ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
     },

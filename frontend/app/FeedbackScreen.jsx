@@ -63,7 +63,7 @@ export default function FeedbackScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={["left", "right", "bottom"]}
+      edges={["bottom"]}
     >
       <StatusBar
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
