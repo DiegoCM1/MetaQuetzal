@@ -60,7 +60,7 @@ export default function Layout() {
         });
 
         // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → AlertDetailsScreen normal
+        // Si no → Alert details
         if (data.fullScreen === 'true') {
           router.push({
             pathname: "AlarmScreen",
@@ -74,7 +74,7 @@ export default function Layout() {
           });
         } else {
           router.push({
-            pathname: "AlertDetailsScreen",
+            pathname: "/alerts/[id]",
             params: { id: data.alertId },
           });
         }
@@ -101,7 +101,7 @@ export default function Layout() {
         });
 
         // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → AlertDetailsScreen normal
+        // Si no → Alert details
         if (data?.fullScreen === 'true') {
           router.push({
             pathname: "AlarmScreen",
@@ -115,7 +115,7 @@ export default function Layout() {
           });
         } else {
           router.push({
-            pathname: "AlertDetailsScreen",
+            pathname: "/alerts/[id]",
             params: { id: alertId },
           });
         }
@@ -182,8 +182,8 @@ export default function Layout() {
                     options={{ title: "Feedback" }}
                   />
                   <Stack.Screen
-                    name="AlertDetailsScreen"
-                    options={{ title: "Detalles de Alerta" }}
+                    name="alerts"
+                    options={{ headerShown: false }}
                   />
                 </Stack>
               <Toast />

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Modal, View, Text, TouchableOpacity } from "react-native";
 import { Link, useRouter } from "expo-router";
-import { colorForLevel } from "../components/AlertCard";
+import { colorForLevel } from "./alerts/_components/AlertCard";
 
 // 5 alertas reales del backend (Huracán Otis)
 const MOCK_ALERTS = [
@@ -125,7 +125,7 @@ export default function AlarmScreen() {
               <Text className="font-bold" style={{ color: baseColor }}>Ver en el mapa</Text>
             </TouchableOpacity>
 
-            <Link href={`/AlertDetailsScreen?id=${currentAlert.id}`} asChild>
+            <Link href={`/alerts/${currentAlert.id}`} asChild>
               <TouchableOpacity
                 className="flex-1 ml-2 py-3 rounded-lg items-center"
                 style={{ backgroundColor: buttonColor }}

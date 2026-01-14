@@ -1,9 +1,20 @@
 import useSWR from "swr";
-import { track } from "../utils/analytics";
+import { track } from "../../../utils/analytics";
 
 const API_URL = "https://metaquetzal-production.up.railway.app";
 
-const fetcher = async () => {
+interface Alert {
+  id: string;
+  level: number;
+  title: string;
+  short?: string;
+  timestamp: string;
+  score?: number;
+  recommendations?: string[];
+  factors?: string[];
+}
+
+const fetcher = async (): Promise<Alert[]> => {
   const start = Date.now();
   track("alerts_fetch_start");
   try {
@@ -19,14 +30,14 @@ const fetcher = async () => {
   } catch (e) {
     track("alerts_fetch_error", {
       duration_ms: Date.now() - start,
-      error: String(e?.message || e),
+      error: String(e instanceof Error ? e.message : e),
     });
     throw e;
   }
 };
 
 export default function useAlerts() {
-  const { data, error, isLoading, mutate } = useSWR("alerts", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<Alert[]>("alerts", fetcher, {
     refreshInterval: 60000,
   });
 

@@ -99,7 +99,7 @@ export default function SettingsScreen() {
         <Text className="flex-1 text-base" style={{ color: textColor }}>
           Alarmas
         </Text>
-        <Link href="/AlertDetailsScreen" asChild>
+        <Link href="/alerts" asChild>
           <Chevron />
         </Link>
       </Pressable>

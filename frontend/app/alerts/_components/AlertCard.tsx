@@ -1,23 +1,33 @@
-import { View, Text, Pressable, TouchableOpacity } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import dayjs from "../utils/date";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { track } from "../utils/analytics";
+import dayjs from "../../../utils/date";
+import { track } from "../../../utils/analytics";
 
-export const colorForLevel = (l) =>
+export const colorForLevel = (l: number): string =>
   ({
     1: "#22C55E", // verde
     2: "#15803D", // verde oscuro
     3: "#FACC15", // amarillo
     4: "#EF4444", // rojo
     5: "#C026D3", // morado
-  })[l];
+  })[l] || "#6B7280";
 
-export default function AlertCard({ alert, onPress }) {
+interface Alert {
+  id: string | number;
+  level: number;
+  title: string;
+  short?: string;
+  timestamp: string;
+  score?: number;
+}
+
+interface AlertCardProps {
+  alert: Alert;
+  onPress?: () => void;
+}
+
+export default function AlertCard({ alert, onPress }: AlertCardProps) {
   const { id, level, title, short: description, timestamp } = alert;
-
-  const router = useRouter();
-  const { id: paramId } = useLocalSearchParams();
 
   const bannerColor = `${colorForLevel(level)}33`;
 
