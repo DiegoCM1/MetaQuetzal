@@ -8,7 +8,8 @@ import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
-import { AppState, StatusBar } from "react-native";
+import { AppState, StatusBar as RNStatusBar } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import {
   registerForPushNotificationsAsync,
@@ -30,9 +31,9 @@ export default function Layout() {
     initAnalytics().catch(console.error);
   }, []);
 
-  // Configure StatusBar to not be translucent
+  // Configure StatusBar to not be translucent (backup for native API)
   useEffect(() => {
-    StatusBar.setTranslucent(false);
+    RNStatusBar.setTranslucent(false);
   }, []);
 
   // ⚡ Solicitar token FCM al montar
@@ -60,7 +61,7 @@ export default function Layout() {
         });
 
         // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → AlertDetailsScreen normal
+        // Si no → Alert details
         if (data.fullScreen === 'true') {
           router.push({
             pathname: "AlarmScreen",
@@ -74,7 +75,7 @@ export default function Layout() {
           });
         } else {
           router.push({
-            pathname: "AlertDetailsScreen",
+            pathname: "/alerts/[id]",
             params: { id: data.alertId },
           });
         }
@@ -101,7 +102,7 @@ export default function Layout() {
         });
 
         // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → AlertDetailsScreen normal
+        // Si no → Alert details
         if (data?.fullScreen === 'true') {
           router.push({
             pathname: "AlarmScreen",
@@ -115,7 +116,7 @@ export default function Layout() {
           });
         } else {
           router.push({
-            pathname: "AlertDetailsScreen",
+            pathname: "/alerts/[id]",
             params: { id: alertId },
           });
         }
@@ -150,6 +151,7 @@ export default function Layout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
@@ -182,8 +184,8 @@ export default function Layout() {
                     options={{ title: "Feedback" }}
                   />
                   <Stack.Screen
-                    name="AlertDetailsScreen"
-                    options={{ title: "Detalles de Alerta" }}
+                    name="alerts"
+                    options={{ headerShown: false }}
                   />
                 </Stack>
               <Toast />

@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  StatusBar,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from "nativewind";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -66,7 +66,8 @@ export default function FeedbackScreen() {
       edges={["bottom"]}
     >
       <StatusBar
-        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+        style={colorScheme === "dark" ? "light" : "dark"}
+        translucent={false}
       />
       <View className="px-6 py-6">
         <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
