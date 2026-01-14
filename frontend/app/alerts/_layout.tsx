@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { useColorScheme } from "nativewind";
+import { StatusBar } from "expo-status-bar";
 
 /**
  * Alerts section layout with Stack navigator
@@ -13,13 +14,15 @@ export default function AlertsLayout() {
   const headerTint = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#fff";
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: headerBg },
-        headerTintColor: headerTint,
-        headerTitleStyle: { fontWeight: "bold" },
-      }}
-    >
+    <>
+      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: headerBg },
+          headerTintColor: headerTint,
+          headerTitleStyle: { fontWeight: "bold" },
+        }}
+      >
       <Stack.Screen
         name="index"
         options={{
@@ -39,5 +42,6 @@ export default function AlertsLayout() {
         }}
       />
     </Stack>
+    </>
   );
 }

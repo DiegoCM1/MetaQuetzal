@@ -8,7 +8,7 @@ import Main from "../../components/Main"; // Importa el componente Main
 const MapScreen = () => {
   return (
     <TamaguiProvider config={config}>
-      <StatusBar style="light" />
+      <StatusBar style="light" translucent={false} />
       <Main />
     </TamaguiProvider>
   );

@@ -9,12 +9,12 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  StatusBar,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   useColorScheme,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -165,7 +165,7 @@ export default function ChatAIScreen() {
       className="flex-1 bg-white dark:bg-neutral-900"
       edges={["top", "left", "right", "bottom"]}
     >
-      <StatusBar barStyle="light-content" />
+      <StatusBar style="light" translucent={false} />
       {/* Restart Conversation Button */}
       <TouchableOpacity
         className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2CardsDark items-center justify-center"

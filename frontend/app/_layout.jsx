@@ -8,7 +8,8 @@ import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
-import { AppState, StatusBar } from "react-native";
+import { AppState, StatusBar as RNStatusBar } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import {
   registerForPushNotificationsAsync,
@@ -30,9 +31,9 @@ export default function Layout() {
     initAnalytics().catch(console.error);
   }, []);
 
-  // Configure StatusBar to not be translucent
+  // Configure StatusBar to not be translucent (backup for native API)
   useEffect(() => {
-    StatusBar.setTranslucent(false);
+    RNStatusBar.setTranslucent(false);
   }, []);
 
   // ⚡ Solicitar token FCM al montar
@@ -150,6 +151,7 @@ export default function Layout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>

@@ -8,6 +8,11 @@
     "userInterfaceStyle": "light",
     "scheme": "blueye",
     "newArchEnabled": true,
+    "androidStatusBar": {
+      "translucent": false,
+      "barStyle": "light-content",
+      "backgroundColor": "#3CCADC"
+    },
     "notification": {
       "icon": "./assets/notification-icon.png",
       "color": "#0E7AFE"
