@@ -3,55 +3,187 @@ import {
   View,
   Pressable,
   Text,
-  ActivityIndicator,
   StyleSheet,
   Switch,
   Modal,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import MapView, { UrlTile, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { UrlTile, PROVIDER_GOOGLE, Circle, Marker } from "react-native-maps";
 import * as Location from "expo-location";
+import Toast from "react-native-toast-message";
+import { loadRedZones, saveRedZone, generateZoneId } from "../services/redZonesService";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
+// Default region: Mexico
+const DEFAULT_REGION = {
+  latitude: 23.6345, // Mexico center
+  longitude: -102.5528,
+  latitudeDelta: 12,
+  longitudeDelta: 12,
+};
+
 export default function WeatherMapNativewind() {
-  const [region, setRegion] = useState(null);
+  const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
-  const [showTemp, setShowTemp] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
-  const [showSea, setShowSea] = useState(false);
   const [showClouds, setShowClouds] = useState(false);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
 
+  // Red zones states
+  const [redZones, setRedZones] = useState([]);
+  const [isAddingMode, setIsAddingMode] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState(null);
+  const [selectedZone, setSelectedZone] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [zoneDescription, setZoneDescription] = useState("");
+
+  useEffect(() => {
+    let timeoutId;
+
+    (async () => {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.warn("Location permission denied - using default region");
+          return;
+        }
+
+        // Timeout promise: reject after 15 seconds
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Location timeout')), 15000);
+        });
+
+        // Race between getting location and timeout
+        const { coords } = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          timeoutPromise,
+        ]);
+
+        clearTimeout(timeoutId);
+
+        const userRegion = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        };
+
+        setRegion(userRegion);
+
+        // Animate to user's location
+        mapRef.current?.animateToRegion(userRegion, 1000);
+
+        console.log("✅ User location obtained:", coords.latitude, coords.longitude);
+      } catch (error) {
+        console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
+      }
+    })();
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // Load red zones on mount
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        console.warn("Location permission denied");
-        setLoading(false);
-        return;
-      }
-      const { coords } = await Location.getCurrentPositionAsync({});
-      setRegion({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
-      });
-      setLoading(false);
+      console.log('🗺️ [Map] Loading red zones on mount...');
+      const zones = await loadRedZones();
+      console.log('🗺️ [Map] Setting', zones.length, 'zones to state');
+      setRedZones(zones);
     })();
   }, []);
 
-  if (loading || !region) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-100">
-        <ActivityIndicator size="large" color="#333" />
-        <Text className="mt-2 text-gray-600">Getting your location…</Text>
-      </View>
-    );
-  }
+  // Toggle adding mode
+  const handleToggleAddingMode = () => {
+    setIsAddingMode(!isAddingMode);
+    if (!isAddingMode) {
+      Toast.show({
+        type: 'info',
+        text1: 'Modo de reporte activado',
+        text2: 'Toca el mapa donde quieres reportar la zona roja',
+        position: 'top',
+      });
+    } else {
+      Toast.show({
+        type: 'info',
+        text1: 'Modo de reporte desactivado',
+        position: 'top',
+      });
+    }
+  };
+
+  // Handle map press
+  const handleMapPress = (e) => {
+    if (isAddingMode) {
+      const { latitude, longitude } = e.nativeEvent.coordinate;
+      setPendingLocation({ latitude, longitude });
+      setShowAddModal(true);
+      setIsAddingMode(false); // Disable adding mode after selecting location
+    }
+  };
+
+  // Handle circle press (zone detail)
+  const handleCirclePress = (zone) => {
+    setSelectedZone(zone);
+    setShowDetailModal(true);
+  };
+
+  // Save new red zone
+  const handleSaveZone = async () => {
+    if (!zoneDescription.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Descripción requerida',
+        text2: 'Por favor describe qué sucede en esta zona',
+      });
+      return;
+    }
+
+    const newZone = {
+      id: generateZoneId(),
+      latitude: pendingLocation.latitude,
+      longitude: pendingLocation.longitude,
+      description: zoneDescription.trim(),
+      timestamp: new Date().toISOString(),
+      radius: 500, // 500 meters
+    };
+
+    const success = await saveRedZone(newZone);
+    if (success) {
+      const updatedZones = [...redZones, newZone];
+      setRedZones(updatedZones);
+      console.log('🗺️ [Map] Zone added to state. Total zones now:', updatedZones.length);
+      Toast.show({
+        type: 'success',
+        text1: 'Zona roja reportada',
+        text2: 'Gracias por tu reporte',
+      });
+      setShowAddModal(false);
+      setPendingLocation(null);
+      setZoneDescription('');
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Error al guardar',
+        text2: 'No se pudo guardar la zona roja',
+      });
+    }
+  };
+
+  // Cancel adding zone
+  const handleCancelAdd = () => {
+    setShowAddModal(false);
+    setPendingLocation(null);
+    setZoneDescription('');
+  };
 
   return (
     <View className="flex-1">
@@ -61,6 +193,7 @@ export default function WeatherMapNativewind() {
         style={styles.map} // <— real style prop
         showsUserLocation
         initialRegion={region}
+        onPress={handleMapPress}
         // Disable default UI components
         showsCompass={false} // Removes the compass
         showsMyLocationButton={false} // Removes default location button
@@ -95,6 +228,40 @@ export default function WeatherMapNativewind() {
             opacity={1}
           />
         )}
+
+        {/* Red zones: Marker (always visible) + Circle (area) */}
+        {redZones.map((zone) => (
+          <React.Fragment key={zone.id}>
+            {/* Pin/Icon - Always visible, fixed size */}
+            <Marker
+              coordinate={{
+                latitude: zone.latitude,
+                longitude: zone.longitude,
+              }}
+              onPress={() => handleCirclePress(zone)}
+            >
+              <View className="items-center justify-center bg-white rounded-full p-1 shadow-lg">
+                <MaterialCommunityIcons
+                  name="alert-circle"
+                  size={28}
+                  color="#EF4444"
+                />
+              </View>
+            </Marker>
+
+            {/* Circle - Shows affected area, scales with zoom */}
+            <Circle
+              center={{
+                latitude: zone.latitude,
+                longitude: zone.longitude,
+              }}
+              radius={zone.radius}
+              fillColor="rgba(239, 68, 68, 0.2)" // red with 20% opacity
+              strokeColor="#EF4444" // solid red
+              strokeWidth={2}
+            />
+          </React.Fragment>
+        ))}
       </MapView>
 
       {/* Layer selector */}
@@ -158,6 +325,21 @@ export default function WeatherMapNativewind() {
         </View>
       </Modal>
 
+      {/* FAB - Add red zone */}
+      <TouchableOpacity
+        onPress={handleToggleAddingMode}
+        className="absolute bottom-28 right-4 p-4 rounded-full shadow-lg"
+        style={{
+          backgroundColor: isAddingMode ? '#10B981' : '#EF4444',
+        }}
+      >
+        <MaterialCommunityIcons
+          name={isAddingMode ? "close-circle" : "plus"}
+          size={28}
+          color="#FFFFFF"
+        />
+      </TouchableOpacity>
+
       {/* Recenter */}
       <Pressable
         onPress={() => mapRef.current?.animateToRegion(region, 1000)}
@@ -165,6 +347,111 @@ export default function WeatherMapNativewind() {
       >
         <Text className="text-xl">📍</Text>
       </Pressable>
+
+      {/* Modal: Add Red Zone */}
+      <Modal
+        animationType="slide"
+        transparent
+        visible={showAddModal}
+        onRequestClose={handleCancelAdd}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+        >
+          <View className="flex-1 justify-end bg-black/40">
+            <View className="bg-white rounded-t-2xl p-6">
+              <Text className="text-xl font-bold mb-4 text-center">
+                Reportar Zona Roja
+              </Text>
+
+              <Text className="text-sm text-gray-600 mb-2">
+                Describe qué está sucediendo en esta zona:
+              </Text>
+
+              <TextInput
+                className="border border-gray-300 rounded-lg p-3 mb-4 min-h-[100px]"
+                placeholder="Ej: Inundación severa, árboles caídos, camino bloqueado..."
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                value={zoneDescription}
+                onChangeText={setZoneDescription}
+                style={{ color: '#000' }}
+              />
+
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={handleCancelAdd}
+                  className="flex-1 py-3 rounded-lg border-2 border-gray-300 items-center"
+                >
+                  <Text className="font-bold text-gray-700">Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleSaveZone}
+                  className="flex-1 py-3 rounded-lg items-center"
+                  style={{ backgroundColor: '#EF4444' }}
+                >
+                  <Text className="font-bold text-white">Reportar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal: View Zone Details */}
+      <Modal
+        animationType="slide"
+        transparent
+        visible={showDetailModal}
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/40">
+          <View className="bg-white rounded-t-2xl p-6">
+            <View className="flex-row items-center mb-4">
+              <MaterialCommunityIcons
+                name="alert-circle"
+                size={32}
+                color="#EF4444"
+              />
+              <Text className="text-xl font-bold ml-2">Zona Roja Reportada</Text>
+            </View>
+
+            {selectedZone && (
+              <>
+                <View className="mb-4">
+                  <Text className="text-sm text-gray-600 mb-1">Descripción:</Text>
+                  <Text className="text-base">{selectedZone.description}</Text>
+                </View>
+
+                <View className="mb-4">
+                  <Text className="text-sm text-gray-600 mb-1">Ubicación:</Text>
+                  <Text className="text-base">
+                    {selectedZone.latitude.toFixed(5)}, {selectedZone.longitude.toFixed(5)}
+                  </Text>
+                </View>
+
+                <View className="mb-6">
+                  <Text className="text-sm text-gray-600 mb-1">Reportado:</Text>
+                  <Text className="text-base">
+                    {new Date(selectedZone.timestamp).toLocaleString('es-MX')}
+                  </Text>
+                </View>
+              </>
+            )}
+
+            <TouchableOpacity
+              onPress={() => setShowDetailModal(false)}
+              className="py-3 rounded-lg items-center"
+              style={{ backgroundColor: '#EF4444' }}
+            >
+              <Text className="font-bold text-white">Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

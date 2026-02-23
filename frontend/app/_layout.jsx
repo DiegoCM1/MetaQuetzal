@@ -8,7 +8,8 @@ import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, StatusBar as RNStatusBar } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import {
   registerForPushNotificationsAsync,
@@ -30,6 +31,11 @@ export default function Layout() {
     initAnalytics().catch(console.error);
   }, []);
 
+  // Configure StatusBar to not be translucent (backup for native API)
+  useEffect(() => {
+    RNStatusBar.setTranslucent(false);
+  }, []);
+
   // ⚡ Solicitar token FCM al montar
   useEffect(() => {
     registerForPushNotificationsAsync()
@@ -43,19 +49,36 @@ export default function Layout() {
   useEffect(() => {
     setForegroundNotificationHandler();
 
-    // 👇 Cuando el usuario pulse la notificación
+    // 👇 Cuando el usuario pulse la notificación (o llegue automáticamente si es critical)
     const sub = addNotificationResponseListener(async (data) => {
       if (data?.alertId) {
         await initAnalytics();
         track("push_open", {
           alertId: String(data.alertId),
           alertLevel: data.alertLevel ? Number(data.alertLevel) : undefined,
+          fullScreen: data.fullScreen === 'true',
           origin: "listener",
         });
-        router.push({
-          pathname: "AlertDetailsScreen",
-          params: { id: data.alertId },
-        });
+
+        // Si es full-screen (crítica cat 3+) → AlarmScreen
+        // Si no → Alert details
+        if (data.fullScreen === 'true') {
+          router.push({
+            pathname: "AlarmScreen",
+            params: {
+              alertId: data.alertId,
+              category: data.category || data.alertLevel,
+              title: data.alertTitle || "Alerta de huracán",
+              message: data.alertMessage || "Diríjase a un refugio seguro",
+              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
+            },
+          });
+        } else {
+          router.push({
+            pathname: "/alerts/[id]",
+            params: { id: data.alertId },
+          });
+        }
       }
     });
 
@@ -66,20 +89,37 @@ export default function Layout() {
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
-      const alertId = initial?.notification?.request?.content?.data?.alertId;
-      const alertLevel =
-        initial?.notification?.request?.content?.data?.alertLevel;
+      const data = initial?.notification?.request?.content?.data;
+      const alertId = data?.alertId;
+
       if (alertId) {
         await initAnalytics();
         track("push_open", {
           alertId: String(alertId),
-          alertLevel: alertLevel ? Number(alertLevel) : undefined,
+          alertLevel: data?.alertLevel ? Number(data.alertLevel) : undefined,
+          fullScreen: data?.fullScreen === 'true',
           origin: "initial",
         });
-        router.push({
-          pathname: "AlertDetailsScreen",
-          params: { id: alertId },
-        });
+
+        // Si es full-screen (crítica cat 3+) → AlarmScreen
+        // Si no → Alert details
+        if (data?.fullScreen === 'true') {
+          router.push({
+            pathname: "AlarmScreen",
+            params: {
+              alertId: data.alertId,
+              category: data.category || data.alertLevel,
+              title: data.alertTitle || "Alerta de huracán",
+              message: data.alertMessage || "Diríjase a un refugio seguro",
+              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
+            },
+          });
+        } else {
+          router.push({
+            pathname: "/alerts/[id]",
+            params: { id: alertId },
+          });
+        }
       }
     })();
   }, []);
@@ -111,23 +151,24 @@ export default function Layout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
             <TamaguiProvider config={config} defaultTheme="light">
-              <SafeAreaView
-                style={{ flex: 1, backgroundColor: headerBg }}
-                edges={["top"]}
+              <Stack
+                screenOptions={{
+                  headerStyle: { backgroundColor: headerBg },
+                  headerTintColor: headerTint,
+                  headerTitleStyle: { fontWeight: "bold" },
+                }}
               >
-                <Stack
-                  screenOptions={{
-                    headerStyle: { backgroundColor: headerBg },
-                    headerTintColor: headerTint,
-                    headerTitleStyle: { fontWeight: "bold" },
-                  }}
-                >
                   <Stack.Screen
                     name="(tabs)"
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen
+                    name="onboarding"
                     options={{ headerShown: false }}
                   />
                   <Stack.Screen
@@ -143,11 +184,10 @@ export default function Layout() {
                     options={{ title: "Feedback" }}
                   />
                   <Stack.Screen
-                    name="AlertDetailsScreen"
-                    options={{ title: "Detalles de Alerta" }}
+                    name="alerts"
+                    options={{ headerShown: false }}
                   />
                 </Stack>
-              </SafeAreaView>
               <Toast />
             </TamaguiProvider>
           </SafeAreaProvider>

@@ -9,12 +9,12 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  StatusBar,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   useColorScheme,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -23,7 +23,6 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { sendMessage } from "../../api/sendMessage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import PageTitle from "../../components/PageTitle";
 import { track } from "../../utils/analytics";
 
 export default function ChatAIScreen() {
@@ -164,10 +163,9 @@ export default function ChatAIScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={["left", "right", "bottom"]}
+      edges={["top", "left", "right", "bottom"]}
     >
-      <StatusBar barStyle="light-content" />
-      <PageTitle>Chat con IA</PageTitle>
+      <StatusBar style="light" translucent={false} />
       {/* Restart Conversation Button */}
       <TouchableOpacity
         className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2CardsDark items-center justify-center"
@@ -178,8 +176,8 @@ export default function ChatAIScreen() {
       </TouchableOpacity>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={insets.bottom + tabBarHeight + 5}
+        behavior="padding"
+        keyboardVerticalOffset={tabBarHeight}
       >
         <View className="flex-1 px-2 pt-2">
           {/* Messages List */}

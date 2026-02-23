@@ -1,4 +1,3 @@
-// frontend/app/AlertDetailsScreen.jsx
 import { useEffect, useState } from "react";
 import {
   View,
@@ -6,39 +5,59 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
-  Alert
+  Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import dayjs from "../utils/date";
-import { colorForLevel } from "../components/AlertCard";
-import { track } from "../utils/analytics";
+import dayjs from "../../utils/date";
+import { colorForLevel } from "./_components/AlertCard";
+import { track } from "../../utils/analytics";
 
 const API_URL = "https://metaquetzal-production.up.railway.app";
 
+interface AlertData {
+  id: string;
+  level: number;
+  title: string;
+  short?: string;
+  timestamp: string;
+  score?: number;
+  recommendations?: string[];
+  factors?: string[];
+}
+
 export default function AlertDetailsScreen() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
-  const [alert, setAlert] = useState(null);
+  const [alert, setAlert] = useState<AlertData | null>(null);
   const [loading, setLoad] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<{ status?: number } | null>(null);
 
-    const showComingSoon = () =>
-      Alert.alert("¡Próximamente!", "Esta opción estará disponible muy pronto.");
+  const handleOpenBoletin = async () => {
+    const url = "https://preparados.gob.mx/SIAT-CT/";
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    } catch (err) {
+      console.error("Error opening URL:", err);
+    }
+  };
 
-  /* fetch */
   useEffect(() => {
     let live = true;
     (async () => {
       try {
         const res = await fetch(`${API_URL}/alerts/${id}`);
-        if (!res.ok)
+        if (!res.ok) {
           throw Object.assign(new Error("Error"), { status: res.status });
+        }
         const data = await res.json();
         if (live) setAlert(data);
       } catch (e) {
-        if (live) setError(e);
+        if (live) setError(e as { status?: number });
       } finally {
         if (live) setLoad(false);
       }
@@ -58,33 +77,33 @@ export default function AlertDetailsScreen() {
     }
   }, [alert]);
 
-  /* estados */
-  if (loading)
+  if (loading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator />
+      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+        <ActivityIndicator size="large" color="#38bdf8" />
       </View>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <Text>
+      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+        <Text className="dark:text-white">
           {error.status === 404
             ? "Alerta no encontrada"
             : "Error al cargar alerta"}
         </Text>
       </View>
     );
+  }
 
-  /* UI */
+  if (!alert) return null;
+
   const baseColor = colorForLevel(alert.level);
   const bannerColor = `${baseColor}80`;
 
   return (
-    <View
-      className="flex-1 bg-white dark:bg-neutral-900"
-    >
+    <View className="flex-1 bg-white dark:bg-neutral-900">
       {/* banner */}
       <View
         style={{ backgroundColor: bannerColor }}
@@ -128,7 +147,7 @@ export default function AlertDetailsScreen() {
         </View>
 
         {/* recomendaciones */}
-        {alert.recommendations?.length > 0 && (
+        {alert.recommendations && alert.recommendations.length > 0 && (
           <View>
             <Text className="font-bold mb-2 dark:text-phase2TitlesDark">
               Recomendaciones
@@ -145,7 +164,7 @@ export default function AlertDetailsScreen() {
         )}
 
         {/* factores */}
-        {alert.factors?.length > 0 && (
+        {alert.factors && alert.factors.length > 0 && (
           <View>
             <Text className="font-bold mb-2 mt-2 dark:text-phase2TitlesDark">
               Factores
@@ -160,25 +179,20 @@ export default function AlertDetailsScreen() {
             ))}
           </View>
         )}
-
-        {/* id */}
-        {/* <Text className="text-xs text-neutral-500 dark:text-phase2SecondaryTxtDark mt-4">
-          ID: {alert.id}
-        </Text> */}
       </ScrollView>
 
       {/* acciones */}
       <View className="px-4 pb-6 flex-row justify-between gap-3">
         <TouchableOpacity
           className="flex-1 bg-phase2Buttons dark:bg-phase2CardsDark rounded-2xl py-3 items-center"
-          android_ripple={{ color: "#ffffff33" }}
+          activeOpacity={0.7}
           onPress={() => {
             track("details_map_tap", {
               alertId: String(alert.id),
               level: Number(alert.level),
               score: Number(alert.score ?? 0),
             });
-            router.push("/MapScreen");
+            router.push("/(tabs)/MapScreen");
           }}
         >
           <Text className="text-white dark:text-phase2TitlesDark font-bold">
@@ -187,14 +201,14 @@ export default function AlertDetailsScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           className="flex-1 bg-phase2Buttons dark:bg-phase2CardsDark rounded-2xl py-3 items-center"
-          android_ripple={{ color: "#ffffff33" }}
+          activeOpacity={0.7}
           onPress={() => {
             track("details_boletin_tap", {
               alertId: String(alert.id),
               level: Number(alert.level),
               score: Number(alert.score ?? 0),
             });
-            showComingSoon();
+            handleOpenBoletin();
           }}
         >
           <Text className="text-white dark:text-phase2TitlesDark font-bold">
