@@ -4,6 +4,7 @@ from app.core.config import settings
 engine = create_async_engine(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
     echo=False,
+    connect_args={"ssl": "require"}
 )
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)

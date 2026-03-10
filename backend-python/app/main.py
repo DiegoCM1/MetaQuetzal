@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine
+from app.features.alerts.router import router as alerts_router
 
 
 @asynccontextmanager
@@ -17,3 +18,5 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(alerts_router)
