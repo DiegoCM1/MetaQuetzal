@@ -53,13 +53,9 @@
   │   │   │   ├── schemas.py
   │   │   │   └── service.py
   │   │   ├── notifications/
-  │   │   │   ├── router.py     # POST /api/notifications/send-all
+  │   │   │   ├── router.py     # POST /api/notifications/send-all & # POST /api/push-token
   │   │   │   ├── schemas.py
-  │   │   │   └── service.py    # FCM multicast logic
-  │   │   └── push_tokens/
-  │   │       ├── router.py     # POST /api/push-token
-  │   │       ├── schemas.py
-  │   │       └── service.py    # token UPSERT
+  │   │   │   └── service.py    # FCM multicast logic & token UPSERT
   │   └── middleware/
   │       └── api_key_auth.py   # x-api-key header validation
   ├── requirements.txt
