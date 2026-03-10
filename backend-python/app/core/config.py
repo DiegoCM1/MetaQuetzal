@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     #Notifications
     NOTIF_API_KEY:str
 
+    #OpenWeather
+    OPENWEATHER_API_KEY:str
+
     class Config:
         env_file = ".env"
 
