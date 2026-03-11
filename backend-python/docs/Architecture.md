@@ -1,14 +1,14 @@
   Migration Plan (excluding /risk)                                                                                                               
                                                                                                                                                  
   Phase 1 — Foundation                                                                                                                           
-  1. Create folder structure + virtual environment + requirements.txt                                                                            
-  2. config.py — typed settings from .env via pydantic-settings
-  3. database.py — async SQLAlchemy engine + session dependency
-  4. main.py — FastAPI app, lifespan, register all routers
+  1. Create folder structure + virtual environment + requirements.txt ✅                                                                            
+  2. config.py — typed settings from .env via pydantic-settings ✅  
+  3. database.py — async SQLAlchemy engine + session dependency ✅  
+  4. main.py — FastAPI app, lifespan, register all routers ✅  
 
   Phase 2 — Features (one at a time)
 
-  5. Alerts — GET /alerts + GET /alerts/:id
+  5. Alerts — GET /alerts + GET /alerts/:id ✅  
   6. Feedback — POST /feedback + GET /feedback
   7. Push Tokens — POST /api/push-token
   8. Notifications — POST /api/notifications/send-all (FCM + API key middleware)
