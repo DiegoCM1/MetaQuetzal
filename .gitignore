@@ -12,7 +12,7 @@ pnpm-debug.log*
 coverage/
 
 ###############################
-#   NODE / EXPRESS (BACKEND)  #
+#   Node.js (OLD BACKEND)     #
 ###############################
 backend/node_modules/
 backend/dist/
@@ -23,6 +23,18 @@ backend/.env
 backend/.env.*
 backend/credentials/
 backend/**/firebase-*.json
+
+###############################
+#   Python FastAPI (BACKEND)  #
+###############################
+backend-python/venv/
+backend-python/__pycache__/
+backend-python/**/__pycache__/
+backend-python/**/*.pyc
+backend-python/.env
+backend-python/.env.*
+backend-python/credentials/
+backend-python/**/firebase-*.json
 
 ###############################
 #   REACT NATIVE / EXPO (FE)  #
