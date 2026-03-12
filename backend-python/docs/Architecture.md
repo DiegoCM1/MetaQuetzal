@@ -10,17 +10,15 @@
 
   5. Alerts — GET /alerts + GET /alerts/:id ✅  
   6. Feedback — POST /feedback + GET /feedback ✅ 
-  7. Push Tokens & Notifications — POST /api/push-token, POST /api/notifications/send-all (FCM + API key middleware)
+  7. Push Tokens & Notifications — POST /api/push-token, POST /api/notifications/send-all (FCM + API key middleware) ✅ 
 
   Phase 3 — Cross-cutting
 
-  9. middleware/api_key_auth.py — API key validation (wired into notifications router)
-  10. GET /health + GET /health-db — add to main.py
-
+  9. middleware/api_key_auth.py — API key validation (wired into notifications router) ✅ 
+  10. GET /health + GET /health-db — add to main.py ✅ 
   Phase 4 — Deployment
 
-  11. Dockerfile for Cloud Run
-  12. .env.example
+  12. .env.example ✅ 
 
 
 
