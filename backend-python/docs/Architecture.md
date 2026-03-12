@@ -9,9 +9,8 @@
   Phase 2 — Features (one at a time)
 
   5. Alerts — GET /alerts + GET /alerts/:id ✅  
-  6. Feedback — POST /feedback + GET /feedback
-  7. Push Tokens — POST /api/push-token
-  8. Notifications — POST /api/notifications/send-all (FCM + API key middleware)
+  6. Feedback — POST /feedback + GET /feedback ✅ 
+  7. Push Tokens & Notifications — POST /api/push-token, POST /api/notifications/send-all (FCM + API key middleware)
 
   Phase 3 — Cross-cutting
 

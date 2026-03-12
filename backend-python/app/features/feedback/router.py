@@ -17,5 +17,3 @@ async def load_feedback(body: FeedbackCreate, db: AsyncSession = Depends(get_db)
 @router.get("/feedback", response_model=list[FeedbackResponse])
 async def show_all_feedbacks(db: AsyncSession = Depends(get_db)):
     return await get_all_feedback(db)
-
-
