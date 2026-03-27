@@ -79,7 +79,3 @@ Interface for streaming from the start, even if the online provider fakes it ini
 
 ---
 
-## Dependencies
-
-- [`llama.rn`](https://github.com/mybigday/llama.rn) — React Native wrapper for llama.cpp. Handles on-device inference from a `.gguf` model file.
-- [`@react-native-community/netinfo`](https://github.com/react-native-netinfo/react-native-netinfo) — detects connectivity state for the online/offline switch.

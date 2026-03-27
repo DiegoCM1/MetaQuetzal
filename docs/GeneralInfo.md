@@ -1,7 +1,8 @@
   Option A — Physical phone (EAS cloud build)
-  eas build --profile development --platform android
-  Builds remotely → downloads APK → install on your phone → test there.
+  1. npm install -g eas-cli                                                                                                    
+  2. eas build --profile development --platform android
+  3. Builds remotely → downloads APK → install on your phone → test there.
 
   Option B — Emulator (local build)
-  npx expo run:android
-  Requires Android Studio with an emulator set up locally.
+  1. npx expo run:android
+  2. Requires Android Studio with an emulator set up locally.
