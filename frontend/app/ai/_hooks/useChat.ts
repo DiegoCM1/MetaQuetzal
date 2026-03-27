@@ -63,6 +63,7 @@ export function useChat() {
 
         setInput("");
         setIsLoading(true);
+        console.log("ai_message_send", { length: input.length })
     
         try {
             // Call AIService with onToken callback
@@ -72,6 +73,7 @@ export function useChat() {
                     return [...prev.slice(0, -1), { ...last, text: last.text + token }]
                 })                                                                                                                    
             })       
+            console.log("ai_response_received")
 
         } catch (error) {
           console.error("Error sending message:", error);
