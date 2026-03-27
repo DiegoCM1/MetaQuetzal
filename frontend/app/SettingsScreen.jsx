@@ -1,18 +1,35 @@
 // SettingsScreen.jsx
 import "../global.css";
 import { clearOnboardingData } from './onboarding/_services/onboardingService';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Alert, Pressable, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
+import * as FileSystem from 'expo-file-system'
+import { MODEL_PATH } from './ai/_constants'
+
+
 
 export default function SettingsScreen() {
+  // DOWNLOADS
+  const MODEL_URL = 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf'
+
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { colorScheme, toggleColorScheme } = useTheme(); // Using ThemeContext with persistence
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [isModelInstalled, setIsModelInstalled] = useState(false)
+
+  useEffect(() => {
+    FileSystem.getInfoAsync(MODEL_PATH).then(info => {
+      const isComplete = info.exists && info.size && info.size > 700 * 1024 * 1024
+      console.log('Model check on mount — exists:', info.exists, 'size:', info.size, 'complete:', isComplete)
+      setIsModelInstalled(!!isComplete)
+    })
+  }, [])
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
   const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑ish / gray‑800
@@ -58,6 +75,70 @@ export default function SettingsScreen() {
       ]
     );
   };
+
+  const handleDownloadModel = async () => {
+    try {
+      const info = await FileSystem.getInfoAsync(MODEL_PATH)
+
+      // Check file size — partial downloads (< 100MB) are treated as incomplete
+      if (info.exists && info.size && info.size > 700 * 1024 * 1024) {
+        Alert.alert("No need to install again", "Already installed")
+        console.log("AI already on device, size:", info.size)
+        return
+      }
+
+      // Delete partial file if it exists
+      if (info.exists) {
+        console.log('Deleting partial file, size was:', info.size)
+        await FileSystem.deleteAsync(MODEL_PATH)
+        setIsModelInstalled(false)
+      }
+
+      Alert.alert('Wait for it to install', 'Download started')
+      console.log('Starting download to:', MODEL_PATH)
+
+      let lastPercent = -1
+      const downloadResumable = FileSystem.createDownloadResumable(
+        MODEL_URL,
+        MODEL_PATH,
+        {},
+        ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
+          const progress = totalBytesWritten / totalBytesExpectedToWrite
+          setDownloadProgress(progress)
+          const percent = Math.round(progress * 100)
+          if (percent !== lastPercent) {
+            console.log('Progress:', percent + '%')
+            lastPercent = percent
+          }
+        }
+      )
+      await downloadResumable.downloadAsync()
+
+      // Verify the downloaded file is complete
+      const finalInfo = await FileSystem.getInfoAsync(MODEL_PATH)
+      console.log('Download complete, file size:', finalInfo.size)
+
+      Alert.alert('Now you can chat offline', 'AI Installed')
+      setIsModelInstalled(true)
+
+    } catch (error) {
+      // Clean up partial file on error
+      const partial = await FileSystem.getInfoAsync(MODEL_PATH)
+      if (partial.exists) {
+        await FileSystem.deleteAsync(MODEL_PATH)
+        console.log('Cleaned up partial file')
+      }
+      Alert.alert('Please try again', 'There was an error installing the AI')
+      console.log('Download error:', error.message, error)
+    }
+  }
+
+  const handleDeleteModel = async () => {
+    await FileSystem.deleteAsync(MODEL_PATH)
+    setIsModelInstalled(false)
+    console.log('Model deleted from device')
+  }
+
 
   return (
     <SafeAreaView
@@ -221,6 +302,40 @@ export default function SettingsScreen() {
         </Text>
         <Chevron />
       </Pressable>
+
+      {isModelInstalled ? (
+        <Pressable className={row} onPress={handleDeleteModel}>
+          <Ionicons name="checkmark-circle-outline" color="green" size={22} style={{ marginRight: 16 }} />
+          <Text className="flex-1 text-base" style={{ color: textColor }}>
+            Modelo IA instalado
+          </Text>
+          <Ionicons name="trash-outline" color="#EF4444" size={22} />
+        </Pressable>
+      ) : (
+        <Pressable
+          android_ripple={{ color: "rgba(0,0,0,0.07)" }}
+          className={row}
+          onPress={handleDownloadModel}
+        >
+          <Ionicons
+            name="hardware-chip-outline"
+            size={22}
+            color={iconColor}
+            style={{ marginRight: 16 }}
+          />
+          <Text className="flex-1 text-base" style={{ color: textColor }}>
+            Descargar modelo IA
+          </Text>
+          {downloadProgress > 0 && downloadProgress < 1 && (
+            <Text style={{ color: arrowColor }}>
+              {Math.round(downloadProgress * 100)}%
+            </Text>
+          )}
+          <Chevron />
+        </Pressable>
+      )}
+
+
     </SafeAreaView>
   );
 }
