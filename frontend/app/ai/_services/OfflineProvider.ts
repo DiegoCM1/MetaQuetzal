@@ -12,7 +12,7 @@ export class OfflineProvider implements AIProvider {
 
         await this.context.completion(
             { prompt: text },
-            (token) => onToken(token)
+            (token) => onToken(token.token)
         )
     }
 }
