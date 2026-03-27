@@ -5,7 +5,7 @@
 BluEye uses two AI modes serving two distinct user contexts:
 
 - **Online (Prevention):** The user has internet. The AI assists with hurricane awareness, alerts, and preparation guidance. Powered by Together AI through the Python backend.
-- **Offline (Emergency):** The user has no internet — likely mid-disaster. The AI runs entirely on the phone and answers emergency-related questions without any network dependency. Powered by a local Llama 1B model.
+- **Offline (Emergency):** The user has no internet — likely mid-disaster. The AI runs entirely on the phone and answers emergency-related questions without any network dependency. Powered by a local Llama 1B model. Running directly on this repository (Not a separated one)
 
 The frontend never knows which model responded. It always receives the same shape of response.
 
