@@ -6,3 +6,8 @@
   Option B — Emulator (local build)
   1. npx expo run:android
   2. Requires Android Studio with an emulator set up locally.
+
+
+  Option C — Actual Phone
+  1. npx expo start (For only starting the server)
+  2. Connect scanning the qr with your phone

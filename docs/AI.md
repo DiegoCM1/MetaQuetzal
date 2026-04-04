@@ -79,3 +79,20 @@ Interface for streaming from the start, even if the online provider fakes it ini
 
 ---
 
+## Pending tasks
+
+  Primordial:
+    - "Prepare for Offline" download button — UI to download the .gguf model file to device ✅
+    - Get unquantized Llama 1B .gguf file for offline testing ✅
+    - Test offline path (waiting on EAS build + physical phone + model file)
+    - Finish dataset
+    - Train AI model
+
+
+
+  Secondary:
+    - Real streaming for online (SSE) — backend change required first
+    - Confirmation for removing AI offline file.
+    - Switch /ask endpoint from current provider to Together AI
+    - Add AI feature to backend-python (currently in separate Railway service)
+    - Later: swap for trained + quantized model
