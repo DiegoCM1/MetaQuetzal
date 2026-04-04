@@ -26,7 +26,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "mobile.blueye.app",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -35,7 +37,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#DCF0FF"
       },
-
       "package": "mobile.blueye.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -53,7 +54,11 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-router", "expo-notifications"],
+    "plugins": [
+      "expo-router",
+      "expo-notifications",
+      "expo-audio"
+    ],
     "extra": {
       "router": {
         "origin": false

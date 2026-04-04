@@ -9,13 +9,11 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
 import * as FileSystem from 'expo-file-system'
-import { MODEL_PATH } from './ai/_constants'
+import { MODEL_PATH, MODEL_URL } from './ai/_constants'
 
 
 
 export default function SettingsScreen() {
-  // DOWNLOADS
-  const MODEL_URL = 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf'
 
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -133,10 +131,23 @@ export default function SettingsScreen() {
     }
   }
 
-  const handleDeleteModel = async () => {
-    await FileSystem.deleteAsync(MODEL_PATH)
-    setIsModelInstalled(false)
-    console.log('Model deleted from device')
+  const handleDeleteModel = () => {
+    Alert.alert(
+      'Eliminar modelo IA',
+      '¿Estás seguro? Tendrás que descargarlo de nuevo para usar el modo sin conexión.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await FileSystem.deleteAsync(MODEL_PATH)
+            setIsModelInstalled(false)
+            console.log('Model deleted from device')
+          },
+        },
+      ]
+    )
   }
 
 

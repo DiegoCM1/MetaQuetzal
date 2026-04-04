@@ -15,9 +15,8 @@ export class OfflineProvider implements AIProvider {
                     console.log(`[llama.cpp ${level}]`, msg.trim())
                 })
 
-                const path = this.modelPath.replace('file://', '')
                 this.context = await initLlama(
-                    { model: path, n_ctx: 2048, use_mmap: false, chat_template: "{% for message in messages %}{{message['content']}}{% endfor %}"},
+                    { model: this.modelPath, n_ctx: 2048, n_threads: 4 },
                     (progress) => console.log('Model load progress:', progress)
                 )
                 logSub.remove()
