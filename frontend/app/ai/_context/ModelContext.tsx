@@ -32,6 +32,7 @@ interface ModelContextValue {
     modelOptedIn: boolean
     optIn: () => Promise<void>
     optOut: () => Promise<void>
+    retryDownload: () => void
     downloadProgress: number
     modelReady: boolean
     modelError: RnExecutorchError | null
@@ -99,6 +100,14 @@ export function ModelProvider({ children }: { children: ReactNode }) {
         console.log('[Model] opt_in → true')
     }
 
+    const retryDownload = () => {
+        // Toggle preventLoad off → on to re-trigger useLLM's load effect
+        // The fetcher will resume from the partial file automatically
+        setModelOptedIn(false)
+        setTimeout(() => setModelOptedIn(true), 100)
+        console.log('[Model] retrying download')
+    }
+
     const optOut = async () => {
         try {
             await ExpoResourceFetcher.deleteResources(
@@ -121,6 +130,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
             modelOptedIn,
             optIn,
             optOut,
+            retryDownload,
             downloadProgress: llm.downloadProgress,
             modelReady: llm.isReady,
             modelError: llm.error,

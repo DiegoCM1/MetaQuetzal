@@ -24,7 +24,7 @@ import { track } from "../../utils/analytics";
 
 export default function ChatAIScreen() {
   const { messages, input, setInput, isLoading, restartConversation, handleSendMessage } = useChat()
-  const { downloadProgress, modelReady, modelMode } = useModel()
+  const { modelMode } = useModel()
   const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
   const tabBarHeight = useBottomTabBarHeight();
   const colorScheme = useColorScheme();
@@ -61,15 +61,6 @@ export default function ChatAIScreen() {
       edges={["top", "left", "right", "bottom"]}
     >
       <StatusBar style="light" translucent={false} />
-
-      {/* Model Download Progress Banner */}
-      {downloadProgress > 0 && !modelReady && (
-        <View className="bg-phase2Buttons px-4 py-2 items-center">
-          <Text className="text-white text-sm">
-            Descargando modelo IA... {Math.round(downloadProgress * 100)}%
-          </Text>
-        </View>
-      )}
 
       {/* Model Mode Disclaimer */}
       {modelMode && (

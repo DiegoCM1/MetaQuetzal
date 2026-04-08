@@ -15,7 +15,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { colorScheme, toggleColorScheme } = useTheme();
-  const { modelOptedIn, optIn, optOut, downloadProgress, modelReady, modelError } = useModel()
+  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel()
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
   const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937";
@@ -264,10 +264,10 @@ export default function SettingsScreen() {
       )}
 
       {modelOptedIn && modelError && (
-        <Pressable className={row} onPress={handleDownloadModel}>
+        <Pressable className={row} onPress={retryDownload}>
           <Ionicons name="alert-circle-outline" size={22} color="#EF4444" style={{ marginRight: 16 }} />
           <Text className="flex-1 text-base" style={{ color: "#EF4444" }}>
-            Error al descargar — reintentar
+            Error al descargar IA offline — reintentar
           </Text>
         </Pressable>
       )}
