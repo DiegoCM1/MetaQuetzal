@@ -27,15 +27,18 @@ The frontend never knows which model responded. It always receives the same shap
 
 The offline model is **not bundled** in the app (too large for app stores).
 
-The user downloads it manually via a **"Prepare for Offline" button** — ideally before a storm. This is intentional: it makes offline preparedness a conscious action, matching the nature of the app.
+The user opts in via a **"Activar modo sin conexión" button** — ideally before a storm. This sets a flag in AsyncStorage. When the user opens the chat, ExecuTorch detects the flag and downloads the model automatically, showing progress in the chat screen. This is intentional: it makes offline preparedness a conscious action, matching the nature of the app.
 
-**Model format:** `.pte` (ExecuTorch) — pre-compiled for mobile hardware, enabling NPU acceleration on supported devices. Pre-converted official models are published by Meta on Hugging Face.
-
-**Model hosted on:** Cloudflare R2 — zero egress cost, global CDN, reliable for emergency use cases.
+**Model format:** `.pte` (ExecuTorch) — pre-compiled for mobile hardware, enabling NPU/CPU acceleration on supported devices.
 
 **Model progression:**
-1. **Now (development):** Official Llama 3.2 `.pte` from Meta — used to build and validate the offline flow
-2. **Later (production):** Trained + quantized Llama `.pte` — same code, different file
+1. **MVP (now):** `LLAMA3_2_1B_SPINQUANT` — built-in constant from `react-native-executorch`. Zero setup, library manages download and caching automatically. Used to validate the full offline stack works end-to-end.
+2. **Phase 2:** Official Llama 3.2 Instruct `.pte` — requires Meta HuggingFace access approval + export. Two variants needed: CPU/NNAPI (Pixel/general Android) and Qualcomm HTP (Snapdragon devices). Hosted on Cloudflare R2.
+3. **Production:** Trained + quantized BluEye Instruct model converted to `.pte`, hosted on R2. Same code, different URL.
+
+**Hardware targets:**
+- Pixel 7 / general Android → CPU + NNAPI export
+- Snapdragon devices → Qualcomm HTP backend (significant performance boost)
 
 ---
 
@@ -71,15 +74,13 @@ sendMessage(userMessage):
       _services/                                                                                               
           AIProvider.ts         # interface — defines the contract both providers must follow                                                                               
           OnlineProvider.ts     # calls Python backend → Together AI
-          OfflineProvider.ts    # loads local .pte via react-native-executorch → runs inference on device                                                                                
-          AIService.ts          # connectivity check → routes to correct provider
       _hooks/                                                                                                    
-          useChat.ts            # pulls all logic out of ChatAIScreen                                               
+          useChat.ts            # network check + routes online/offline, owns useLLM hook                                               
       _types.ts                                                                                                  
-      index.tsx                 # the screen (lean, UI only)
+      index.tsx                 # the screen (lean, UI only) — shows download progress banner
 ```
 
-The rest of the app only interacts with `AIService`. The provider swap is invisible to the UI.
+`useChat` owns all routing logic. Online → `OnlineProvider`. Offline → `useLLM` from ExecuTorch directly. The screen only renders what `useChat` exposes.
 
 ---
 
@@ -92,20 +93,31 @@ SSE later is just an internal change — the UI doesn't care.
 
 ## Pending Tasks
 
-  Primordial:
-    - "Prepare for Offline" download button — UI to download model file to device ✅
-    - Model hosted on Cloudflare R2 ✅
+  MVP (offline stack validation):
+    - Opt-in button in Settings (sets AsyncStorage flag) ✅
     - Confirmation alert before removing offline model ✅
-    - Upgrade Expo SDK 53 → 54
-    - Switch from llama.rn to react-native-executorch
-    - Get official Llama 3.2 .pte model from Meta, upload to R2
-    - Rewrite OfflineProvider.ts for ExecuTorch API
-    - Test offline path end-to-end on physical device
-    - Finish dataset
-    - Train AI model
+    - Upgrade Expo SDK 53 → 54 ✅
+    - Switch from llama.rn to react-native-executorch ✅
+    - Rewrite offline logic into useChat.ts with useLLM hook ✅
+    - Download progress banner in chat screen ✅
+    - EAS build with executorch linked — install + test on Pixel 7 ✅
+    - Validate end-to-end: opt-in → download → inference on device ✅
 
-  Secondary:
+  Phase 2 (Instruct models):
+    - Request Meta HuggingFace access for Llama 3.2 Instruct weights ✅
+    - Export Llama 3.2 1B Instruct → .pte (CPU/NNAPI, for Pixel/general Android)
+    - Export Llama 3.2 3B Instruct → .pte (CPU/NNAPI)
+    - Upload both to Cloudflare R2
+    - Export Qualcomm HTP variants for Snapdragon devices
+    - Swap LLAMA3_2_1B_SPINQUANT constant for R2 URL in useChat.ts
+
+  Production (trained model):
+    - Finish dataset
+    - Train BluEye 1B and 3B Instruct models
+    - Quantize + convert to .pte
+    - Upload to R2, swap URL
+
+  Secondary (online):
     - Real streaming for online (SSE) — backend change required first
     - Switch /ask endpoint from current provider to Together AI
     - Add AI feature to backend-python (currently in separate Railway service)
-    - Later: swap for trained + quantized model

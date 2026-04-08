@@ -8,31 +8,27 @@ import { Link, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
-import * as FileSystem from 'expo-file-system'
-import { MODEL_PATH, MODEL_URL } from './ai/_constants'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-
+const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 
 export default function SettingsScreen() {
 
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
-  const { colorScheme, toggleColorScheme } = useTheme(); // Using ThemeContext with persistence
-  const [downloadProgress, setDownloadProgress] = useState(0)
+  const { colorScheme, toggleColorScheme } = useTheme();
   const [isModelInstalled, setIsModelInstalled] = useState(false)
 
   useEffect(() => {
-    FileSystem.getInfoAsync(MODEL_PATH).then(info => {
-      const isComplete = info.exists && info.size && info.size > 700 * 1024 * 1024
-      console.log('Model check on mount — exists:', info.exists, 'size:', info.size, 'complete:', isComplete)
-      setIsModelInstalled(!!isComplete)
+    AsyncStorage.getItem(MODEL_OPT_IN_KEY).then(value => {
+      setIsModelInstalled(value === 'true')
     })
   }, [])
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
-  const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑ish / gray‑800
-  const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF"; // blue‑ish / gray‑400
-  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827"; // gray‑400 / gray‑900
+  const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937";
+  const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF";
+  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827";
 
   /* ──────────────── helpers ──────────────── */
   const showComingSoon = () =>
@@ -47,11 +43,9 @@ export default function SettingsScreen() {
     track("theme_change", { theme: newTheme });
   };
 
-  /** shared row styling */
   const row =
     "flex-row items-center px-5 py-3 border-b border-gray-200 dark:border-neutral-700";
 
-  /** chevron icon */
   const Chevron = () => (
     <MaterialCommunityIcons name="chevron-right" size={24} color={arrowColor} />
   );
@@ -75,60 +69,22 @@ export default function SettingsScreen() {
   };
 
   const handleDownloadModel = async () => {
-    try {
-      const info = await FileSystem.getInfoAsync(MODEL_PATH)
-
-      // Check file size — partial downloads (< 100MB) are treated as incomplete
-      if (info.exists && info.size && info.size > 700 * 1024 * 1024) {
-        Alert.alert("No need to install again", "Already installed")
-        console.log("AI already on device, size:", info.size)
-        return
-      }
-
-      // Delete partial file if it exists
-      if (info.exists) {
-        console.log('Deleting partial file, size was:', info.size)
-        await FileSystem.deleteAsync(MODEL_PATH)
-        setIsModelInstalled(false)
-      }
-
-      Alert.alert('Wait for it to install', 'Download started')
-      console.log('Starting download to:', MODEL_PATH)
-
-      let lastPercent = -1
-      const downloadResumable = FileSystem.createDownloadResumable(
-        MODEL_URL,
-        MODEL_PATH,
-        {},
-        ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
-          const progress = totalBytesWritten / totalBytesExpectedToWrite
-          setDownloadProgress(progress)
-          const percent = Math.round(progress * 100)
-          if (percent !== lastPercent) {
-            console.log('Progress:', percent + '%')
-            lastPercent = percent
-          }
-        }
-      )
-      await downloadResumable.downloadAsync()
-
-      // Verify the downloaded file is complete
-      const finalInfo = await FileSystem.getInfoAsync(MODEL_PATH)
-      console.log('Download complete, file size:', finalInfo.size)
-
-      Alert.alert('Now you can chat offline', 'AI Installed')
-      setIsModelInstalled(true)
-
-    } catch (error) {
-      // Clean up partial file on error
-      const partial = await FileSystem.getInfoAsync(MODEL_PATH)
-      if (partial.exists) {
-        await FileSystem.deleteAsync(MODEL_PATH)
-        console.log('Cleaned up partial file')
-      }
-      Alert.alert('Please try again', 'There was an error installing the AI')
-      console.log('Download error:', error.message, error)
-    }
+    Alert.alert(
+      'Descargar modelo IA',
+      'El modelo se descargará la próxima vez que abras el chat. ¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          onPress: async () => {
+            await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'true')
+            setIsModelInstalled(true)
+            console.log('[Settings] model_opt_in set to true')
+            Alert.alert('Listo', 'El modelo se descargará cuando abras el chat por primera vez.')
+          },
+        },
+      ]
+    )
   }
 
   const handleDeleteModel = () => {
@@ -141,15 +97,14 @@ export default function SettingsScreen() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            await FileSystem.deleteAsync(MODEL_PATH)
+            await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'false')
             setIsModelInstalled(false)
-            console.log('Model deleted from device')
+            console.log('Model opt-in removed')
           },
         },
       ]
     )
   }
-
 
   return (
     <SafeAreaView
@@ -314,11 +269,12 @@ export default function SettingsScreen() {
         <Chevron />
       </Pressable>
 
+      {/* ────────────── MODELO IA ────────────── */}
       {isModelInstalled ? (
         <Pressable className={row} onPress={handleDeleteModel}>
           <Ionicons name="checkmark-circle-outline" color="green" size={22} style={{ marginRight: 16 }} />
           <Text className="flex-1 text-base" style={{ color: textColor }}>
-            Modelo IA instalado
+            Modelo IA activado
           </Text>
           <Ionicons name="trash-outline" color="#EF4444" size={22} />
         </Pressable>
@@ -335,17 +291,11 @@ export default function SettingsScreen() {
             style={{ marginRight: 16 }}
           />
           <Text className="flex-1 text-base" style={{ color: textColor }}>
-            Descargar modelo IA
+            Activar modo sin conexión
           </Text>
-          {downloadProgress > 0 && downloadProgress < 1 && (
-            <Text style={{ color: arrowColor }}>
-              {Math.round(downloadProgress * 100)}%
-            </Text>
-          )}
           <Chevron />
         </Pressable>
       )}
-
 
     </SafeAreaView>
   );

@@ -22,7 +22,7 @@ import { track } from "../../utils/analytics";
 
 
 export default function ChatAIScreen() {
-  const { messages, input, setInput, isLoading, restartConversation, handleSendMessage } = useChat()                        
+  const { messages, input, setInput, isLoading, restartConversation, handleSendMessage, modelDownloadProgress, modelReady } = useChat()                        
   const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
   const tabBarHeight = useBottomTabBarHeight();
   const colorScheme = useColorScheme();
@@ -59,6 +59,16 @@ export default function ChatAIScreen() {
       edges={["top", "left", "right", "bottom"]}
     >
       <StatusBar style="light" translucent={false} />
+
+      {/* Model Download Progress Banner */}
+      {modelDownloadProgress > 0 && !modelReady && (
+        <View className="bg-phase2Buttons px-4 py-2 items-center">
+          <Text className="text-white text-sm">
+            Descargando modelo IA... {Math.round(modelDownloadProgress * 100)}%
+          </Text>
+        </View>
+      )}
+
       {/* Restart Conversation Button */}
       <TouchableOpacity
         className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons dark:bg-phase2CardsDark items-center justify-center"
