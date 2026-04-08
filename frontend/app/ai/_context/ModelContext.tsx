@@ -15,8 +15,7 @@ const R2 = 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev'
 export const MODEL = totalRAM >= 6 * GB
     ? {
         modelName: 'llama-3.2-3b-spinquant' as const,
-        // TODO: replace with 3B URL once uploaded to R2
-        modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
+        modelSource: `${R2}/llama32_3b_instruct_spinquant.pte`,
         tokenizerSource: `${R2}/tokenizer.json`,
         tokenizerConfigSource: `${R2}/tokenizer_config.json`,
     }
@@ -72,6 +71,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (llm.isReady) {
             console.log('[Model] ready — configuring system prompt')
+            console.log('[Model] loaded file:', MODEL.modelSource)
             llm.configure({
                 chatConfig: {
                     systemPrompt: 'You are BluEye, an offline hurricane survival assistant serving residents of Mexico. FORMAT: Maximum 80 words. Short sentences. Bullet points for steps. RULES: 1. Always respond in simple Spanish. No English. 2. Be calm and reassuring but never minimize real danger. 3. You are fully offline. Do not reference websites, phone numbers or live data. Never assume outcomes about people, locations, or safety status. If asked for real-time information, tell the user to check local radio or authorities. 4. Prioritize immediate safety first, then practical next steps.'

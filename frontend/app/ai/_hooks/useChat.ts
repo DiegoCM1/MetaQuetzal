@@ -9,11 +9,21 @@ import { Alert } from 'react-native'
 const online = new OnlineProvider()
 
 export function useChat() {
-    const { llm, setModelMode } = useModel()
+    const { llm, modelReady, setModelMode } = useModel()
 
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+
+    // SEND PENDING MESSAGE ONCE MODEL IS READY
+    useEffect(() => {
+        if (modelReady && pendingMessage) {
+            console.log('[useChat] model ready — sending pending message')
+            llm.sendMessage(pendingMessage)
+            setPendingMessage(null)
+        }
+    }, [modelReady, pendingMessage])
 
     // STREAM OFFLINE TOKENS
     useEffect(() => {
@@ -78,8 +88,13 @@ export function useChat() {
             const hasInternet = status.isConnected && status.isInternetReachable
 
             if (!hasInternet) {
-                console.log('[useChat] routing → offline')
                 setModelMode('offline')
+                if (!modelReady) {
+                    console.log('[useChat] model not ready — queuing message')
+                    setPendingMessage(input)
+                    return
+                }
+                console.log('[useChat] routing → offline')
                 llm.sendMessage(input)
                 // isLoading cleared by llm.isGenerating effect above
             } else {

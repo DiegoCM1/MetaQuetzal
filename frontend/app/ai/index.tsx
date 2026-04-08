@@ -3,13 +3,13 @@ import Markdown from "react-native-markdown-display";
 import {
   View,
   TextInput,
-  FlatList,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
   useColorScheme,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaView,
@@ -88,11 +88,11 @@ export default function ChatAIScreen() {
       >
         <View className="flex-1 px-2 pt-2">
           {/* Messages List */}
-          <FlatList
+          <FlashList
             data={messages}
             keyExtractor={(item, index) => index.toString()}
             className="flex-1 pt-4"
-            contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
+            contentContainerStyle={{ paddingBottom: 20 }}
             ListEmptyComponent={() => (
               <View className="flex-1 flex-row items-center justify-center">
                 <Text className="text-3xl font-semibold text-phase2Buttons dark:text-phase2TitlesDark text-center">
