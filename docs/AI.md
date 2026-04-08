@@ -96,8 +96,17 @@ sendMessage(userMessage):
 
 ---
 
-## Streaming
-Interface for streaming from the start, even if the online provider fakes it initially (returns full response at once). That way ChatAIScreen is built to handle a stream, and swapping the online provider to real SSE later is just an internal change — the UI doesn't care.
+  Offline (ExecuTorch):                                             
+  - Memory: managed by LLMController internally
+  - Streaming: token-by-token via llm.response/llm.token            
+  - System prompt: set via llm.configure()                          
+                                                                    
+  Online (Together AI):                                             
+  - Memory: not implemented yet — you build it yourself             
+  - Streaming: not implemented yet — currently returns full response
+   at once                                                          
+  - System prompt: sent as a message in the request body to your    
+  backend    
 
 ---
 
@@ -118,15 +127,14 @@ Interface for streaming from the start, even if the online provider fakes it ini
     - Model mode disclaimer in chat (online/offline) ✅
 
   Production (trained model):
+    - Testing offline in snapdragon.
+    - set [together.ai](http://together.ai) using the correct model and streaming
+    - Add memory to online model
+    - Offline inference test in snapdragon androids.
     - Finish dataset
-    - Train BluEye 1B and 3B Instruct models
+    - Train v2 BluEye 1B and 3B Instruct models
     - Quantize + convert to .pte
     - Upload to R2, swap URL
 
   Future hardware:
     - Export Qualcomm HTP variants for Snapdragon devices
-
-  Secondary (online):
-    - Real streaming for online (SSE) — backend change required first
-    - Switch /ask endpoint from current provider to Together AI
-    - Add AI feature to backend-python (currently in separate Railway service)
