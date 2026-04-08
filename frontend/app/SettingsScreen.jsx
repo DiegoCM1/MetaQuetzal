@@ -1,23 +1,34 @@
 // SettingsScreen.jsx
 import "../global.css";
 import { clearOnboardingData } from './onboarding/_services/onboardingService';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Alert, Pressable, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 
 export default function SettingsScreen() {
+
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
-  const { colorScheme, toggleColorScheme } = useTheme(); // Using ThemeContext with persistence
+  const { colorScheme, toggleColorScheme } = useTheme();
+  const [isModelInstalled, setIsModelInstalled] = useState(false)
+
+  useEffect(() => {
+    AsyncStorage.getItem(MODEL_OPT_IN_KEY).then(value => {
+      setIsModelInstalled(value === 'true')
+    })
+  }, [])
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
-  const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑ish / gray‑800
-  const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF"; // blue‑ish / gray‑400
-  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827"; // gray‑400 / gray‑900
+  const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937";
+  const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF";
+  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827";
 
   /* ──────────────── helpers ──────────────── */
   const showComingSoon = () =>
@@ -32,11 +43,9 @@ export default function SettingsScreen() {
     track("theme_change", { theme: newTheme });
   };
 
-  /** shared row styling */
   const row =
     "flex-row items-center px-5 py-3 border-b border-gray-200 dark:border-neutral-700";
 
-  /** chevron icon */
   const Chevron = () => (
     <MaterialCommunityIcons name="chevron-right" size={24} color={arrowColor} />
   );
@@ -58,6 +67,44 @@ export default function SettingsScreen() {
       ]
     );
   };
+
+  const handleDownloadModel = async () => {
+    Alert.alert(
+      'Descargar modelo IA',
+      'El modelo se descargará la próxima vez que abras el chat. ¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          onPress: async () => {
+            await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'true')
+            setIsModelInstalled(true)
+            console.log('[Settings] model_opt_in set to true')
+            Alert.alert('Listo', 'El modelo se descargará cuando abras el chat por primera vez.')
+          },
+        },
+      ]
+    )
+  }
+
+  const handleDeleteModel = () => {
+    Alert.alert(
+      'Eliminar modelo IA',
+      '¿Estás seguro? Tendrás que descargarlo de nuevo para usar el modo sin conexión.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'false')
+            setIsModelInstalled(false)
+            console.log('Model opt-in removed')
+          },
+        },
+      ]
+    )
+  }
 
   return (
     <SafeAreaView
@@ -221,6 +268,35 @@ export default function SettingsScreen() {
         </Text>
         <Chevron />
       </Pressable>
+
+      {/* ────────────── MODELO IA ────────────── */}
+      {isModelInstalled ? (
+        <Pressable className={row} onPress={handleDeleteModel}>
+          <Ionicons name="checkmark-circle-outline" color="green" size={22} style={{ marginRight: 16 }} />
+          <Text className="flex-1 text-base" style={{ color: textColor }}>
+            Modelo IA activado
+          </Text>
+          <Ionicons name="trash-outline" color="#EF4444" size={22} />
+        </Pressable>
+      ) : (
+        <Pressable
+          android_ripple={{ color: "rgba(0,0,0,0.07)" }}
+          className={row}
+          onPress={handleDownloadModel}
+        >
+          <Ionicons
+            name="hardware-chip-outline"
+            size={22}
+            color={iconColor}
+            style={{ marginRight: 16 }}
+          />
+          <Text className="flex-1 text-base" style={{ color: textColor }}>
+            Activar modo sin conexión
+          </Text>
+          <Chevron />
+        </Pressable>
+      )}
+
     </SafeAreaView>
   );
 }
