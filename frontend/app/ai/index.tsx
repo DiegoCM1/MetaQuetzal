@@ -18,11 +18,13 @@ import {
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useChat } from "./_hooks/useChat"
+import { useModel } from "./_context/ModelContext"
 import { track } from "../../utils/analytics";
 
 
 export default function ChatAIScreen() {
-  const { messages, input, setInput, isLoading, restartConversation, handleSendMessage, modelDownloadProgress, modelReady, modelMode } = useChat()                        
+  const { messages, input, setInput, isLoading, restartConversation, handleSendMessage } = useChat()
+  const { downloadProgress, modelReady, modelMode } = useModel()
   const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
   const tabBarHeight = useBottomTabBarHeight();
   const colorScheme = useColorScheme();
@@ -61,10 +63,10 @@ export default function ChatAIScreen() {
       <StatusBar style="light" translucent={false} />
 
       {/* Model Download Progress Banner */}
-      {modelDownloadProgress > 0 && !modelReady && (
+      {downloadProgress > 0 && !modelReady && (
         <View className="bg-phase2Buttons px-4 py-2 items-center">
           <Text className="text-white text-sm">
-            Descargando modelo IA... {Math.round(modelDownloadProgress * 100)}%
+            Descargando modelo IA... {Math.round(downloadProgress * 100)}%
           </Text>
         </View>
       )}
