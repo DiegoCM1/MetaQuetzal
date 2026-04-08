@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import * as Network from 'expo-network'
+import * as Device from 'expo-device'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Message } from '../_types'
 import { OnlineProvider } from '../_services/OnlineProvider'
@@ -9,24 +10,49 @@ import { Alert } from 'react-native'
 const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 const online = new OnlineProvider()
 
+const GB = 1024 * 1024 * 1024
+const totalRAM = Device.totalMemory ?? 0
+const useHighEnd = totalRAM >= 6 * GB
+
+const R2 = 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev'
+
+const MODEL = useHighEnd
+    ? {
+        modelName: 'llama-3.2-3b-spinquant' as const,
+        // TODO: replace with 3B URL once uploaded to R2
+        modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
+        tokenizerSource: `${R2}/tokenizer.json`,
+        tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+    }
+    : {
+        modelName: 'llama-3.2-1b-spinquant' as const,
+        modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
+        tokenizerSource: `${R2}/tokenizer.json`,
+        tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+    }
+
 export function useChat() {
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [modelOptedIn, setModelOptedIn] = useState(false)
+    const [modelMode, setModelMode] = useState<'online' | 'offline' | null>(null)
 
     const llm = useLLM({
-        model: {
-            modelName: 'llama-3.2-1b-spinquant',
-            modelSource: 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev/llama32_1b_instruct_spinquant.pte',
-            tokenizerSource: 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev/tokenizer.json',
-            tokenizerConfigSource: 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev/tokenizer_config.json',
-        },
+        model: MODEL,
         preventLoad: !modelOptedIn
     })
 
+    // CHECK NETWORK STATE ON MOUNT
+    useEffect(() => {
+        Network.getNetworkStateAsync().then(status => {
+            setModelMode(status.isConnected && status.isInternetReachable ? 'online' : 'offline')
+        })
+    }, [])
+
     // CHECK OPT-IN FLAG
     useEffect(() => {
+        console.log('[useChat] device_ram:', Math.round(totalRAM / GB * 10) / 10, 'GB → model:', MODEL.modelName)
         AsyncStorage.getItem(MODEL_OPT_IN_KEY).then(value => {
             const opted = value === 'true'
             console.log('[useChat] model_opt_in_flag:', value, '→ preventLoad:', !opted)
@@ -123,9 +149,13 @@ export function useChat() {
             const hasInternet = status.isConnected && status.isInternetReachable
 
             if (!hasInternet) {
+                console.log('[useChat] routing → offline', MODEL.modelName)
+                setModelMode('offline')
                 llm.sendMessage(input)
                 // isLoading cleared by llm.isGenerating effect above
             } else {
+                console.log('[useChat] routing → online (Together AI)')
+                setModelMode('online')
                 await online.sendMessage(input, (token) => {
                     setMessages(prev => {
                         const last = prev[prev.length - 1]
@@ -152,5 +182,5 @@ export function useChat() {
     useEffect(() => { loadMessages() }, [])
     useEffect(() => { saveMessages(messages) }, [messages])
 
-    return { messages, input, setInput, isLoading, restartConversation, handleSendMessage, modelDownloadProgress: llm.downloadProgress, modelReady: llm.isReady }
+    return { messages, input, setInput, isLoading, restartConversation, handleSendMessage, modelDownloadProgress: llm.downloadProgress, modelReady: llm.isReady, modelMode }
 }

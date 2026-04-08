@@ -32,8 +32,8 @@ The user opts in via a **"Activar modo sin conexión" button** — ideally befor
 **Model format:** `.pte` (ExecuTorch) — pre-compiled for mobile hardware, enabling NPU/CPU acceleration on supported devices.
 
 **Model progression:**
-1. **MVP (now):** `LLAMA3_2_1B_SPINQUANT` — built-in constant from `react-native-executorch`. Zero setup, library manages download and caching automatically. Used to validate the full offline stack works end-to-end.
-2. **Phase 2:** Official Llama 3.2 Instruct `.pte` — requires Meta HuggingFace access approval + export. Two variants needed: CPU/NNAPI (Pixel/general Android) and Qualcomm HTP (Snapdragon devices). Hosted on Cloudflare R2.
+1. **MVP ✅:** `LLAMA3_2_1B_SPINQUANT` — validated the full offline stack end-to-end on Pixel 7.
+2. **Phase 2 (current):** `Llama-3.2-1B-Instruct-SpinQuant_INT4_EO8` — pre-converted `.pte` from `executorch-community` on HuggingFace. Hosted on Cloudflare R2. Live in production. Meta HuggingFace access approved. Next: export 3B Instruct and Qualcomm HTP variants.
 3. **Production:** Trained + quantized BluEye Instruct model converted to `.pte`, hosted on R2. Same code, different URL.
 
 **Hardware targets:**
@@ -105,11 +105,11 @@ SSE later is just an internal change — the UI doesn't care.
 
   Phase 2 (Instruct models):
     - Request Meta HuggingFace access for Llama 3.2 Instruct weights ✅
-    - Export Llama 3.2 1B Instruct → .pte (CPU/NNAPI, for Pixel/general Android)
+    - 1B Instruct SpinQuant .pte sourced from executorch-community, hosted on R2 ✅
+    - Swap model source URL in useChat.ts ✅
     - Export Llama 3.2 3B Instruct → .pte (CPU/NNAPI)
-    - Upload both to Cloudflare R2
+    - Upload 3B to Cloudflare R2
     - Export Qualcomm HTP variants for Snapdragon devices
-    - Swap LLAMA3_2_1B_SPINQUANT constant for R2 URL in useChat.ts
 
   Production (trained model):
     - Finish dataset
