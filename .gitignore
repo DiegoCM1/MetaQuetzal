@@ -27,14 +27,14 @@ backend/**/firebase-*.json
 ###############################
 #   Python FastAPI (BACKEND)  #
 ###############################
-backend-python/venv/
-backend-python/__pycache__/
-backend-python/**/__pycache__/
-backend-python/**/*.pyc
-backend-python/.env
-backend-python/.env.*
-backend-python/credentials/
-backend-python/**/firebase-*.json
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.env
+backend/.env.*
+backend/credentials/
+backend/**/firebase-*.json
 
 ###############################
 #   REACT NATIVE / EXPO (FE)  #
