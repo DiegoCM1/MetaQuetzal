@@ -22,11 +22,46 @@ SYSTEM_PROMPT = """You are BluEye, an AI assistant specialized in hurricane prep
   7. Never provide real-time weather data — tell users to check CONAGUA or local
   authorities."""
 
-async def chat(messages: list[dict], location: str | None = None) -> str:
+
+async def fetch_weather(latitude: float, longitude: float) -> str:                                 
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            url="https://api.openweathermap.org/data/3.0/onecall",
+            params={                                                                               
+                "lat": latitude,
+                "lon": longitude,                                                                  
+                "exclude": "minutely,hourly,daily",
+                "appid": settings.OPENWEATHER_API_KEY,                                             
+                "units": "metric",
+                "lang": "es",                                                                      
+            }   
+        )                                                                                          
+        data = response.json()
+        current = data["current"]                                                                  
+        desc = current["weather"][0]["description"]
+        temp = current["temp"]
+        wind = current["wind_speed"]
+        weather_str = f"Clima: {temp}°C, {desc}, viento {wind} m/s."                               
+        if "alerts" in data:                                                                       
+            for alert in data["alerts"]:                                                           
+                weather_str += f" ⚠️  Alerta: {alert['event']} — {alert['description'][:100]}"      
+        return weather_str  
+
+
+async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None) -> str:
     system_content = SYSTEM_PROMPT
     if location:
         system_content += f"\n\nUbicación actual del usuario: {location}."
     print(f"[chat] location received: {location}")
+
+    if latitude and longitude:
+        weather = await fetch_weather(latitude, longitude)
+        system_content += f"\n\n{weather}"
+        print(f"[chat] weather: {weather}")
+
+
+
+
     print(f"[chat] system prompt tail: ...{system_content[-100:]}")
     print(f"[chat] messages count: {len(messages)}")
     full_messages = [{"role": "system", "content": system_content}] + [m.model_dump() for m in messages]

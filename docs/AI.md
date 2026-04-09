@@ -139,7 +139,7 @@ sendMessage(userMessage):
 
   Phase 4 (AI enrichment):
     - Inject user location into system prompt ✅
-    - Inject live weather + alerts from OpenWeather One Call 3.0 into system prompt (fetched once per session on frontend) — IN PROGRESS
+    - Inject live weather + alerts from OpenWeather One Call 3.0 into system prompt (Frontend sends lat/lng → backend fetches weather → injects into system prompt → calls LLM)
     - Maps tool calling (agentic backend — LLM decides when to fetch map data)
     - RAG with CONAGUA/Protección Civil docs (requires vector DB — post-training)
 

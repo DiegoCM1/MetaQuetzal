@@ -16,8 +16,8 @@ export function useChat() {
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [pendingMessage, setPendingMessage] = useState<string | null>(null)
-    const locationRef = useRef<string | null>(null)                                                    
-
+    const locationRef = useRef<string | null>(null)
+    const coordsRef = useRef<{ latitude: number, longitude: number } | null>(null)
 
     // SEND PENDING MESSAGE ONCE MODEL IS READY
     useEffect(() => {
@@ -77,13 +77,14 @@ export function useChat() {
         saveMessages([])
     }
 
-    // Handle resolve location                                                                                                     
+    // Handle resolve location and weather                                                                                                 
     useEffect(() => {                                                                                  
         (async () => {
             const { status } = await Location.requestForegroundPermissionsAsync()                      
             if (status !== 'granted') return
             const { coords } = await Location.getCurrentPositionAsync({})                              
-            const [place] = await Location.reverseGeocodeAsync(coords)                                 
+            const [place] = await Location.reverseGeocodeAsync(coords)
+            coordsRef.current = { latitude: coords.latitude, longitude: coords.longitude }                
             if (place) locationRef.current = `${place.city}, ${place.region}, ${place.country}`
         })()                                                                                           
     }, [])        
@@ -122,7 +123,7 @@ export function useChat() {
                 console.log('[useChat] routing → online (Together AI)')
                 setModelMode('online')
                 const historyForAPI = [...messages, userMessage]
-                await online.sendMessage(historyForAPI, locationRef.current, (token) => {
+                await online.sendMessage(historyForAPI, locationRef.current, coordsRef.current?.latitude ?? null, coordsRef.current?.longitude ?? null, (token) => {
                     setMessages(prev => {
                         const last = prev[prev.length - 1]
                         return [...prev.slice(0, -1), { ...last, text: last.text + token }]
