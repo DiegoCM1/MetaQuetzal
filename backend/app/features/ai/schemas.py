@@ -5,7 +5,8 @@ class Message(BaseModel):
     content: str                                                  
                                                                 
 class ChatRequest(BaseModel):                                     
-    messages: list[Message]                                                 
+    messages: list[Message]
+    location: str | None = None                                                 
                                                                 
 class ChatResponse(BaseModel):
     reply: str

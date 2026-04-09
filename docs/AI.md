@@ -105,6 +105,8 @@ sendMessage(userMessage):
   - Memory: frontend sends full messages[] with every request
   - Streaming: not implemented — returns full response at once
   - System prompt: injected server-side in service.py, never sent by client
+  - Location: reverse geocoded once on mount (expo-location), stored in ref, sent with every request
+  - Weather: OpenWeather One Call 3.0 fetched once on mount, stored in ref, injected into system prompt every request — no per-message API calls
 
 ---
 
@@ -135,10 +137,16 @@ sendMessage(userMessage):
     - Restart conversation works for both online and offline ✅
     - set streaming for online model (deferred — 80 word responses make this low priority)
 
+  Phase 4 (AI enrichment):
+    - Inject user location into system prompt ✅
+    - Inject live weather + alerts from OpenWeather One Call 3.0 into system prompt (fetched once per session on frontend) — IN PROGRESS
+    - Maps tool calling (agentic backend — LLM decides when to fetch map data)
+    - RAG with CONAGUA/Protección Civil docs (requires vector DB — post-training)
+
   Production (trained model):
     - Offline inference test in snapdragon androids.
     - Finish dataset
-    - Train v2 BluEye 1B and 3B Instruct models
+    - Train v2 BluEye 1B and 3B Instruct models (Behaviour and how the AI responds)
     - Quantize + convert to .pte
     - Upload to R2, swap URL
 
