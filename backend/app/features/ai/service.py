@@ -55,9 +55,12 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
     print(f"[chat] location received: {location}")
 
     if latitude and longitude:
-        weather = await fetch_weather(latitude, longitude)
-        system_content += f"\n\n{weather}"
-        print(f"[chat] weather: {weather}")
+        try:
+            weather = await fetch_weather(latitude, longitude)
+            system_content += f"\n\n{weather}"
+            print(f"[chat] weather: {weather}")
+        except Exception as e:
+            print(f"[chat] weather fetch failed: {e}")
 
 
 
