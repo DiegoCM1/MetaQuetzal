@@ -7,6 +7,7 @@ from sqlalchemy import text
 from app.features.alerts.router import router as alerts_router
 from app.features.feedback.router import router as feedback_router
 from app.features.notifications.router import router as notifications_router
+from app.features.ai.router import router as ai_router
 import app.core.firebase  
 from datetime import datetime
 
@@ -50,3 +51,4 @@ async def get_db_health(db: AsyncSession = Depends(get_db)):
 app.include_router(alerts_router)
 app.include_router(feedback_router)
 app.include_router(notifications_router)
+app.include_router(ai_router)

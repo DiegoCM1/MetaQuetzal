@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { initExecutorch } from 'react-native-executorch';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
+import { ModelProvider } from './ai/_context/ModelContext';
 
 initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 // import { Drawer } from "expo-router/drawer";
@@ -160,6 +161,7 @@ export default function Layout() {
         <ThemeProvider>
           <SafeAreaProvider>
             <TamaguiProvider config={config} defaultTheme="light">
+              <ModelProvider>
               <Stack
                 screenOptions={{
                   headerStyle: { backgroundColor: headerBg },
@@ -193,6 +195,7 @@ export default function Layout() {
                   />
                 </Stack>
               <Toast />
+              </ModelProvider>
             </TamaguiProvider>
           </SafeAreaProvider>
         </ThemeProvider>

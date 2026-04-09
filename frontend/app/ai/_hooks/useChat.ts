@@ -3,36 +3,27 @@ import * as Network from 'expo-network'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Message } from '../_types'
 import { OnlineProvider } from '../_services/OnlineProvider'
-import { useLLM } from 'react-native-executorch'
+import { useModel } from '../_context/ModelContext'
 import { Alert } from 'react-native'
 
-const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 const online = new OnlineProvider()
 
 export function useChat() {
+    const { llm, modelReady, setModelMode } = useModel()
+
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [modelOptedIn, setModelOptedIn] = useState(false)
+    const [pendingMessage, setPendingMessage] = useState<string | null>(null)
 
-    const llm = useLLM({
-        model: {
-            modelName: 'llama-3.2-1b-spinquant',
-            modelSource: 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev/llama32_1b_instruct_spinquant.pte',
-            tokenizerSource: 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev/tokenizer.json',
-            tokenizerConfigSource: 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev/tokenizer_config.json',
-        },
-        preventLoad: !modelOptedIn
-    })
-
-    // CHECK OPT-IN FLAG
+    // SEND PENDING MESSAGE ONCE MODEL IS READY
     useEffect(() => {
-        AsyncStorage.getItem(MODEL_OPT_IN_KEY).then(value => {
-            const opted = value === 'true'
-            console.log('[useChat] model_opt_in_flag:', value, '→ preventLoad:', !opted)
-            setModelOptedIn(opted)
-        })
-    }, [])
+        if (modelReady && pendingMessage) {
+            console.log('[useChat] model ready — sending pending message')
+            llm.sendMessage(pendingMessage)
+            setPendingMessage(null)
+        }
+    }, [modelReady, pendingMessage])
 
     // STREAM OFFLINE TOKENS
     useEffect(() => {
@@ -43,32 +34,6 @@ export function useChat() {
             })
         }
     }, [llm.response])
-
-    // LOG DOWNLOAD PROGRESS
-    useEffect(() => {
-        if (llm.downloadProgress > 0) {
-            console.log('[useChat] model_download_progress:', Math.round(llm.downloadProgress * 100) + '%')
-        }
-    }, [llm.downloadProgress])
-
-    // LOG MODEL ERRORS
-    useEffect(() => {
-        if (llm.error) {
-            console.error('[useChat] model_error:', llm.error)
-        }
-    }, [llm.error])
-
-    // SET SYSTEM PROMPT WHEN MODEL IS READY
-    useEffect(() => {
-        if (llm.isReady) {
-            console.log('[useChat] model_ready — configuring system prompt')
-            llm.configure({
-                chatConfig: {
-                    systemPrompt: 'You are BluEye, an offline hurricane survival assistant serving residents of Mexico. FORMAT: Maximum 80 words. Short sentences. Bullet points for steps. RULES: 1. Always respond in simple Spanish. No English. 2. Be calm and reassuring but never minimize real danger. 3. You are fully offline. Do not reference websites, phone numbers or live data. Never assume outcomes about people, locations, or safety status. If asked for real-time information, tell the user to check local radio or authorities. 4. Prioritize immediate safety first, then practical next steps.'
-                }
-            })
-        }
-    }, [llm.isReady])
 
     // STOP LOADING WHEN OFFLINE INFERENCE FINISHES
     useEffect(() => {
@@ -98,6 +63,13 @@ export function useChat() {
 
     // RESTART CONVERSATION
     const restartConversation = async () => {
+        if (modelReady) {
+            llm.configure({
+                chatConfig: {
+                    systemPrompt: 'You are BluEye, an offline hurricane survival assistant serving residents of Mexico. FORMAT: Maximum 80 words. Short sentences. Bullet points for steps. RULES: 1. Always respond in simple Spanish. No English. 2. Be calm and reassuring but never minimize real danger. 3. You are fully offline. Do not reference websites, phone numbers or live data. Never assume outcomes about people, locations, or safety status. If asked for real-time information, tell the user to check local radio or authorities. 4. Prioritize immediate safety first, then practical next steps.'
+                }
+            })
+        }
         setMessages([])
         saveMessages([])
     }
@@ -123,10 +95,20 @@ export function useChat() {
             const hasInternet = status.isConnected && status.isInternetReachable
 
             if (!hasInternet) {
+                setModelMode('offline')
+                if (!modelReady) {
+                    console.log('[useChat] model not ready — queuing message')
+                    setPendingMessage(input)
+                    return
+                }
+                console.log('[useChat] routing → offline')
                 llm.sendMessage(input)
                 // isLoading cleared by llm.isGenerating effect above
             } else {
-                await online.sendMessage(input, (token) => {
+                console.log('[useChat] routing → online (Together AI)')
+                setModelMode('online')
+                const historyForAPI = [...messages, userMessage]
+                await online.sendMessage(historyForAPI, (token) => {
                     setMessages(prev => {
                         const last = prev[prev.length - 1]
                         return [...prev.slice(0, -1), { ...last, text: last.text + token }]
@@ -152,5 +134,5 @@ export function useChat() {
     useEffect(() => { loadMessages() }, [])
     useEffect(() => { saveMessages(messages) }, [messages])
 
-    return { messages, input, setInput, isLoading, restartConversation, handleSendMessage, modelDownloadProgress: llm.downloadProgress, modelReady: llm.isReady }
+    return { messages, input, setInput, isLoading, restartConversation, handleSendMessage }
 }

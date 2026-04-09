@@ -3,13 +3,14 @@ import Markdown from "react-native-markdown-display";
 import {
   View,
   TextInput,
-  FlatList,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
   useColorScheme,
+  Platform,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaView,
@@ -18,13 +19,16 @@ import {
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useChat } from "./_hooks/useChat"
+import { useModel } from "./_context/ModelContext"
 import { track } from "../../utils/analytics";
 
 
 export default function ChatAIScreen() {
-  const { messages, input, setInput, isLoading, restartConversation, handleSendMessage, modelDownloadProgress, modelReady } = useChat()                        
+  const { messages, input, setInput, isLoading, restartConversation, handleSendMessage } = useChat()
+  const { modelMode } = useModel()
   const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
   const tabBarHeight = useBottomTabBarHeight();
+  const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
   const colorScheme = useColorScheme();
   const markdownStyles = {
     body: {
@@ -60,11 +64,13 @@ export default function ChatAIScreen() {
     >
       <StatusBar style="light" translucent={false} />
 
-      {/* Model Download Progress Banner */}
-      {modelDownloadProgress > 0 && !modelReady && (
-        <View className="bg-phase2Buttons px-4 py-2 items-center">
-          <Text className="text-white text-sm">
-            Descargando modelo IA... {Math.round(modelDownloadProgress * 100)}%
+      {/* Model Mode Disclaimer */}
+      {modelMode && (
+        <View className="items-center py-1">
+          <Text className="text-xs text-gray-400 dark:text-gray-500">
+            {modelMode === 'offline'
+              ? 'Modo sin conexión — IA local activa'
+              : 'Modo en línea — IA en la nube activa'}
           </Text>
         </View>
       )}
@@ -79,16 +85,16 @@ export default function ChatAIScreen() {
       </TouchableOpacity>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={tabBarHeight}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardOffset}
       >
         <View className="flex-1 px-2 pt-2">
           {/* Messages List */}
-          <FlatList
+          <FlashList
             data={messages}
             keyExtractor={(item, index) => index.toString()}
             className="flex-1 pt-4"
-            contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
+            contentContainerStyle={{ paddingBottom: 20 }}
             ListEmptyComponent={() => (
               <View className="flex-1 flex-row items-center justify-center">
                 <Text className="text-3xl font-semibold text-phase2Buttons dark:text-phase2TitlesDark text-center">
@@ -113,7 +119,7 @@ export default function ChatAIScreen() {
                   className={`rounded-2xl ${
                     item.role === "user"
                       ? "max-w-[80%] bg-phase2Buttons rounded-tr-none py-3 px-4"
-                      : "dark:text-phase2Cards rounded-tl-none py-1 px-2"
+                      : "max-w-[80%] dark:text-phase2Cards rounded-tl-none py-1 px-2"
                   }`}
                 >
                   {item.role === "user" ? (

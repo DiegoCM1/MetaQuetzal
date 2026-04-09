@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     #OpenWeather
     OPENWEATHER_API_KEY:str
 
+    # AI 
+    LLM_API_KEY: str                                                  
+    LLM_BASE_URL: str                                                 
+    LLM_MODEL: str      
+
     class Config:
         env_file = ".env"
 

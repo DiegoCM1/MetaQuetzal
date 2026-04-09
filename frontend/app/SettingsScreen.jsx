@@ -1,29 +1,21 @@
 // SettingsScreen.jsx
 import "../global.css";
 import { clearOnboardingData } from './onboarding/_services/onboardingService';
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Alert, Pressable, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
-import AsyncStorage from '@react-native-async-storage/async-storage'
-
-const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
+import { useModel } from "./ai/_context/ModelContext";
 
 export default function SettingsScreen() {
 
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { colorScheme, toggleColorScheme } = useTheme();
-  const [isModelInstalled, setIsModelInstalled] = useState(false)
-
-  useEffect(() => {
-    AsyncStorage.getItem(MODEL_OPT_IN_KEY).then(value => {
-      setIsModelInstalled(value === 'true')
-    })
-  }, [])
+  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel()
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
   const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937";
@@ -68,21 +60,13 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleDownloadModel = async () => {
+  const handleDownloadModel = () => {
     Alert.alert(
       'Descargar modelo IA',
-      'El modelo se descargará la próxima vez que abras el chat. ¿Continuar?',
+      'El modelo se descargará en segundo plano. Puedes seguir usando la app mientras tanto.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Continuar',
-          onPress: async () => {
-            await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'true')
-            setIsModelInstalled(true)
-            console.log('[Settings] model_opt_in set to true')
-            Alert.alert('Listo', 'El modelo se descargará cuando abras el chat por primera vez.')
-          },
-        },
+        { text: 'Descargar', onPress: optIn },
       ]
     )
   }
@@ -93,15 +77,7 @@ export default function SettingsScreen() {
       '¿Estás seguro? Tendrás que descargarlo de nuevo para usar el modo sin conexión.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'false')
-            setIsModelInstalled(false)
-            console.log('Model opt-in removed')
-          },
-        },
+        { text: 'Eliminar', style: 'destructive', onPress: optOut },
       ]
     )
   }
@@ -270,26 +246,49 @@ export default function SettingsScreen() {
       </Pressable>
 
       {/* ────────────── MODELO IA ────────────── */}
-      {isModelInstalled ? (
+      {modelOptedIn && !modelReady && !modelError && (
+        <View className={`${row} flex-col items-start gap-2`}>
+          <View className="flex-row items-center w-full">
+            <Ionicons name="cloud-download-outline" size={22} color={iconColor} style={{ marginRight: 16 }} />
+            <Text className="flex-1 text-base" style={{ color: textColor }}>
+              Descargando modelo IA... {Math.round(downloadProgress * 100)}%
+            </Text>
+          </View>
+          <View className="w-full h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden ml-10">
+            <View
+              className="h-full bg-phase2Buttons rounded-full"
+              style={{ width: `${Math.round(downloadProgress * 100)}%` }}
+            />
+          </View>
+        </View>
+      )}
+
+      {modelOptedIn && modelError && (
+        <Pressable className={row} onPress={retryDownload}>
+          <Ionicons name="alert-circle-outline" size={22} color="#EF4444" style={{ marginRight: 16 }} />
+          <Text className="flex-1 text-base" style={{ color: "#EF4444" }}>
+            Error al descargar IA offline — reintentar
+          </Text>
+        </Pressable>
+      )}
+
+      {modelOptedIn && modelReady && (
         <Pressable className={row} onPress={handleDeleteModel}>
           <Ionicons name="checkmark-circle-outline" color="green" size={22} style={{ marginRight: 16 }} />
           <Text className="flex-1 text-base" style={{ color: textColor }}>
-            Modelo IA activado
+            Modelo IA listo
           </Text>
           <Ionicons name="trash-outline" color="#EF4444" size={22} />
         </Pressable>
-      ) : (
+      )}
+
+      {!modelOptedIn && (
         <Pressable
           android_ripple={{ color: "rgba(0,0,0,0.07)" }}
           className={row}
           onPress={handleDownloadModel}
         >
-          <Ionicons
-            name="hardware-chip-outline"
-            size={22}
-            color={iconColor}
-            style={{ marginRight: 16 }}
-          />
+          <Ionicons name="hardware-chip-outline" size={22} color={iconColor} style={{ marginRight: 16 }} />
           <Text className="flex-1 text-base" style={{ color: textColor }}>
             Activar modo sin conexión
           </Text>
