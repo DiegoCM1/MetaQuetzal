@@ -107,7 +107,8 @@ export function useChat() {
             } else {
                 console.log('[useChat] routing → online (Together AI)')
                 setModelMode('online')
-                await online.sendMessage(input, (token) => {
+                const historyForAPI = [...messages, userMessage]
+                await online.sendMessage(historyForAPI, (token) => {
                     setMessages(prev => {
                         const last = prev[prev.length - 1]
                         return [...prev.slice(0, -1), { ...last, text: last.text + token }]
