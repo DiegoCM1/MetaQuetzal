@@ -20,7 +20,7 @@ export default function AlertsListScreen() {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
-        <Text className="text-red-500">Error al cargar alertas</Text>
+        <Text className="text-red-500">Error al cargar alertas, verifica tu conexión a internet</Text>
       </View>
     );
   }

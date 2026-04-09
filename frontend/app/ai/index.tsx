@@ -96,7 +96,7 @@ export default function ChatAIScreen() {
             className="flex-1 pt-4"
             contentContainerStyle={{ paddingBottom: 20 }}
             ListEmptyComponent={() => (
-              <View className="flex-1 flex-row items-center justify-center">
+              <View style={{ height: 600 }} className="flex-row items-center justify-center">
                 <Text className="text-3xl font-semibold text-phase2Buttons dark:text-phase2TitlesDark text-center">
                   ¿
                 </Text>
