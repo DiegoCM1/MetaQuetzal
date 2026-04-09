@@ -101,12 +101,10 @@ sendMessage(userMessage):
   - Streaming: token-by-token via llm.response/llm.token            
   - System prompt: set via llm.configure()                          
                                                                     
-  Online (Together AI):                                             
-  - Memory: not implemented yet — you build it yourself             
-  - Streaming: not implemented yet — currently returns full response
-   at once                                                          
-  - System prompt: sent as a message in the request body to your    
-  backend    
+  Online (OpenRouter):
+  - Memory: frontend sends full messages[] with every request
+  - Streaming: not implemented — returns full response at once
+  - System prompt: injected server-side in service.py, never sent by client
 
 ---
 
@@ -127,11 +125,15 @@ sendMessage(userMessage):
     - Model mode disclaimer in chat (online/offline) ✅
 
   
-  Phase 3:
-    - set [together.ai](http://together.ai) using llama 3.3 70b since maverick 4 is not available right now as serverless.
-    - set streaming for online model
-    - Add memory to online model
-    - Functional reset button for online
+  Phase 3 ✅:
+    - OpenRouter as LLM provider (OpenAI-compatible, swappable via .env) ✅
+    - POST /ai/chat endpoint on FastAPI backend ✅
+    - Llama 3.3 70B Instruct via OpenRouter ✅
+    - Conversation history — frontend sends full messages[] with every request ✅
+    - System prompt injected server-side (never exposed to client) ✅
+    - Backend deployed on Railway ✅
+    - Restart conversation works for both online and offline ✅
+    - set streaming for online model (deferred — 80 word responses make this low priority)
 
   Production (trained model):
     - Offline inference test in snapdragon androids.

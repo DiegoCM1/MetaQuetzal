@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   useColorScheme,
+  Platform,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { StatusBar } from "expo-status-bar";
@@ -27,6 +28,7 @@ export default function ChatAIScreen() {
   const { modelMode } = useModel()
   const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
   const tabBarHeight = useBottomTabBarHeight();
+  const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
   const colorScheme = useColorScheme();
   const markdownStyles = {
     body: {
@@ -83,8 +85,8 @@ export default function ChatAIScreen() {
       </TouchableOpacity>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior="padding"
-        keyboardVerticalOffset={tabBarHeight}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardOffset}
       >
         <View className="flex-1 px-2 pt-2">
           {/* Messages List */}
@@ -117,7 +119,7 @@ export default function ChatAIScreen() {
                   className={`rounded-2xl ${
                     item.role === "user"
                       ? "max-w-[80%] bg-phase2Buttons rounded-tr-none py-3 px-4"
-                      : "dark:text-phase2Cards rounded-tl-none py-1 px-2"
+                      : "max-w-[80%] dark:text-phase2Cards rounded-tl-none py-1 px-2"
                   }`}
                 >
                   {item.role === "user" ? (
