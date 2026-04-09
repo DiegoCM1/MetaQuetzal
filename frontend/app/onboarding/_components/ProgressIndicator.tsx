@@ -24,11 +24,11 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         return (
           <View
             key={stepNumber}
-            className={`h-3 rounded-full transition-all ${
+            className={`h-3 rounded-full ${
               isCompleted || isActive
-                ? 'w-3 bg-phase2Buttons'
+                ? 'w-4 bg-phase2Buttons'
                 : 'w-3 bg-gray-300 dark:bg-gray-600'
-            } ${isActive ? 'scale-125' : ''}`}
+            }`}
             accessibilityLabel={`Paso ${stepNumber} de ${totalSteps}`}
             accessibilityRole="progressbar"
           />

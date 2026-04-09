@@ -28,9 +28,8 @@ backend/**/firebase-*.json
 #   Python FastAPI (BACKEND)  #
 ###############################
 backend/venv/
-backend/__pycache__/
-backend/**/__pycache__/
-backend/**/*.pyc
+**/__pycache__/
+**/*.pyc
 backend/.env
 backend/.env.*
 backend/credentials/
