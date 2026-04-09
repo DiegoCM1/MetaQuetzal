@@ -126,10 +126,14 @@ sendMessage(userMessage):
     - System prompt configured on model ready ✅
     - Model mode disclaimer in chat (online/offline) ✅
 
-  Production (trained model):
-    - Testing offline in snapdragon.
-    - set [together.ai](http://together.ai) using the correct model and streaming
+  
+  Phase 3:
+    - set [together.ai](http://together.ai) using llama 3.3 70b since maverick 4 is not available right now as serverless.
+    - set streaming for online model
     - Add memory to online model
+    - Functional reset button for online
+
+  Production (trained model):
     - Offline inference test in snapdragon androids.
     - Finish dataset
     - Train v2 BluEye 1B and 3B Instruct models
