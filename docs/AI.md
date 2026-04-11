@@ -110,6 +110,24 @@ sendMessage(userMessage):
 
 ---
 
+RAG
+  1. RAG approach — inject retrieved chunks into system prompt, LLM never touches the vector DB directly
+  2. Why RAG — fixes hallucinations on factual data, training handles behavior
+  3. Online vector DB — pgvector (existing Postgres on Railway, free, persistent)
+  4. Offline vector DB — FAISS (only option that runs on Android)
+  5. Embedding model — paraphrase-multilingual-MiniLM-L12-v2 over e5-small for both online and offline (same model, same vector space, consistent, simple and widely used)
+  6. Offline embedding strategy — chunks pre-embedded server-side, FAISS index shipped to R2, downloaded with the model. paraphrase-multilingual-MiniLM-L12-v2 runs on
+  device only for query-time embedding
+  7. One-time embedding script — runs paraphrase-multilingual-MiniLM-L12-v2 once against all chunks, loads into pgvector + exports FAISS index
+  8. Switching models later — one script re-run, 30 minutes, no other code changes
+  9. Chunk format: JSON
+
+
+  Not decided yet:
+  - How to handle offline query embedding on Android (paraphrase-multilingual-MiniLM-L12-v2 CONVERSION)
+
+---
+
 ## Pending Tasks
 
   Phase 2 ✅:
@@ -140,8 +158,11 @@ sendMessage(userMessage):
   Phase 4 (AI enrichment):
     - Inject user location into system prompt ✅
     - Inject live weather + alerts from OpenWeather One Call 3.0 into system prompt (Frontend sends lat/lng → backend fetches weather → injects into system prompt → calls LLM) ✅
+        1. Embedding script: Script that loads 8 JSON files, embeds each chunk's text field with paraphrase-multilingual-MiniLM-L12-v2, inserts into pgvector, exports FAISS index ✅                                             
+        2. Backend retrieval — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  
+        3. R2 upload — upload FAISS index file alongside the model (offline step, later)     
+    - RAG with CONAGUA/Protección Civil docs (pgvector online / faiss offline)
     - Maps tool calling (agentic backend — LLM decides when to fetch map data)
-    - RAG with CONAGUA/Protección Civil docs (requires vector DB — post-training)
 
   Production (trained model):
     - Offline inference test in snapdragon androids.

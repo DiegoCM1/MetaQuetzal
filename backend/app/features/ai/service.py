@@ -1,5 +1,6 @@
 import httpx
 from app.core.config import settings
+from app.features.ai.rag import retrieve
 
 SYSTEM_PROMPT = """You are BluEye, an AI assistant specialized in hurricane preparedness, response, and recovery for residents of Mexico.
 
@@ -50,10 +51,13 @@ async def fetch_weather(latitude: float, longitude: float) -> str:
 
 async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None) -> str:
     system_content = SYSTEM_PROMPT
+
+    # Location injection
     if location:
         system_content += f"\n\nUbicación actual del usuario: {location}."
     print(f"[chat] location received: {location}")
 
+    #  Weather injection
     if latitude and longitude:
         try:
             weather = await fetch_weather(latitude, longitude)
@@ -62,7 +66,20 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
         except Exception as e:
             print(f"[chat] weather fetch failed: {e}")
 
+    # RAG, Chunks injection
+    try: 
+        retrieved_chunks_list = retrieve(messages[-1].content)
 
+        normalized_chunks = "\n\n".join(retrieved_chunks_list)
+
+        message_for_ai = f"This is some additional context: {normalized_chunks}"
+
+        system_content += f"\n\n{message_for_ai}"
+        print(f"[chat] RAG chunks injected: {len(retrieved_chunks_list)}")
+    except Exception as e:
+        print(f"[chat] RAG failed: {e}")
+
+    
 
 
     print(f"[chat] system prompt tail: ...{system_content[-100:]}")
