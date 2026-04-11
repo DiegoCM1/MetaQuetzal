@@ -5,7 +5,10 @@ class Message(BaseModel):
     content: str                                                  
                                                                 
 class ChatRequest(BaseModel):                                     
-    messages: list[Message]                                                 
+    messages: list[Message]
+    location: str | None = None   
+    latitude: float | None = None
+    longitude: float | None = None                                             
                                                                 
 class ChatResponse(BaseModel):
     reply: str

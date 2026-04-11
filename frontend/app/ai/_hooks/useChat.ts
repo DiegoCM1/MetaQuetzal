@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as Network from 'expo-network'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Message } from '../_types'
 import { OnlineProvider } from '../_services/OnlineProvider'
 import { useModel } from '../_context/ModelContext'
 import { Alert } from 'react-native'
+import * as Location from 'expo-location'
 
 const online = new OnlineProvider()
 
@@ -15,6 +16,8 @@ export function useChat() {
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+    const locationRef = useRef<string | null>(null)
+    const coordsRef = useRef<{ latitude: number, longitude: number } | null>(null)
 
     // SEND PENDING MESSAGE ONCE MODEL IS READY
     useEffect(() => {
@@ -74,6 +77,18 @@ export function useChat() {
         saveMessages([])
     }
 
+    // Handle resolve location and weather                                                                                                 
+    useEffect(() => {                                                                                  
+        (async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync()                      
+            if (status !== 'granted') return
+            const { coords } = await Location.getCurrentPositionAsync({})                              
+            const [place] = await Location.reverseGeocodeAsync(coords)
+            coordsRef.current = { latitude: coords.latitude, longitude: coords.longitude }                
+            if (place) locationRef.current = `${place.city}, ${place.region}, ${place.country}`
+        })()                                                                                           
+    }, [])        
+
     // HANDLE SEND MESSAGE
     const handleSendMessage = async () => {
         if (!input.trim()) return
@@ -108,7 +123,7 @@ export function useChat() {
                 console.log('[useChat] routing → online (Together AI)')
                 setModelMode('online')
                 const historyForAPI = [...messages, userMessage]
-                await online.sendMessage(historyForAPI, (token) => {
+                await online.sendMessage(historyForAPI, locationRef.current, coordsRef.current?.latitude ?? null, coordsRef.current?.longitude ?? null, (token) => {
                     setMessages(prev => {
                         const last = prev[prev.length - 1]
                         return [...prev.slice(0, -1), { ...last, text: last.text + token }]
