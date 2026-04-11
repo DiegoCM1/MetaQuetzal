@@ -55,16 +55,16 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
     # Location injection
     if location:
         system_content += f"\n\nUbicación actual del usuario: {location}."
-    print(f"[chat] location received: {location}")
+    print(f"[chat:location] location received: {location}")
 
     #  Weather injection
     if latitude and longitude:
         try:
             weather = await fetch_weather(latitude, longitude)
             system_content += f"\n\n{weather}"
-            print(f"[chat] weather: {weather}")
+            print(f"[chat:weather] weather: {weather}")
         except Exception as e:
-            print(f"[chat] weather fetch failed: {e}")
+            print(f"[chat:weather] weather fetch failed: {e}")
 
     # RAG, Chunks injection
     try: 
@@ -75,9 +75,9 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
         message_for_ai = f"This is some additional context: {normalized_chunks}"
 
         system_content += f"\n\n{message_for_ai}"
-        print(f"[chat] RAG chunks injected: {len(retrieved_chunks_list)}")
+        print(f"[chat:rag] RAG chunks injected: {len(retrieved_chunks_list)}")
     except Exception as e:
-        print(f"[chat] RAG failed: {e}")
+        print(f"[chat:rag] RAG failed: {e}")
 
     
 
@@ -99,4 +99,9 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
             timeout=30.0,
         )
         data = response.json()
+
+        if "choices" not in data:
+            print(f"[chat:llm] unexpected response: {data}")
+            raise RuntimeError(f"[chat:llm] LLM returned no choices: {data}")
+
         return data["choices"][0]["message"]["content"]

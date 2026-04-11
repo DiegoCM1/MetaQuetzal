@@ -19,29 +19,36 @@ DATABASE_URL = settings.DATABASE_URL
 def retrieve(query: str) -> list[str]:
     #   1. Embed the query → float[384]   
     embedded_query = model.encode(query, normalize_embeddings=True)
-    print("[chat] Embedded query")
+    print("[chat:rag] Embedded query")
 
     #   2. Connect to pgvector, run similarity search, get top-k rows
     # Connection
     db_url = DATABASE_URL.replace("postgresql+psycopg2://", "postgresql://")
-    print("[chat] Connecting to pgvector...")
+    print("[chat:rag] Connecting to pgvector...")
     try:
         connection = psycopg2.connect(db_url)
-        print("[chat] Connected to pgvector")
+        print("[chat:rag] Connected to pgvector")
     except Exception as e:
-        raise ConnectionError(f"[chat] Failed to connect to db: {e}")
+        raise ConnectionError(f"[chat:rag] Failed to connect to db: {e}")
 
     cursor = connection.cursor()
 
     # Run similarity search and get top-k results
-    cursor.execute(
-        f"SELECT text FROM rag_chunks WHERE embedding <=> %s::vector < %s ORDER BY embedding <=> %s::vector LIMIT {TOP_K}",
-        (embedded_query.tolist(), SIMILARITY_THRESHOLD, embedded_query.tolist())
-        )
-    rows = cursor.fetchall() # Pulls requests out of cursor into python
+    try: 
+        cursor.execute(
+            f"SELECT text FROM rag_chunks WHERE embedding <=> %s::vector < %s ORDER BY embedding <=> %s::vector LIMIT {TOP_K}",
+            (embedded_query.tolist(), SIMILARITY_THRESHOLD, embedded_query.tolist())
+            )
+        rows = cursor.fetchall() # Pulls requests out of cursor into python
+        print(f"[chat:rag] {len(rows)} chunks passed threshold")
 
-    cursor.close() # Closing cursor connection
-    connection.close()
+    except Exception as e:
+        raise ConnectionError(f"[chat:rag] Failed to run similarity search: {e}")
+    
+    finally:
+        cursor.close() # Closing cursor connection
+        connection.close()
+
 
     #   3. Return the text fields as a list of strings 
     retrieved_top_k = [row[0] for row in rows] # Converts tuples into a list of strings 
