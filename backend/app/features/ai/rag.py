@@ -4,6 +4,8 @@ from sentence_transformers import SentenceTransformer
 import psycopg2
 
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+SIMILARITY_THRESHOLD = 0.5
+TOP_K = 5
 
 
 
@@ -17,7 +19,7 @@ DATABASE_URL = settings.DATABASE_URL
 def retrieve(query: str) -> list[str]:
     #   1. Embed the query → float[384]   
     embedded_query = model.encode(query, normalize_embeddings=True)
-    print("chat] Embedded query")
+    print("[chat] Embedded query")
 
     #   2. Connect to pgvector, run similarity search, get top-k rows
     # Connection
@@ -25,16 +27,16 @@ def retrieve(query: str) -> list[str]:
     print("[chat] Connecting to pgvector...")
     try:
         connection = psycopg2.connect(db_url)
-        print("chat] Connected to pgvector")
+        print("[chat] Connected to pgvector")
     except Exception as e:
-        raise ConnectionError(f"chat] Failed to connect to db: {e}")
+        raise ConnectionError(f"[chat] Failed to connect to db: {e}")
 
     cursor = connection.cursor()
 
     # Run similarity search and get top-k results
     cursor.execute(
-        "SELECT text FROM rag_chunks ORDER BY embedding <=> %s::vector LIMIT 3",
-        (embedded_query.tolist(),)
+        f"SELECT text FROM rag_chunks WHERE embedding <=> %s::vector < %s ORDER BY embedding <=> %s::vector LIMIT {TOP_K}",
+        (embedded_query.tolist(), SIMILARITY_THRESHOLD, embedded_query.tolist())
         )
     rows = cursor.fetchall() # Pulls requests out of cursor into python
 
@@ -42,8 +44,8 @@ def retrieve(query: str) -> list[str]:
     connection.close()
 
     #   3. Return the text fields as a list of strings 
-    top_k = [row[0] for row in rows] # Converts tuples into a list of strings 
-    return top_k
+    retrieved_top_k = [row[0] for row in rows] # Converts tuples into a list of strings 
+    return retrieved_top_k
 
     
 
