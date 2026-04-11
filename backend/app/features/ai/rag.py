@@ -33,7 +33,7 @@ def retrieve(query: str) -> list[str]:
 
     # Run similarity search and get top-k results
     cursor.execute(
-        """SELECT text FROM rag_chunks ORDER BY embedding <=> %s LIMIT 3""",
+        "SELECT text FROM rag_chunks ORDER BY embedding <=> %s::vector LIMIT 3",
         (embedded_query.tolist(),)
         )
     rows = cursor.fetchall() # Pulls requests out of cursor into python
