@@ -119,7 +119,7 @@ export default function ChatAIScreen() {
                   className={`rounded-2xl ${
                     item.role === "user"
                       ? "max-w-[80%] bg-phase2Buttons rounded-tr-none py-3 px-4"
-                      : "max-w-[80%] dark:text-phase2Cards rounded-tl-none py-1 px-2"
+                      : "flex-1 dark:text-phase2Cards rounded-tl-none py-1 px-2"
                   }`}
                 >
                   {item.role === "user" ? (

@@ -17,17 +17,17 @@ DATABASE_URL = settings.DATABASE_URL
 def retrieve(query: str) -> list[str]:
     #   1. Embed the query → float[384]   
     embedded_query = model.encode(query, normalize_embeddings=True)
-    print("Embedded query")
+    print("chat] Embedded query")
 
     #   2. Connect to pgvector, run similarity search, get top-k rows
     # Connection
     db_url = DATABASE_URL.replace("postgresql+psycopg2://", "postgresql://")
-    print("Connecting to pgvector...")
+    print("[chat] Connecting to pgvector...")
     try:
         connection = psycopg2.connect(db_url)
-        print("Connected to pgvector")
+        print("chat] Connected to pgvector")
     except Exception as e:
-        raise ConnectionError(f"Failed to connect to db: {e}")
+        raise ConnectionError(f"chat] Failed to connect to db: {e}")
 
     cursor = connection.cursor()
 
