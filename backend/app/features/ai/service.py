@@ -51,20 +51,22 @@ async def fetch_weather(latitude: float, longitude: float) -> str:
 
 async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None) -> str:
     system_content = SYSTEM_PROMPT
+    
+    print(f"[chat] Query from user: {messages[-1].content}")
 
     # Location injection
     if location:
         system_content += f"\n\nUbicación actual del usuario: {location}."
-    print(f"[chat] location received: {location}")
+    print(f"[chat:location] {location}")
 
     #  Weather injection
     if latitude and longitude:
         try:
             weather = await fetch_weather(latitude, longitude)
             system_content += f"\n\n{weather}"
-            print(f"[chat] weather: {weather}")
+            print(f"[chat:weather] {weather}")
         except Exception as e:
-            print(f"[chat] weather fetch failed: {e}")
+            print(f"[chat:weather] weather fetch failed: {e}")
 
     # RAG, Chunks injection
     try: 
@@ -74,15 +76,19 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
 
         message_for_ai = f"This is some additional context: {normalized_chunks}"
 
-        system_content += f"\n\n{message_for_ai}"
-        print(f"[chat] RAG chunks injected: {len(retrieved_chunks_list)}")
+        if retrieved_chunks_list:
+            system_content += f"\n\n{message_for_ai}"
+            print(f"[chat:rag] RAG chunks injected: {len(retrieved_chunks_list)}")
+        else:
+            print(f"[chat:rag] no relevant chunks found")
+
     except Exception as e:
-        print(f"[chat] RAG failed: {e}")
+        print(f"[chat:rag] RAG failed: {e}")
 
     
 
 
-    print(f"[chat] system prompt tail: ...{system_content[-500:]}")
+    print(f"[chat] system prompt tail: ...{system_content[-100:]}")
     print(f"[chat] messages count: {len(messages)}")
     full_messages = [{"role": "system", "content": system_content}] + [m.model_dump() for m in messages]
     async with httpx.AsyncClient() as client:
@@ -99,4 +105,9 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
             timeout=30.0,
         )
         data = response.json()
+
+        if "choices" not in data:
+            print(f"[chat:llm] unexpected response: {data}")
+            raise RuntimeError(f"[chat:llm] LLM returned no choices: {data}")
+
         return data["choices"][0]["message"]["content"]
