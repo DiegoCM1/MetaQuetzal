@@ -4,7 +4,7 @@ from sentence_transformers import SentenceTransformer
 import psycopg2
 
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
-SIMILARITY_THRESHOLD = 0.5
+SIMILARITY_THRESHOLD = 0.7
 TOP_K = 5
 
 
@@ -19,15 +19,13 @@ DATABASE_URL = settings.DATABASE_URL
 def retrieve(query: str) -> list[str]:
     #   1. Embed the query → float[384]   
     embedded_query = model.encode(query, normalize_embeddings=True)
-    print("[chat:rag] Embedded query")
+    print("[chat:rag] Embedded user query")
 
     #   2. Connect to pgvector, run similarity search, get top-k rows
     # Connection
     db_url = DATABASE_URL.replace("postgresql+psycopg2://", "postgresql://")
-    print("[chat:rag] Connecting to pgvector...")
     try:
         connection = psycopg2.connect(db_url)
-        print("[chat:rag] Connected to pgvector")
     except Exception as e:
         raise ConnectionError(f"[chat:rag] Failed to connect to db: {e}")
 
