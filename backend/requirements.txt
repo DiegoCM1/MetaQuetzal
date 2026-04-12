@@ -17,7 +17,7 @@ fastapi==0.135.1
 firebase_admin==7.2.0
 google-api-core==2.30.0
 google-auth==2.49.0
-google-cloud-core==2.5.0
+google-cloud-core==2.5.1
 google-cloud-firestore==2.24.0
 google-cloud-storage==3.9.0
 google-crc32c==1.8.0
