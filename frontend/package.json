@@ -19,7 +19,7 @@
     "@tamagui/switch": "^1.116.15",
     "@tamagui/themes": "^1.116.15",
     "@tamagui/web": "1.116.15",
-    "axios": "^1.9.0",
+    "axios": "^1.15.0",
     "dayjs": "^1.11.13",
     "expo": "^54.0.0",
     "expo-audio": "~1.1.1",
