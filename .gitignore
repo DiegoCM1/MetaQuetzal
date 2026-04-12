@@ -12,13 +12,24 @@ pnpm-debug.log*
 coverage/
 
 ###############################
-#   NODE / EXPRESS (BACKEND)  #
+#   Node.js (OLD BACKEND)     #
 ###############################
 backend/node_modules/
 backend/dist/
 backend/*.log
 
 # Variables y credenciales locales
+backend/.env
+backend/.env.*
+backend/credentials/
+backend/**/firebase-*.json
+
+###############################
+#   Python FastAPI (BACKEND)  #
+###############################
+backend/venv/
+**/__pycache__/
+**/*.pyc
 backend/.env
 backend/.env.*
 backend/credentials/

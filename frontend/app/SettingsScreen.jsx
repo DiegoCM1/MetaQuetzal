@@ -8,16 +8,19 @@ import { Link, useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
+import { useModel } from "./ai/_context/ModelContext";
 
 export default function SettingsScreen() {
+
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
-  const { colorScheme, toggleColorScheme } = useTheme(); // Using ThemeContext with persistence
+  const { colorScheme, toggleColorScheme } = useTheme();
+  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel()
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
-  const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑ish / gray‑800
-  const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF"; // blue‑ish / gray‑400
-  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827"; // gray‑400 / gray‑900
+  const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937";
+  const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF";
+  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827";
 
   /* ──────────────── helpers ──────────────── */
   const showComingSoon = () =>
@@ -32,11 +35,9 @@ export default function SettingsScreen() {
     track("theme_change", { theme: newTheme });
   };
 
-  /** shared row styling */
   const row =
     "flex-row items-center px-5 py-3 border-b border-gray-200 dark:border-neutral-700";
 
-  /** chevron icon */
   const Chevron = () => (
     <MaterialCommunityIcons name="chevron-right" size={24} color={arrowColor} />
   );
@@ -58,6 +59,28 @@ export default function SettingsScreen() {
       ]
     );
   };
+
+  const handleDownloadModel = () => {
+    Alert.alert(
+      'Descargar modelo IA',
+      'El modelo se descargará en segundo plano. Puedes seguir usando la app mientras tanto.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Descargar', onPress: optIn },
+      ]
+    )
+  }
+
+  const handleDeleteModel = () => {
+    Alert.alert(
+      'Eliminar modelo IA',
+      '¿Estás seguro? Tendrás que descargarlo de nuevo para usar el modo sin conexión.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: optOut },
+      ]
+    )
+  }
 
   return (
     <SafeAreaView
@@ -221,6 +244,58 @@ export default function SettingsScreen() {
         </Text>
         <Chevron />
       </Pressable>
+
+      {/* ────────────── MODELO IA ────────────── */}
+      {modelOptedIn && !modelReady && !modelError && (
+        <View className={`${row} flex-col items-start gap-2`}>
+          <View className="flex-row items-center w-full">
+            <Ionicons name="cloud-download-outline" size={22} color={iconColor} style={{ marginRight: 16 }} />
+            <Text className="flex-1 text-base" style={{ color: textColor }}>
+              Descargando modelo IA... {Math.round(downloadProgress * 100)}%
+            </Text>
+          </View>
+          <View className="w-full h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden ml-10">
+            <View
+              className="h-full bg-phase2Buttons rounded-full"
+              style={{ width: `${Math.round(downloadProgress * 100)}%` }}
+            />
+          </View>
+        </View>
+      )}
+
+      {modelOptedIn && modelError && (
+        <Pressable className={row} onPress={retryDownload}>
+          <Ionicons name="alert-circle-outline" size={22} color="#EF4444" style={{ marginRight: 16 }} />
+          <Text className="flex-1 text-base" style={{ color: "#EF4444" }}>
+            Error al descargar IA offline — reintentar
+          </Text>
+        </Pressable>
+      )}
+
+      {modelOptedIn && modelReady && (
+        <Pressable className={row} onPress={handleDeleteModel}>
+          <Ionicons name="checkmark-circle-outline" color="green" size={22} style={{ marginRight: 16 }} />
+          <Text className="flex-1 text-base" style={{ color: textColor }}>
+            Modelo IA listo
+          </Text>
+          <Ionicons name="trash-outline" color="#EF4444" size={22} />
+        </Pressable>
+      )}
+
+      {!modelOptedIn && (
+        <Pressable
+          android_ripple={{ color: "rgba(0,0,0,0.07)" }}
+          className={row}
+          onPress={handleDownloadModel}
+        >
+          <Ionicons name="hardware-chip-outline" size={22} color={iconColor} style={{ marginRight: 16 }} />
+          <Text className="flex-1 text-base" style={{ color: textColor }}>
+            Activar modo sin conexión
+          </Text>
+          <Chevron />
+        </Pressable>
+      )}
+
     </SafeAreaView>
   );
 }

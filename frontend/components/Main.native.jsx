@@ -8,8 +8,6 @@ import {
   Modal,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Circle, Marker } from "react-native-maps";
@@ -355,11 +353,7 @@ export default function WeatherMapNativewind() {
         visible={showAddModal}
         onRequestClose={handleCancelAdd}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="flex-1"
-        >
-          <View className="flex-1 justify-end bg-black/40">
+        <View className="flex-1 justify-end bg-black/40">
             <View className="bg-white rounded-t-2xl p-6">
               <Text className="text-xl font-bold mb-4 text-center">
                 Reportar Zona Roja
@@ -397,8 +391,7 @@ export default function WeatherMapNativewind() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Modal: View Zone Details */}
