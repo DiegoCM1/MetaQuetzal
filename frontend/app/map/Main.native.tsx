@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Circle, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
-import { loadRedZones, saveRedZone, generateZoneId } from "../services/redZonesService";
+import { loadRedZones, saveRedZone, generateZoneId } from "../../services/redZonesService";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 

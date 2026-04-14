@@ -88,7 +88,7 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
     
 
 
-    print(f"[chat] system prompt tail: ...{system_content[-600:]}")
+    print(f"[chat] system prompt tail: ...{system_content[-100:]}")
     print(f"[chat] messages count: {len(messages)}")
     full_messages = [{"role": "system", "content": system_content}] + [m.model_dump() for m in messages]
     async with httpx.AsyncClient() as client:

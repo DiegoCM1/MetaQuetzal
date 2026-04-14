@@ -5,9 +5,7 @@ import { ModelProvider } from './ai/_context/ModelContext';
 
 initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 // import { Drawer } from "expo-router/drawer";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { TamaguiProvider } from "@tamagui/core";
-import config from "../tamagui.config";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -160,7 +158,6 @@ export default function Layout() {
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
-            <TamaguiProvider config={config} defaultTheme="light">
               <ModelProvider>
               <Stack
                 screenOptions={{
@@ -196,7 +193,6 @@ export default function Layout() {
                 </Stack>
               <Toast />
               </ModelProvider>
-            </TamaguiProvider>
           </SafeAreaProvider>
         </ThemeProvider>
       </DaltonicModeProvider>

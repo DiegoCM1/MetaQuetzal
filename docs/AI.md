@@ -158,7 +158,7 @@ RAG
         2. RAG Online — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  ✅
     
   Phase 5 (Must ship — blocking store submission)
-      
+    0. Remove tamagui
     1. Fix error that appears after [X] time in the app — reproducible bug = store rejection
     2. Clean app logs, fix mixpanel token, fix vulnerabilities — Google scans for this
     3. Adding login system — gated content can't ship without it
