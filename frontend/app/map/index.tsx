@@ -237,6 +237,7 @@ export default function WeatherMapNativewind() {
                 longitude: zone.longitude,
               }}
               onPress={() => handleCirclePress(zone)}
+              tracksViewChanges={false}
             >
               <View className="items-center justify-center bg-white rounded-full p-1 shadow-lg">
                 <MaterialCommunityIcons

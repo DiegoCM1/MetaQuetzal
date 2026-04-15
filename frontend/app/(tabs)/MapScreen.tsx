@@ -1,6 +1,6 @@
 import "../../global.css";
 import { StatusBar } from "expo-status-bar";
-import Main from "../../components/Main";
+import Main from "../map";
 
 const MapScreen = () => (
   <>
