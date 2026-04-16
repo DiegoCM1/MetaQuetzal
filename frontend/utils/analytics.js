@@ -18,9 +18,9 @@ async function getDistinctId() {
 export async function initAnalytics() {
   if (mp) return mp;
 
-  const token = process.env.EXPO_PUBLIC_MIXPANEL_TOKEN;
+  const token = process.env.EXPO_PUBLIC_MIXPANEL_PROJECT_TOKEN;
   if (!token) {
-    console.warn('Mixpanel: missing EXPO_PUBLIC_MIXPANEL_TOKEN');
+    console.warn('Mixpanel: missing EXPO_PUBLIC_MIXPANEL_PROJECT_TOKEN');
     return null;
   }
 
