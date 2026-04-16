@@ -122,10 +122,6 @@ RAG
   8. Switching models later — one script re-run, 30 minutes, no other code changes
   9. Chunk format: JSON
 
-
-  Not decided yet:
-  - How to handle offline query embedding on Android (paraphrase-multilingual-MiniLM-L12-v2 CONVERSION)
-
 ---
 
 ## Pending Tasks
@@ -155,21 +151,37 @@ RAG
     - Restart conversation works for both online and offline ✅
     - set streaming for online model (deferred — 80 word responses make this low priority)
 
-  Phase 4 (AI enrichment):
+  Phase 4 (AI enrichment): ✅
     - Inject user location into system prompt ✅
     - Inject live weather + alerts from OpenWeather One Call 3.0 into system prompt (Frontend sends lat/lng → backend fetches weather → injects into system prompt → calls LLM) ✅
-        1. Embedding script: Script that loads 8 JSON files, embeds each chunk's text field with paraphrase-multilingual-MiniLM-L12-v2, inserts into pgvector, exports FAISS index ✅                                             
-        2. Backend retrieval — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  
-        3. R2 upload — upload FAISS index file alongside the model (offline step, later)     
-    - RAG with CONAGUA/Protección Civil docs (pgvector online / faiss offline)
-    - Maps tool calling (agentic backend — LLM decides when to fetch map data)
+        1. Embedding script: loads 8 JSON files, embeds each chunk's text field with paraphrase-multilingual-MiniLM-L12-v2, inserts into pgvector, exports FAISS index ✅                                             
+        2. RAG Online — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  ✅
+    
+  Phase 5 (Must ship — blocking store submission)
+    0. Remove tamagui ✅
+    1. Fix error that appears after [X] time in the app — reproducible bug = store rejection
+    2. Clean app logs, fix mixpanel token, fix vulnerabilities — Google scans for this
+    3. Adding login system — gated content can't ship without it
+    4. Write backend integration tests — safety net before the alerts change
+    5. Integrate alerts into frontend — big change, tests from step 4 protect you
+    6. Polish AI frontend and frontend in general
+    7. Packaging for playstore
 
-  Production (trained model):
-    - Offline inference test in snapdragon androids.
-    - Finish dataset
-    - Train v2 BluEye 1B and 3B Instruct models (Behaviour and how the AI responds)
-    - Quantize + convert to .pte
-    - Upload to R2, swap URL
+    ---
 
-  Future hardware:
-    - Export Qualcomm HTP variants for Snapdragon devices
+    Phase 6 (Ship if time allows before sending to playstore)
+
+    1. Improve telemetry — replace print() with structured logging — backend gets loguru or Python logging,
+    frontend gets Sentry
+    2. Improve telemetry to use login — once login exists, tie events to real users
+
+    ---
+
+    Phase 7 (Post launch)
+
+    1. Define tool schemas and usage
+    2. Add tool examples to dataset
+    3. Create dataset v2 multiturn and tool examples
+    4. Train 1b, 3b, Llama Model (If permitted by provider) V2
+
+    ---

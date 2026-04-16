@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Circle, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
-import { loadRedZones, saveRedZone, generateZoneId } from "../services/redZonesService";
+import { loadRedZones, saveRedZone, generateZoneId } from "../../services/redZonesService";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
@@ -25,6 +25,7 @@ const DEFAULT_REGION = {
   longitudeDelta: 12,
 };
 
+type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']         
 export default function WeatherMapNativewind() {
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
@@ -54,7 +55,7 @@ export default function WeatherMapNativewind() {
         }
 
         // Timeout promise: reject after 15 seconds
-        const timeoutPromise = new Promise((_, reject) => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => reject(new Error('Location timeout')), 15000);
         });
 
@@ -183,6 +184,12 @@ export default function WeatherMapNativewind() {
     setZoneDescription('');
   };
 
+  const layers: Array<{ label: string; state: boolean; setter: (v: boolean) => void; icon: MCIName }> = [
+    { label: "Viento", state: showWind, setter: setShowWind, icon: "weather-windy" },
+    { label: "Precipitación", state: showPrecip, setter: setShowPrecip, icon: "weather-rainy" },
+    { label: "Nubes", state: showClouds, setter: setShowClouds, icon: "weather-cloudy" },
+  ]      
+
   return (
     <View className="flex-1">
       <MapView
@@ -237,6 +244,7 @@ export default function WeatherMapNativewind() {
                 longitude: zone.longitude,
               }}
               onPress={() => handleCirclePress(zone)}
+              tracksViewChanges={false}
             >
               <View className="items-center justify-center bg-white rounded-full p-1 shadow-lg">
                 <MaterialCommunityIcons
@@ -282,26 +290,7 @@ export default function WeatherMapNativewind() {
             <Text className="text-lg font-bold mb-4 text-center">
               Map Layers
             </Text>
-            {[
-              {
-                label: "Viento",
-                state: showWind,
-                setter: setShowWind,
-                icon: "weather-windy",
-              },
-              {
-                label: "Precipitación",
-                state: showPrecip,
-                setter: setShowPrecip,
-                icon: "weather-rainy",
-              },
-              {
-                label: "Nubes",
-                state: showClouds,
-                setter: setShowClouds,
-                icon: "weather-cloudy",
-              },
-            ].map(({ label, state, setter, icon }) => (
+            {layers.map(({ label, state, setter, icon }) => (
               <View
                 key={label}
                 className="flex-row justify-between items-center mb-3"
