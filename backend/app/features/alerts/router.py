@@ -4,14 +4,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.features.alerts.openweather_service import fetch_mexico_overview, fetch_onecall_alerts
 from app.features.alerts.schemas import (
+    AlertCreate,
     AlertDetail,
     AlertSummary,
     MexicoWeatherOverviewResponse,
     OneCallAlertsResponse,
 )
-from app.features.alerts.service import get_alert_by_id, get_alerts
+from app.features.alerts.service import create_alert, get_alert_by_id, get_alerts
+from app.middleware.api_key_auth import verify_api_key
 
 router = APIRouter()
+
+
+@router.post("/api/v1/alerts", response_model=AlertDetail, status_code=201,
+             dependencies=[Depends(verify_api_key)])
+async def create_alert_v1(body: AlertCreate, db: AsyncSession = Depends(get_db)):
+    """Create a new alert. Protected by X-API-Key (internal/admin use)."""
+    return await create_alert(
+        db=db,
+        level=body.level, score=body.score, title=body.title, short=body.short,
+        lat=body.lat, lon=body.lon, factors=body.factors, recommendations=body.recommendations,
+    )
 
 
 @router.get("/alerts", response_model=list[AlertSummary])

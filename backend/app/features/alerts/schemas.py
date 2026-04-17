@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from uuid import UUID
 
@@ -12,16 +12,38 @@ class AlertSummary(BaseModel):
 
 
 class AlertDetail(BaseModel):
-    id:UUID
-    timestamp:datetime
-    level:int
-    score:int
-    title:str
-    short:str
-    lat:float
-    lon:float
-    factors:list
-    recommendations:list
+    id: UUID
+    timestamp: datetime
+    level: int
+    score: int
+    title: str
+    short: str
+    lat: float
+    lon: float
+    factors: list
+    recommendations: list
+
+
+class AlertCreate(BaseModel):
+    level: int = Field(ge=1, le=5)
+    score: int = Field(ge=0, le=100)
+    title: str = Field(min_length=1, max_length=255)
+    short: str = Field(min_length=1, max_length=500)
+    lat: float
+    lon: float
+    factors: list = []
+    recommendations: list = []
+
+
+class AlertWithSIAT(BaseModel):
+    id: UUID
+    timestamp: datetime
+    level: int
+    score: int
+    title: str
+    short: str
+    siat_level: int | None = None
+    siat_color: str | None = None
 
 
 class OpenWeatherAlert(BaseModel):
