@@ -157,15 +157,36 @@ RAG
         1. Embedding script: loads 8 JSON files, embeds each chunk's text field with paraphrase-multilingual-MiniLM-L12-v2, inserts into pgvector, exports FAISS index ✅                                             
         2. RAG Online — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  ✅
     
+  Deadline: April 30, 2026 — Play Store first, iOS after.
+
   Phase 5 (Must ship — blocking store submission)
     0. Remove tamagui ✅
-    1. Fix error that appears after [X] time in the app — reproducible bug = store rejection
-    2. Clean app logs, fix mixpanel token, fix vulnerabilities — Google scans for this
-    3. Adding login system — gated content can't ship without it
-    4. Write backend integration tests — safety net before the alerts change
-    5. Integrate alerts into frontend — big change, tests from step 4 protect you
-    6. Polish AI frontend and frontend in general
-    7. Packaging for playstore
+    1. Fix OOM crash (tracksViewChanges on map markers) ✅
+    2. Clean app logs, fix mixpanel token, fix vulnerabilities ✅
+    2.1 Review Edgar's branch (https://github.com/DiegoCM1/BluEye/tree/feat/Tarea3y5-backend-siat) 
+    2.2 Register Google Play developer account — do today, 48h verification runs in background (DEV-DIEGO)
+        — alerts-related, quick 30min audit before writing it off
+    2.3 Assign tasks to team with dates based on April 30 deadline (DEV-DIEGO)
+    3. Login system — prerequisite for payments and family tracking (DEV-DIEGO)
+      3.1 - In-app account deletion — DELETE /users/me endpoint + button in Settings. Depends on login being done first (DEV-VAL)
+    4. Payments — Google Play Billing Setup (DEV-VAL)
+       - Premium features: family member location tracking, future paywalled features
+    5. Write backend integration tests — (DEV-EACH PERSON WITH THEIR OWN FEATURE)
+    6. Integrate alerts into frontend — (DEV-EDGAR)
+    7. Polish AI and frontend in general (DEV-DIEGO)
+    8. Package + submit Play Store (DIEGO-IVAN)
+      8.1 - Store listing copy (description, short description in Spanish) (IVAN)                       
+      8.2 - Screenshots (5 minimum, taken on device)  (IVAN)                                                         
+      8.3 - Feature graphic (1024x500 banner)       (IVAN)                                                            
+      8.4 - App category, content rating questionnaire   (IVAN)                                                      
+      8.5 - Privacy policy page (required — needs a URL, can be a simple webpage)  (IVAN)    
+      8.6 - Packaging/signing/upload (DEV-DIEGO)
+
+  iOS (after Play Store submitted):
+    - Register Apple Developer account ($99/year) (DEV-DIEGO)
+    - First iOS build setup (Xcode, provisioning profiles, certificates) (DEV-DIEGO)
+    - Apple In-App Purchase (separate integration from Google Play Billing) (DEV-DIEGO)
+    - Submit via App Store Connect (DEV-DIEGO)
 
     ---
 
@@ -179,9 +200,11 @@ RAG
 
     Phase 7 (Post launch)
 
-    1. Define tool schemas and usage
-    2. Add tool examples to dataset
-    3. Create dataset v2 multiturn and tool examples
-    4. Train 1b, 3b, Llama Model (If permitted by provider) V2
+    0. Backend migration from Railway to Cloud Run
+    1. Architectural cleanup — move feature code out of app/ into src/features/
+    2. Define tool schemas and usage
+    3. Add tool examples to dataset
+    4. Create dataset v2 multiturn and tool examples
+    5. Train 1b, 3b, Llama Model (If permitted by provider) V2
 
     ---
