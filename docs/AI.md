@@ -167,7 +167,7 @@ RAG
     2.1 Review Edgar's branch — manually extracted siat/ + alerts additions, stripped auth (DEV-DIEGO) ✅
     2.2 Assign tasks to team with dates based on April 25 deadline (DEV-DIEGO) ✅
     2.3 Register Google Play developer account — 48h verification (DEV-DIEGO) — Apr 17 ✅
-    3. Login system — backend: core/auth.py Firebase JWT + get_current_user. Frontend: pantalla de login, persistencia de sesión, token en cada request, rutas protegidas (DEV-DIEGO) — Apr 17–18
+    3. Login system — backend: core/.authpy Firebase JWT + get_current_user. Frontend: pantalla de login, persistencia de sesión, token en cada request, rutas protegidas (DEV-DIEGO) — Apr 17–18
       3.1 - Eliminación de cuenta — DELETE /users/me endpoint + botón en Settings. Depende del login (DEV-VAL) — Apr 20–21
     4. Google Play Billing — integración de pagos in-app + features premium detrás de paywall. Stripe NO permitido para bienes digitales en Android (DEV-VAL) — Apr 18–21
     5. Finalizar y probar el sistema de alertas (DEV-EDGAR) — Apr 17–20
