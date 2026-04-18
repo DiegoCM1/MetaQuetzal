@@ -157,30 +157,37 @@ RAG
         1. Embedding script: loads 8 JSON files, embeds each chunk's text field with paraphrase-multilingual-MiniLM-L12-v2, inserts into pgvector, exports FAISS index ✅                                             
         2. RAG Online — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  ✅
     
-  Deadline: April 30, 2026 — Play Store first, iOS after.
+  Deadline: April 25, 2026 — Play Store submission. iOS after.
+  Nota: cada feature debe tener al menos un test de integración que pruebe el happy path del endpoint antes de hacer push.
 
   Phase 5 (Must ship — blocking store submission)
     0. Remove tamagui ✅
     1. Fix OOM crash (tracksViewChanges on map markers) ✅
     2. Clean app logs, fix mixpanel token, fix vulnerabilities ✅
-    2.1 Review Edgar's branch (https://github.com/DiegoCM1/BluEye/tree/feat/Tarea3y5-backend-siat) 
-    2.2 Register Google Play developer account — do today, 48h verification runs in background (DEV-DIEGO)
-        — alerts-related, quick 30min audit before writing it off
-    2.3 Assign tasks to team with dates based on April 30 deadline (DEV-DIEGO)
-    3. Login system — prerequisite for payments and family tracking (DEV-DIEGO)
-      3.1 - In-app account deletion — DELETE /users/me endpoint + button in Settings. Depends on login being done first (DEV-VAL)
-    4. Payments — Google Play Billing Setup (DEV-VAL)
-       - Premium features: family member location tracking, future paywalled features
-    5. Write backend integration tests — (DEV-EACH PERSON WITH THEIR OWN FEATURE)
-    6. Integrate alerts into frontend — (DEV-EDGAR)
-    7. Polish AI and frontend in general (DEV-DIEGO)
-    8. Package + submit Play Store (DIEGO-IVAN)
-      8.1 - Store listing copy (description, short description in Spanish) (IVAN)                       
-      8.2 - Screenshots (5 minimum, taken on device)  (IVAN)                                                         
-      8.3 - Feature graphic (1024x500 banner)       (IVAN)                                                            
-      8.4 - App category, content rating questionnaire   (IVAN)                                                      
-      8.5 - Privacy policy page (required — needs a URL, can be a simple webpage)  (IVAN)    
-      8.6 - Packaging/signing/upload (DEV-DIEGO)
+    2.1 Review Edgar's branch — manually extracted siat/ + alerts additions, stripped auth (DEV-DIEGO) ✅
+    2.2 Assign tasks to team with dates based on April 25 deadline (DEV-DIEGO) ✅
+    2.3 Register Google Play developer account — 48h verification (DEV-DIEGO) — Apr 17 ✅
+    3. Login system — backend: core/auth.py Firebase JWT + get_current_user. Frontend: pantalla de login, persistencia de sesión, token en cada request, rutas protegidas (DEV-DIEGO) — Apr 17–18
+      3.1 - Eliminación de cuenta — DELETE /users/me endpoint + botón en Settings. Depende del login (DEV-VAL) — Apr 20–21
+    4. Google Play Billing — integración de pagos in-app + features premium detrás de paywall. Stripe NO permitido para bienes digitales en Android (DEV-VAL) — Apr 18–21
+    5. Finalizar y probar el sistema de alertas (DEV-EDGAR) — Apr 17–20
+       - Asegurarse de que el backend de alertas esté funcionando end-to-end
+       - Confirmar endpoints vía Postman antes de hacer handoff a Diego
+       - Una vez que el login esté listo, agregar GET /api/v1/alerts/active — Apr 21
+       - Integración en frontend la hace Diego en tarea 7
+    6. Materiales Play Store (IVAN) — Apr 17–23
+       - Texto del listing — nombre, descripción corta, descripción completa (español)
+       - Screenshots — mínimo 5, tomados en dispositivo real
+       - Feature graphic — banner 1024x500px
+       - Categoría de la app + cuestionario de clasificación de contenido
+       - Política de privacidad — URL real y pública (puede ser página simple)
+       - Formulario de seguridad de datos — declarar qué datos recopila la app y por qué (obligatorio, bloquea el envío si falta)
+    7. Pulir frontend — UX, edge cases, limpieza visual, integración alertas (DEV-DIEGO) — Apr 22–23
+    8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
+       - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
+       - Configurar perfil de producción en eas.json
+       - Build, firmar y subir APK
+       - Enviar — Apr 25
 
   iOS (after Play Store submitted):
     - Register Apple Developer account ($99/year) (DEV-DIEGO)

@@ -11,7 +11,9 @@ from app.features.alerts.schemas import (
     OneCallAlertsResponse,
 )
 from app.features.alerts.service import create_alert, get_alert_by_id, get_alerts
+from app.core.auth import get_current_user
 from app.middleware.api_key_auth import verify_api_key
+
 
 router = APIRouter()
 
@@ -28,12 +30,12 @@ async def create_alert_v1(body: AlertCreate, db: AsyncSession = Depends(get_db))
 
 
 @router.get("/alerts", response_model=list[AlertSummary])
-async def list_alerts(db: AsyncSession = Depends(get_db), limit: int = 30, offset: int = 0):
+async def list_alerts(db: AsyncSession = Depends(get_db), limit: int = 30, offset: int = 0, user=Depends(get_current_user)):
     return await get_alerts(db, limit, offset)
 
 
 @router.get("/api/v1/alerts", response_model=list[AlertSummary])
-async def list_alerts_v1(db: AsyncSession = Depends(get_db), limit: int = 30, offset: int = 0):
+async def list_alerts_v1(db: AsyncSession = Depends(get_db), limit: int = 30, offset: int = 0, user=Depends(get_current_user)):
     return await get_alerts(db, limit, offset)
 
 
@@ -42,19 +44,20 @@ async def list_weather_alerts_v1(
     lat: float,
     lon: float,
     exclude: str | None = "minutely,daily",
+    user=Depends(get_current_user)
 ):
     return await fetch_onecall_alerts(lat=lat, lon=lon, exclude=exclude)
 
 
 @router.get("/api/v1/alerts/weather/mx", response_model=MexicoWeatherOverviewResponse)
 async def list_weather_alerts_mx_v1(
-    exclude: str | None = "minutely,daily",
+    exclude: str | None = "minutely,daily", user=Depends(get_current_user)
 ):
     return await fetch_mexico_overview(exclude=exclude)
 
 
 @router.get("/alerts/{id}", response_model=AlertDetail)
-async def list_alert(id: str, db: AsyncSession = Depends(get_db)):
+async def list_alert(id: str, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     alert = await get_alert_by_id(db, id)
     if alert is None:
         raise HTTPException(status_code=404, detail="Alert not found")
@@ -62,7 +65,7 @@ async def list_alert(id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/api/v1/alerts/{id}", response_model=AlertDetail)
-async def list_alert_v1(id: str, db: AsyncSession = Depends(get_db)):
+async def list_alert_v1(id: str, db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     alert = await get_alert_by_id(db, id)
     if alert is None:
         raise HTTPException(status_code=404, detail="Alert not found")
