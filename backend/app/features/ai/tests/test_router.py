@@ -22,3 +22,42 @@ def test_chat_returns_reply():
             headers={"Authorization": "Bearer faketoken"}
         )
     assert response.status_code == 200
+
+
+
+def test_chat_invalid_token():
+    response = client.post(
+        "/ai/chat",
+        json={
+
+            "messages": [
+                {"role": "user", "content": "hola"},
+                {"role": "bot", "content": "Wassup"}
+            ],    
+            "location": "Tuxpan",
+            "latitude": 5,
+            "longitude": 10,
+        },
+        headers={"Authorization": "Bearer faketoken"}
+    )
+    assert response.status_code == 401
+
+
+
+def test_chat_no_auth():
+    response = client.post(
+        "/ai/chat",
+        json={
+
+            "messages": [
+                {"role": "user", "content": "hola"},
+                {"role": "bot", "content": "Wassup"}
+            ],    
+            "location": "Tuxpan",
+            "latitude": 5,
+            "longitude": 10,
+        },
+    )
+    assert response.status_code == 422
+
+
