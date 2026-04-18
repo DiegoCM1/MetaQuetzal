@@ -1,5 +1,5 @@
   
-## Frontend
+# Frontend
 
 Option A — Physical phone (EAS cloud build)
 1. npm install -g eas-cli                                                                                                    
@@ -17,5 +17,12 @@ Option C — Actual Phone
 2. Connect scanning the qr with your phone
 
 
-## Backend
+# Backend
+
 uvicorn app.main:app --reload 
+
+## Testing 
+
+Test backend:
+1. cd backend/
+2. pytest
