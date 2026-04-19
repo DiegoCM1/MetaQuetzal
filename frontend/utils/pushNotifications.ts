@@ -4,7 +4,8 @@ import * as Device from "expo-device";
 import { Alert } from "react-native";
 import Toast from "react-native-toast-message";
 import { track } from "./analytics";
-import { authFetch } from './api'                             
+import { authFetch } from './api'
+import { API_BASE_URL } from './config'
 
 
 export async function registerForPushNotificationsAsync() {
@@ -38,7 +39,7 @@ export async function registerForPushNotificationsAsync() {
 
   try {
     await authFetch(
-      "https://metaquetzal-production.up.railway.app/api/push-token",
+      `${API_BASE_URL}/api/push-token`,
       {
         method: "POST",
         body: JSON.stringify({ token: fcmToken }),

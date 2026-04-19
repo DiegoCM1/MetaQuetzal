@@ -1,10 +1,8 @@
-import { authFetch } from '../utils/api'                             
-
-// URL base de tu API en Railway
-const API_BASE = 'https://metaquetzal-production.up.railway.app';
+import { authFetch } from '../utils/api'
+import { API_BASE_URL } from '../utils/config'
 
 export async function submitFeedback({ rating, message, email }: { rating: number; message: string; email?: string }): Promise<number> {
-  const response = await authFetch(`${API_BASE}/feedback`, {
+  const response = await authFetch(`${API_BASE_URL}/feedback`, {
     method: 'POST',
     body: JSON.stringify({ rating, message, email }),
   });

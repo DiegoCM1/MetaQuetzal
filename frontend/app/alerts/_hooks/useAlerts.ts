@@ -2,8 +2,7 @@ import useSWR from "swr";
 import { track } from "../../../utils/analytics";
 import { authFetch } from '../../../utils/api'
 import { useAuth } from '../../(auth)/_context/AuthContext'
-
-const API_URL = "https://backend-blueye-production.up.railway.app";
+import { API_BASE_URL } from '../../../utils/config'
 
 interface Alert {
   id: string;
@@ -21,7 +20,7 @@ const fetcher = async (): Promise<Alert[]> => {
   track("alerts_fetch_start");
   console.log('[Alerts] fetching...')
   try {
-    const res = await authFetch(`${API_URL}/api/v1/alerts?limit=50`);
+    const res = await authFetch(`${API_BASE_URL}/api/v1/alerts?limit=50`);
     console.log('[Alerts] response status:', res.status)
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();

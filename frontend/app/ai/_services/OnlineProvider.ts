@@ -2,10 +2,7 @@ import axios from 'axios'
 import { AIProvider } from './AIProvider'
 import { Message } from "../_types"
 import { getAuthToken } from '../../../utils/api'
-
-
-
-const API_URL = "https://backend-blueye-production.up.railway.app/ai/chat";
+import { API_BASE_URL } from '../../../utils/config'
 
 
 export class OnlineProvider implements AIProvider {
@@ -17,7 +14,7 @@ export class OnlineProvider implements AIProvider {
         }))
 
         const token = await getAuthToken()
-        const response = await axios.post(API_URL, { messages: payload, location, latitude, longitude }, {
+        const response = await axios.post(`${API_BASE_URL}/ai/chat`, { messages: payload, location, latitude, longitude }, {
             headers: { Authorization: `Bearer ${token}` }
         });
 
