@@ -49,14 +49,20 @@ export default function AlertDetailsScreen() {
   useEffect(() => {
     let live = true;
     (async () => {
+      const url = `${API_BASE_URL}/api/v1/alerts/${id}`
       try {
-        const res = await authFetch(`${API_BASE_URL}/api/v1/alerts/${id}`);
+        const res = await authFetch(url);
         if (!res.ok) {
+          const body = await res.text()
+          console.error(`[AlertDetails] HTTP ${res.status} | id: ${id} | url: ${url} | body: ${body}`)
           throw Object.assign(new Error("Error"), { status: res.status });
         }
         const data = await res.json();
         if (live) setAlert(data);
       } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        const isAuthError = msg === 'Not authenticated'
+        console.error(`[AlertDetails] fetch failed | stage: ${isAuthError ? 'token' : 'request'} | id: ${id} | error: ${msg}`)
         if (live) setError(e as { status?: number });
       } finally {
         if (live) setLoad(false);

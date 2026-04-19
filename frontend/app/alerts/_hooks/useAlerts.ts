@@ -18,11 +18,14 @@ interface Alert {
 const fetcher = async (): Promise<Alert[]> => {
   const start = Date.now();
   track("alerts_fetch_start");
-  console.log('[Alerts] fetching...')
+  const url = `${API_BASE_URL}/api/v1/alerts?limit=50`
   try {
-    const res = await authFetch(`${API_BASE_URL}/api/v1/alerts?limit=50`);
-    console.log('[Alerts] response status:', res.status)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await authFetch(url);
+    if (!res.ok) {
+      const body = await res.text()
+      console.error(`[Alerts] HTTP ${res.status} | url: ${url} | body: ${body}`)
+      throw new Error(`HTTP ${res.status}`)
+    }
     const data = await res.json();
     track("alerts_fetch_success", {
       duration_mws: Date.now() - start,
@@ -30,10 +33,12 @@ const fetcher = async (): Promise<Alert[]> => {
     });
     return data;
   } catch (e) {
-    console.error('[Alerts] fetch error:', e)
+    const msg = e instanceof Error ? e.message : String(e)
+    const isAuthError = msg === 'Not authenticated'
+    console.error(`[Alerts] fetch failed | stage: ${isAuthError ? 'token' : 'request'} | url: ${url} | error: ${msg}`)
     track("alerts_fetch_error", {
       duration_ms: Date.now() - start,
-      error: String(e instanceof Error ? e.message : e),
+      error: msg,
     });
     throw e;
   }
