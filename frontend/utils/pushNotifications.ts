@@ -4,6 +4,8 @@ import * as Device from "expo-device";
 import { Alert } from "react-native";
 import Toast from "react-native-toast-message";
 import { track } from "./analytics";
+import { authFetch } from './api'                             
+
 
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
@@ -35,11 +37,10 @@ export async function registerForPushNotificationsAsync() {
   console.log("FCM token →", fcmToken);
 
   try {
-    await fetch(
+    await authFetch(
       "https://metaquetzal-production.up.railway.app/api/push-token",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: fcmToken }),
       },
     );
@@ -60,9 +61,11 @@ export async function registerForPushNotificationsAsync() {
 export function setForegroundNotificationHandler() {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: false, // 👈 evitamos el alert nativo
+      shouldShowAlert: false,
       shouldPlaySound: false,
       shouldSetBadge: false,
+      shouldShowBanner: false,
+      shouldShowList: false,
     }),
   });
 
