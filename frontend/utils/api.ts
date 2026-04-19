@@ -1,9 +1,9 @@
-import { getAuth } from '@react-native-firebase/auth'
+import { getAuth, getIdToken } from '@react-native-firebase/auth'
 
 export async function getAuthToken(): Promise<string> {
   const user = getAuth().currentUser
   if (!user) throw new Error('Not authenticated')
-  return user.getIdToken()
+  return getIdToken(user)
 }
 
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {

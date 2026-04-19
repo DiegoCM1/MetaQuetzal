@@ -1,7 +1,9 @@
 import useSWR from "swr";
 import { track } from "../../../utils/analytics";
+import { authFetch } from '../../../utils/api'
+import { useAuth } from '../../(auth)/_context/AuthContext'
 
-const API_URL = "https://metaquetzal-production.up.railway.app";
+const API_URL = "https://backend-blueye-production.up.railway.app";
 
 interface Alert {
   id: string;
@@ -17,17 +19,19 @@ interface Alert {
 const fetcher = async (): Promise<Alert[]> => {
   const start = Date.now();
   track("alerts_fetch_start");
+  console.log('[Alerts] fetching...')
   try {
-    const res = await fetch(`${API_URL}/alerts?limit=50`);
-    if (!res.ok) throw new Error("Error fetching alerts");
+    const res = await authFetch(`${API_URL}/api/v1/alerts?limit=50`);
+    console.log('[Alerts] response status:', res.status)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-
     track("alerts_fetch_success", {
-      duration_ms: Date.now() - start,
+      duration_mws: Date.now() - start,
       list_count: Array.isArray(data) ? data.length : 0,
     });
     return data;
   } catch (e) {
+    console.error('[Alerts] fetch error:', e)
     track("alerts_fetch_error", {
       duration_ms: Date.now() - start,
       error: String(e instanceof Error ? e.message : e),
@@ -37,7 +41,8 @@ const fetcher = async (): Promise<Alert[]> => {
 };
 
 export default function useAlerts() {
-  const { data, error, isLoading, mutate } = useSWR<Alert[]>("alerts", fetcher, {
+  const { user } = useAuth()
+  const { data, error, isLoading, mutate } = useSWR<Alert[]>(user ? "alerts" : null, fetcher, {
     refreshInterval: 60000,
   });
 

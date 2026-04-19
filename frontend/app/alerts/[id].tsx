@@ -12,8 +12,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "../../utils/date";
 import { colorForLevel } from "./_components/AlertCard";
 import { track } from "../../utils/analytics";
+import { authFetch } from '../../utils/api'                             
 
-const API_URL = "https://metaquetzal-production.up.railway.app";
+
+const API_URL = "https://backend-blueye-production.up.railway.app";
 
 interface AlertData {
   id: string;
@@ -50,7 +52,7 @@ export default function AlertDetailsScreen() {
     let live = true;
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/alerts/${id}`);
+        const res = await authFetch(`${API_URL}/alerts/${id}`);
         if (!res.ok) {
           throw Object.assign(new Error("Error"), { status: res.status });
         }

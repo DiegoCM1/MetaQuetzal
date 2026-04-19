@@ -80,7 +80,7 @@ export function setForegroundNotificationHandler() {
 }
 
 // Devuelve el unsubscribe para limpiarlo en unuseEffect
-export function addNotificationResponseListener(onTap) {
+export function addNotificationResponseListener(onTap: (data: Record<string, unknown>) => void) {
   return Notifications.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data;
     onTap(data); // envía los datos al callback que definas en el layout
