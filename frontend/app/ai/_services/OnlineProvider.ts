@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { AIProvider } from './AIProvider'
 import { Message } from "../_types"
+import { getAuthToken } from '../../../utils/api'
 
 
 
@@ -15,8 +16,10 @@ export class OnlineProvider implements AIProvider {
             content: m.text                                                
         }))
 
-        // Call backend
-        const response = await axios.post(API_URL, { messages: payload, location, latitude, longitude });
+        const token = await getAuthToken()
+        const response = await axios.post(API_URL, { messages: payload, location, latitude, longitude }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
 
         onToken(response.data.reply) 
     }
