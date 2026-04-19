@@ -39,7 +39,7 @@ export async function registerForPushNotificationsAsync() {
 
   try {
     await authFetch(
-      `${API_BASE_URL}/api/push-token`,
+      `${API_BASE_URL}/push-token`,
       {
         method: "POST",
         body: JSON.stringify({ token: fcmToken }),
