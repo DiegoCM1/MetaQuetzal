@@ -9,6 +9,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
 import { useModel } from "./ai/_context/ModelContext";
+import { useAuth } from "./(auth)/_context/AuthContext";
 
 export default function SettingsScreen() {
 
@@ -16,6 +17,18 @@ export default function SettingsScreen() {
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { colorScheme, toggleColorScheme } = useTheme();
   const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel()
+  const { signOut } = useAuth()
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Estás seguro que deseas cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
+      ]
+    )
+  }
 
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
   const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937";
@@ -295,6 +308,23 @@ export default function SettingsScreen() {
           <Chevron />
         </Pressable>
       )}
+
+      {/* ────────────── CERRAR SESIÓN ────────────── */}
+      <Pressable
+        android_ripple={{ color: "rgba(239,68,68,0.1)" }}
+        className={row}
+        onPress={handleSignOut}
+      >
+        <Ionicons
+          name="log-out-outline"
+          size={22}
+          color="#EF4444"
+          style={{ marginRight: 16 }}
+        />
+        <Text className="flex-1 text-base" style={{ color: "#EF4444" }}>
+          Cerrar sesión
+        </Text>
+      </Pressable>
 
     </SafeAreaView>
   );

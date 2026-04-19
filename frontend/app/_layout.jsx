@@ -1,7 +1,8 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { initExecutorch } from 'react-native-executorch';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 import { ModelProvider } from './ai/_context/ModelContext';
+import { AuthProvider, useAuth } from './(auth)/_context/AuthContext';
 
 initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 // import { Drawer } from "expo-router/drawer";
@@ -13,7 +14,6 @@ import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
 import { AppState, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
 import {
   registerForPushNotificationsAsync,
   setForegroundNotificationHandler,
@@ -23,6 +23,21 @@ import * as Notifications from "expo-notifications";
 import Toast from "react-native-toast-message";
 import { initAnalytics, track, flush } from "../utils/analytics";
 import { usePathname } from "expo-router";
+
+function AuthGate({ children }) {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  const segments = useSegments()
+
+  useEffect(() => {
+    if (loading) return
+    const inAuthGroup = segments[0] === '(auth)'
+    if (!user && !inAuthGroup) router.replace('/(auth)')
+    if (user && inAuthGroup) router.replace('/(tabs)')
+  }, [user, loading])
+
+  return children
+}
 
 /* ---------- Layout raíz ---------- */
 export default function Layout() {
@@ -158,6 +173,8 @@ export default function Layout() {
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
+            <AuthProvider>
+              <AuthGate>
               <ModelProvider>
               <Stack
                 screenOptions={{
@@ -166,6 +183,10 @@ export default function Layout() {
                   headerTitleStyle: { fontWeight: "bold" },
                 }}
               >
+                  <Stack.Screen
+                    name="(auth)"
+                    options={{ headerShown: false }}
+                  />
                   <Stack.Screen
                     name="(tabs)"
                     options={{ headerShown: false }}
@@ -193,6 +214,8 @@ export default function Layout() {
                 </Stack>
               <Toast />
               </ModelProvider>
+              </AuthGate>
+            </AuthProvider>
           </SafeAreaProvider>
         </ThemeProvider>
       </DaltonicModeProvider>
