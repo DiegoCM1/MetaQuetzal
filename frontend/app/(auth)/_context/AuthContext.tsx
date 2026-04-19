@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth'
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithCredential,
+  signOut as firebaseSignOut,
+  GoogleAuthProvider,
+  FirebaseAuthTypes,
+} from '@react-native-firebase/auth'
 import { GoogleSignin } from '@react-native-google-signin/google-signin'
 import { AuthContextValue } from '../_types'
 
@@ -14,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged((firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser) => {
       setUser(firebaseUser)
       setLoading(false)
     })
@@ -24,13 +31,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithGoogle() {
     await GoogleSignin.hasPlayServices()
     const { data } = await GoogleSignin.signIn()
-    const credential = auth.GoogleAuthProvider.credential(data!.idToken)
-    await auth().signInWithCredential(credential)
+    const credential = GoogleAuthProvider.credential(data!.idToken)
+    await signInWithCredential(getAuth(), credential)
   }
 
   async function signOut() {
     await GoogleSignin.signOut()
-    await auth().signOut()
+    await firebaseSignOut(getAuth())
   }
 
   return (
