@@ -184,6 +184,10 @@ RAG
        - Categoría de la app + cuestionario de clasificación de contenido
        - Política de privacidad — URL real y pública (puede ser página simple)
        - Formulario de seguridad de datos — declarar qué datos recopila la app y por qué (obligatorio, bloquea el envío si falta)
+    6.5 Integration tests — backend endpoints owned by Diego (DEV-DIEGO-EXTRA) — Apr 21
+       - POST /ai/chat — happy path + auth failure
+       - POST /feedback — happy path + auth failure
+       - POST /push-token — happy path + auth failure
     7. Pulir frontend — UX, edge cases, limpieza visual, integración alertas (DEV-DIEGO) — Apr 22–23
     8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
        - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
@@ -204,6 +208,7 @@ RAG
     1. Improve telemetry — replace print() with structured logging — backend gets loguru or Python logging,
     frontend gets Sentry
     2. Improve telemetry to use login — once login exists, tie events to real users
+    3. E2E testing
 
     ---
 
