@@ -37,7 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await GoogleSignin.signOut()
-    await firebaseSignOut(getAuth())
+    if (getAuth().currentUser) {
+      await firebaseSignOut(getAuth())
+    }
   }
 
   return (
