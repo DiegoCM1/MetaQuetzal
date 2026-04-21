@@ -24,6 +24,16 @@ import Toast from "react-native-toast-message";
 import { initAnalytics, track, flush } from "../utils/analytics";
 import { usePathname } from "expo-router";
 
+interface NotificationData {
+  alertId?: string
+  alertLevel?: string
+  fullScreen?: string
+  category?: string
+  alertTitle?: string
+  alertMessage?: string
+  bulletinUrl?: string
+}
+
 function AuthGate({ children }) {
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -32,9 +42,12 @@ function AuthGate({ children }) {
   useEffect(() => {
     if (loading) return
     const inAuthGroup = segments[0] === '(auth)'
-    if (!user && !inAuthGroup) router.replace('/(auth)')
-    if (user && inAuthGroup) router.replace('/(tabs)')
-  }, [user, loading])
+    if (!user && !inAuthGroup){
+      router.replace('/(auth)')
+    } else if (user && inAuthGroup) {
+      router.replace('/(tabs)')
+    }
+  }, [user, loading, segments])
 
   return children
 }
@@ -68,7 +81,8 @@ export default function Layout() {
     setForegroundNotificationHandler();
 
     // 👇 Cuando el usuario pulse la notificación (o llegue automáticamente si es critical)
-    const sub = addNotificationResponseListener(async (data) => {
+    const sub = addNotificationResponseListener(async (rawData) => {
+      const data = rawData as NotificationData
       if (data?.alertId) {
         await initAnalytics();
         track("push_open", {
@@ -107,7 +121,7 @@ export default function Layout() {
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
-      const data = initial?.notification?.request?.content?.data;
+      const data = initial?.notification?.request?.content?.data as NotificationData | undefined
       const alertId = data?.alertId;
 
       if (alertId) {
