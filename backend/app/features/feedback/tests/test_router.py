@@ -38,18 +38,30 @@ def test_feedback_was_uploaded():
         ANY, 5, "yourmother@gmail.com", "Hey"
     )
 
-
-
-
-
-
 # Wrong Headers
-
-
-
-
-
-
-
+def test_upload_feedback_invalid_token():
+    response = client.post(
+        "/feedback",
+        json={
+            "rating": 5,
+            "email": "yourmother@gmail.com",
+            "message": "Hey"
+        },
+        headers={
+            "Authorization": "Bearer Faketoken"
+        }
+    )
+    assert response.status_code == 401
 
 # No headers
+def test_upload_feedback_no_auth():
+    response = client.post(
+        "/feedback",
+        json={
+            "rating": 5,
+            "email": "yourmother@gmail.com",
+            "message": "Hey"
+        }
+    )
+
+    assert response.status_code == 422
