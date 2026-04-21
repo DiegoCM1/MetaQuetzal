@@ -45,7 +45,7 @@ function AuthGate({ children }) {
     if (!user && !inAuthGroup){
       router.replace('/(auth)')
     } else if (user && inAuthGroup) {
-      router.replace('/(tabs)')
+      router.replace('/(tabs)/MapScreen')
     }
   }, [user, loading, segments])
 
