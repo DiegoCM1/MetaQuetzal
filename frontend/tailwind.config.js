@@ -20,6 +20,7 @@ module.exports = {
         'brand-blue':   '#3167ff',
         'brand-indigo': '#3900ff',
         'brand-cyan':   '#2ecaff',
+        'brand-black':  '#000000',
 
         // Brand secondary
         'brand-orange': '#ff8500',
