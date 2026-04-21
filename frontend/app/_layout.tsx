@@ -12,6 +12,7 @@ import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
+import { useFonts } from "expo-font";
 import { AppState, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -40,6 +41,13 @@ function AuthGate({ children }) {
   const segments = useSegments()
 
   useEffect(() => {
+    if (!user) return
+    registerForPushNotificationsAsync()
+      .then((token) => console.log("Token guardado:", token))
+      .catch(console.error)
+  }, [user?.uid])
+
+  useEffect(() => {
     if (loading) return
     const inAuthGroup = segments[0] === '(auth)'
     if (!user && !inAuthGroup){
@@ -55,8 +63,13 @@ function AuthGate({ children }) {
 /* ---------- Layout raíz ---------- */
 export default function Layout() {
   const router = useRouter();
-
   const { colorScheme } = useColorScheme();
+
+  const [fontsLoaded] = useFonts({
+    'Square721':        require('../assets/fonts/square-721-bold-extended-bt.ttf'),
+    'Poppins-Light':    require('../assets/fonts/Poppins-Light.otf'),
+    'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.otf'),
+  });
 
   useEffect(() => {
     initAnalytics().catch(console.error);
@@ -65,16 +78,6 @@ export default function Layout() {
   // Configure StatusBar to not be translucent (backup for native API)
   useEffect(() => {
     RNStatusBar.setTranslucent(false);
-  }, []);
-
-  // ⚡ Solicitar token FCM al montar
-  useEffect(() => {
-    registerForPushNotificationsAsync()
-      .then((token) => {
-        // Aquí podrías enviarlo a tu backend si quieres
-        console.log("Token guardado:", token);
-      })
-      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -180,6 +183,8 @@ export default function Layout() {
   const headerBg =
     colorScheme === "dark" ? "rgb(40, 60, 80)" : "rgb(60, 200, 220)";
   const headerTint = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#fff";
+
+  if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
