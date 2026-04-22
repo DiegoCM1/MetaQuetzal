@@ -189,12 +189,12 @@ RAG
        - POST /feedback — happy path + auth failure ✅
        - POST /push-token — happy path + auth failure ✅
     7. Pulir frontend — UX, edge cases, limpieza visual (DEV-DIEGO) — Apr 22–23
-      7.1 Extend tailwind.config.js — add brand colors and font families as custom tokens. This is what makes text-primary,bg-brand-blue, font-poppins available as classes everywhere.
-      7.2 Load fonts in _layout.tsx — expo-font's useFonts hook loads the .otf/.ttf files from assets/fonts/. Until this runs, any component using a custom font will fall back to the system font.
-      7.3 Metro config for SVG — install react-native-svg-transformer, update metro.config.js. This lets you import Logo from '@/assets/images/BLUAI_LOGO_BLANCO.svg' and render it as a component.
-      7.4 Ask Alberto for: 
-        7.4.1 The hurricane background image — the login screen mockup clearly shows an aerial hurricane photo. Using a gradient right now
-        7.4.2 Gradient definitions as values — not the SVG files (those are useless for code). Ask for: hex color stops + their positions(0%, 40%, 100% etc.) + the angle for each gradient.
+      7.1 Frotend config: Design system, logos, images, constants, gradients, classes. ✅
+      7.2 Login screen ✅
+      7.3 Build the 3 shared components: bottom tab bar, section header, dark card
+      7.4 NAVBAR
+      7.4 Onboarding
+      7.5 Map/Alerts/Settings
     8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
        - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
        - Configurar perfil de producción en eas.json

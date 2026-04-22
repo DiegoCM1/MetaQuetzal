@@ -1,70 +1,80 @@
 import { Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useColorScheme } from "nativewind";
+import { Pressable, View, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
-export default function TabsLayout() {
-  const { colorScheme } = useColorScheme();
-  const barBg =
-    colorScheme === "dark" ? "rgb(40, 60, 80)" : "rgb(60, 200, 220)";
-  const activeTint =
-    colorScheme === "dark" ? "rgb(230, 230, 250)" : "rgb(255, 255, 255)";
-  const inactiveTint =
-    colorScheme === "dark" ? "rgb(180, 180, 200)" : "rgb(220, 220, 220)";
+const TABS = [
+  { name: "MapScreen",          label: "Mapa",    icon: "map-outline"          },
+  { name: "ChatAIScreen",       label: "IA",      icon: "message-text-outline" },
+  { name: "AlertsHistoryScreen",label: "Alertas", icon: "bell-outline"         },
+  { name: "MoreScreen",         label: "Más",     icon: "menu"                 },
+] as const
+
+function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets()
 
   return (
+    <View style={{
+      backgroundColor: 'rgb(6, 15, 30)',
+      marginHorizontal: 16,
+      marginBottom: Math.max(insets.bottom, 8),
+      borderRadius: 30,
+      padding: 6,
+    }}>
+      <View style={{
+        flexDirection: 'row',
+        backgroundColor: 'rgb(49, 103, 255)',
+        borderRadius: 24,
+        height: 52,
+      }}>
+      {TABS.map((tab, index) => {
+        const focused = state.index === index
+        return (
+          <Pressable
+            key={tab.name}
+            onPress={() => navigation.navigate(tab.name)}
+            style={{
+              flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%',
+            }}
+          >
+            {focused && (
+              <View style={{
+                position: 'absolute', top: 6, width: 28, height: 3,
+                borderRadius: 2, backgroundColor: 'rgb(255, 255, 255)',
+              }} />
+            )}
+            <MaterialCommunityIcons
+              name={tab.icon}
+              size={22}
+              color="rgb(255, 255, 255)"
+            />
+            <Text style={{
+              color: 'rgb(255, 255, 255)',
+              fontSize: 11,
+              fontFamily: 'Poppins-Light',
+              marginTop: 2,
+            }}>
+              {tab.label}
+            </Text>
+          </Pressable>
+        )
+      })}
+      </View>
+    </View>
+  )
+}
+
+export default function TabsLayout() {
+  return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: activeTint,
-        tabBarInactiveTintColor: inactiveTint,
-        tabBarStyle: { backgroundColor: barBg },
-        tabBarHideOnKeyboard: true, // Hide the tab bar when the keyboard is open so it doesn't overlap the text input on Android builds
-      }}
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen
-        name="MapScreen"
-        options={{
-          title: "Mapa",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="map" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="ChatAIScreen"
-        options={{
-          title: "Chat-AI",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="robot-happy"
-              color={color}
-              size={size}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="AlertsHistoryScreen"
-        options={{
-          title: "Alertas",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="bell-alert-outline"
-              color={color}
-              size={size}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="MoreScreen"
-        options={{
-          title: "Más",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="menu" color={color} size={size} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="MapScreen" />
+      <Tabs.Screen name="ChatAIScreen" />
+      <Tabs.Screen name="AlertsHistoryScreen" />
+      <Tabs.Screen name="MoreScreen" />
     </Tabs>
   );
 }
