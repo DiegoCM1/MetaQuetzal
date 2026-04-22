@@ -23,6 +23,7 @@ import {
 import * as Notifications from "expo-notifications";
 import Toast from "react-native-toast-message";
 import { initAnalytics, track, flush } from "../utils/analytics";
+import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
 
 interface NotificationData {
@@ -53,7 +54,15 @@ function AuthGate({ children }) {
     if (!user && !inAuthGroup){
       router.replace('/(auth)')
     } else if (user && inAuthGroup) {
-      router.replace('/(tabs)/MapScreen')
+      const checkAndRoute = async () => {
+        const completed = await hasCompletedOnboarding()
+        if (completed) {
+          router.replace('/(tabs)/MapScreen')
+        } else {
+          router.replace('/onboarding/step1')
+        }
+      }
+      checkAndRoute()
     }
   }, [user, loading, segments])
 

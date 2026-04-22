@@ -193,10 +193,8 @@ RAG
       7.2 Load fonts in _layout.tsx — expo-font's useFonts hook loads the .otf/.ttf files from assets/fonts/. Until this runs, any component using a custom font will fall back to the system font.
       7.3 Metro config for SVG — install react-native-svg-transformer, update metro.config.js. This lets you import Logo from '@/assets/images/BLUAI_LOGO_BLANCO.svg' and render it as a component.
       7.4 Ask Alberto for: 
-        7.4.1 The hurricane background image — the login screen mockup clearly shows an aerial hurricane photo.
-        7.4.2 Gradient definitions as values — not the SVG files (those are useless for code). Ask for: hex color stops + their positions(0%, 40%, 100% etc.) + the angle for each gradient.       
-        
-  a gradient right now. Ask for it as a standalone PNG/JPEG. 
+        7.4.1 The hurricane background image — the login screen mockup clearly shows an aerial hurricane photo. Using a gradient right now
+        7.4.2 Gradient definitions as values — not the SVG files (those are useless for code). Ask for: hex color stops + their positions(0%, 40%, 100% etc.) + the angle for each gradient.
     8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
        - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
        - Configurar perfil de producción en eas.json
@@ -228,4 +226,5 @@ RAG
     3. Add tool examples to dataset
     4. Create dataset v2 multiturn and tool examples
     5. Train 1b, 3b, Llama Model (If permitted by provider) V2
+    6. Build a custom button for login — Pressable + Google icon + your own text. Full control, but you're rolling your own Google-branded UI
     ---
