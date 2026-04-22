@@ -8,6 +8,8 @@ import AlertCard from "./_components/AlertCard";
 import YearListItem from "./_components/YearListItem";
 import { groupAlertsByYear, getSortedYears } from "./_utils/groupByYear";
 import { track } from "../../utils/analytics";
+import  ScreenHeader from "../../components/ScreenHeader"
+
 
 export default function AlertsHistoryByYearScreen() {
   const router = useRouter();
@@ -105,8 +107,9 @@ export default function AlertsHistoryByYearScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={["bottom"]}
+      edges={["top", "bottom"]}
     >
+      <ScreenHeader title="Historial de alertas " />
       <FlatList
         contentContainerStyle={{ padding: 16 }}
         data={years}

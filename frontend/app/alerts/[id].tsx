@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Linking,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "../../utils/date";
@@ -14,6 +15,8 @@ import { colorForLevel } from "./_components/AlertCard";
 import { track } from "../../utils/analytics";
 import { authFetch } from '../../utils/api'
 import { API_BASE_URL } from '../../utils/config'
+import  ScreenHeader from "../../components/ScreenHeader"
+
 
 interface AlertData {
   id: string;
@@ -109,7 +112,8 @@ export default function AlertDetailsScreen() {
   const bannerColor = `${baseColor}80`;
 
   return (
-    <View className="flex-1 bg-white dark:bg-neutral-900">
+    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-white dark:bg-neutral-900">
+      <ScreenHeader title="Detalles de alerta" />
       {/* banner */}
       <View
         style={{ backgroundColor: bannerColor }}
@@ -222,6 +226,6 @@ export default function AlertDetailsScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
