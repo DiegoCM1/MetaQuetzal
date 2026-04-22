@@ -221,7 +221,8 @@ RAG
     Phase 7 (Post launch)
 
     0. Backend migration from Railway to Cloud Run
-    1. Architectural cleanup — move feature code out of app/ into src/features/
+    1. Frotend Architectural cleanup — move feature code out of app/ into src/features/
+      1.1 Use useSafeAreaInsets on ScreenHeader.tsx so it handles everything (non-blocking, best practices: DRY)
     2. Define tool schemas and usage
     3. Add tool examples to dataset
     4. Create dataset v2 multiturn and tool examples

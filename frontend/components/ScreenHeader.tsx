@@ -19,7 +19,13 @@ export default function ScreenHeader({ title }: Props) {
         end={{ x: 1, y: 0 }}
         className="py-3 pr-10 flex-row items-center"
       >
-        <Pressable onPress={() => router.back()} className="pl-3 pr-2">
+        <Pressable 
+        onPress={() => router.back()} 
+        className="pl-3 pr-2"
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityLabel="Volver"      
+        accessibilityRole="button"                                  
+        >
           <MaterialCommunityIcons name="chevron-left" size={24} color="white" />
         </Pressable>
         <Text className="flex-1 text-white font-poppins-semibold text-xl text-center pr-6">
