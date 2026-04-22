@@ -1,4 +1,5 @@
-import { TouchableOpacity, Text, View, Image, useColorScheme } from 'react-native';
+import { TouchableOpacity, Text, View, Image } from 'react-native';
+import { useTheme } from '../../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Note } from '../_types';
@@ -10,7 +11,7 @@ interface NoteCardProps {
 
 export default function NoteCard({ note }: NoteCardProps) {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useTheme();
 
   const handlePress = () => {
     track('educational_note_tap', {

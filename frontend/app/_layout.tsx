@@ -10,7 +10,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useColorScheme } from "nativewind";
 import { useEffect } from "react";
 import { useFonts } from "expo-font";
 import { AppState, StatusBar as RNStatusBar } from "react-native";
@@ -72,7 +71,6 @@ function AuthGate({ children }) {
 /* ---------- Layout raíz ---------- */
 export default function Layout() {
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
 
   const [fontsLoaded] = useFonts({
     'Square721': require('../assets/fonts/square-721-bold-extended-bt.ttf'),

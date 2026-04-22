@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useColorScheme } from "nativewind";
+import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { submitFeedback } from "../services/feedbackService";
 import { track } from "../utils/analytics";
@@ -17,7 +17,7 @@ import  ScreenHeader from "../components/ScreenHeader"
 
 
 export default function FeedbackScreen() {
-  const { colorScheme } = useColorScheme();
+  const { colorScheme } = useTheme();
   const [rating, setRating] = useState(0);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");

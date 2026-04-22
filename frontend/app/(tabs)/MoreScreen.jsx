@@ -1,13 +1,14 @@
 // MoreScreen.jsx
 import React from "react";
-import { Text, Pressable, useColorScheme } from "react-native";
+import { Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
+import { useTheme } from "../../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MoreScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme(); // "light" | "dark"
+  const { colorScheme } = useTheme();
 
   // palette
   const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937"; // blue‑400 / gray‑800

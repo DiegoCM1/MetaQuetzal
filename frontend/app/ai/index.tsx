@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
-  useColorScheme,
   Platform,
 } from "react-native";
+import { useTheme } from "../../context/ThemeContext";
 import { FlashList } from "@shopify/flash-list";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -29,7 +29,7 @@ export default function ChatAIScreen() {
   const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
   const tabBarHeight = useBottomTabBarHeight();
   const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useTheme();
   const markdownStyles = {
     body: {
       color: colorScheme === "dark" ? "white" : "rgb(30, 30, 60)",

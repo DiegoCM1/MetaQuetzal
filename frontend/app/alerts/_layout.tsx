@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { useColorScheme } from "nativewind";
 import { StatusBar } from "expo-status-bar";
 
 /**
@@ -7,8 +6,6 @@ import { StatusBar } from "expo-status-bar";
  * Handles: index (list), [id] (details), history (by year)
  */
 export default function AlertsLayout() {
-  const { colorScheme } = useColorScheme();
-
   return (
     <>
       <StatusBar style="light" translucent={false} />
