@@ -10,6 +10,8 @@ import { useTheme } from "../context/ThemeContext";
 import { track } from "../utils/analytics";
 import { useModel } from "./ai/_context/ModelContext";
 import { useAuth } from "./(auth)/_context/AuthContext";
+import  ScreenHeader from "../components/ScreenHeader"
+
 
 export default function SettingsScreen() {
 
@@ -98,8 +100,12 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={["bottom"]}
+      edges={["top", "bottom"]}
     >
+
+      <ScreenHeader title="Ajustes" />
+
+
       {/* ───────────────────── NOTIFICACIONES ───────────────────── */}
       <View className={row}>
         <Ionicons

@@ -51,7 +51,7 @@ function AuthGate({ children }) {
   useEffect(() => {
     if (loading) return
     const inAuthGroup = segments[0] === '(auth)'
-    if (!user && !inAuthGroup){
+    if (!user && !inAuthGroup) {
       router.replace('/(auth)')
     } else if (user && inAuthGroup) {
       const checkAndRoute = async () => {
@@ -75,8 +75,8 @@ export default function Layout() {
   const { colorScheme } = useColorScheme();
 
   const [fontsLoaded] = useFonts({
-    'Square721':        require('../assets/fonts/square-721-bold-extended-bt.ttf'),
-    'Poppins-Light':    require('../assets/fonts/Poppins-Light.otf'),
+    'Square721': require('../assets/fonts/square-721-bold-extended-bt.ttf'),
+    'Poppins-Light': require('../assets/fonts/Poppins-Light.otf'),
     'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.otf'),
   });
 
@@ -189,59 +189,61 @@ export default function Layout() {
     return () => sub.remove();
   }, []);
 
-  const headerBg =
-    colorScheme === "dark" ? "rgb(40, 60, 80)" : "rgb(60, 200, 220)";
-  const headerTint = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#fff";
-
   if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
+      <StatusBar style="light" translucent={false} />
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
             <AuthProvider>
               <AuthGate>
-              <ModelProvider>
-              <Stack
-                screenOptions={{
-                  headerStyle: { backgroundColor: headerBg },
-                  headerTintColor: headerTint,
-                  headerTitleStyle: { fontWeight: "bold" },
-                }}
-              >
-                  <Stack.Screen
-                    name="(auth)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="onboarding"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="SettingsScreen"
-                    options={{ title: "Ajustes" }}
-                  />
-                  <Stack.Screen
-                    name="AlarmScreen"
-                    options={{ title: "Alarma" }}
-                  />
-                  <Stack.Screen
-                    name="FeedbackScreen"
-                    options={{ title: "Feedback" }}
-                  />
-                  <Stack.Screen
-                    name="alerts"
-                    options={{ headerShown: false }}
-                  />
-                </Stack>
-              <Toast />
-              </ModelProvider>
+                <ModelProvider>
+                  <Stack
+                    screenOptions={{
+                      headerTitleStyle: { fontWeight: "bold" },
+                    }}
+                  >
+                    <Stack.Screen
+                      name="(auth)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="onboarding"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="SettingsScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="AlarmScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="FeedbackScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="alerts"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="educational"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="subscription"
+                      options={{ headerShown: false }}
+                    />
+                  </Stack>
+                  <Toast />
+                </ModelProvider>
               </AuthGate>
             </AuthProvider>
           </SafeAreaProvider>

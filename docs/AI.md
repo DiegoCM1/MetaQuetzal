@@ -191,8 +191,8 @@ RAG
     7. Pulir frontend — UX, edge cases, limpieza visual (DEV-DIEGO) — Apr 22–23
       7.1 Frotend config: Design system, logos, images, constants, gradients, classes. ✅
       7.2 Login screen ✅
-      7.3 Build the 3 shared components: bottom tab bar, section header, dark card
-      7.4 NAVBAR
+      7.3 NAVBAR ✅ 
+      7.4 Build the 3 shared components: bottom tab bar, section header, dark card ✅
       7.4 Onboarding
       7.5 Map/Alerts/Settings
     8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25

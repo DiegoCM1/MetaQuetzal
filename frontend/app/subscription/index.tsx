@@ -7,6 +7,8 @@ import { track } from '../../utils/analytics';
 import PlanCard from './_components/PlanCard';
 import { getPlans } from './_services/subscriptionService';
 import { Plan, BillingPeriod } from './_types';
+import  ScreenHeader from "../../components/ScreenHeader"
+
 
 export default function SubscriptionScreen() {
   const router = useRouter();
@@ -64,8 +66,10 @@ export default function SubscriptionScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={['left', 'right', 'bottom']}
+      edges={['top', 'left', 'right', 'bottom']}
     >
+      <ScreenHeader title="Suscripción" />
+
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View className="px-6 py-8 items-center">

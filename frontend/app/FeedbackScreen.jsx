@@ -13,6 +13,8 @@ import { useColorScheme } from "nativewind";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { submitFeedback } from "../services/feedbackService";
 import { track } from "../utils/analytics";
+import  ScreenHeader from "../components/ScreenHeader"
+
 
 export default function FeedbackScreen() {
   const { colorScheme } = useColorScheme();
@@ -63,12 +65,11 @@ export default function FeedbackScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-white dark:bg-neutral-900"
-      edges={["bottom"]}
+      edges={["top", "bottom"]}
     >
-      <StatusBar
-        style={colorScheme === "dark" ? "light" : "dark"}
-        translucent={false}
-      />
+      <ScreenHeader title="Feedback" />
+
+
       <View className="px-6 py-6">
         <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
           Cuéntanos qué te gusta, qué podemos mejorar o reporta algún error.
