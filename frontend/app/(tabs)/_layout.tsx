@@ -20,8 +20,21 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       marginHorizontal: 16,
       marginBottom: Math.max(insets.bottom, 8),
       borderRadius: 30,
-      padding: 6,
+      paddingHorizontal: 6,
+      paddingBottom: 6,
+      paddingTop: 4,
     }}>
+      {/* Marker row — sits in the gap above the inner pill */}
+      <View style={{ flexDirection: 'row', height: 6, marginBottom: 2 }}>
+        {TABS.map((_, index) => (
+          <View key={index} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            {state.index === index && (
+              <View style={{ width: 28, height: 3, borderRadius: 2, backgroundColor: 'rgb(255, 255, 255)' }} />
+            )}
+          </View>
+        ))}
+      </View>
+
       <View style={{
         flexDirection: 'row',
         backgroundColor: 'rgb(49, 103, 255)',
@@ -38,12 +51,6 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%',
             }}
           >
-            {focused && (
-              <View style={{
-                position: 'absolute', top: 6, width: 28, height: 3,
-                borderRadius: 2, backgroundColor: 'rgb(255, 255, 255)',
-              }} />
-            )}
             <MaterialCommunityIcons
               name={tab.icon}
               size={22}
