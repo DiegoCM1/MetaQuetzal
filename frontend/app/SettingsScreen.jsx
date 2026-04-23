@@ -35,7 +35,7 @@ export default function SettingsScreen() {
   /* ──────────────── colour palette (matches MoreScreen) ──────────────── */
   const iconColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#1F2937";
   const arrowColor = colorScheme === "dark" ? "rgb(60, 200, 220)" : "#9CA3AF";
-  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#111827";
+  const textColor = colorScheme === "dark" ? "rgb(230, 230, 250)" : "rgb(230, 230, 250)";
 
   /* ──────────────── helpers ──────────────── */
   const showComingSoon = () =>
@@ -127,7 +127,7 @@ export default function SettingsScreen() {
       </View>
 
       {/* ─────────────────────── ALARMAS ─────────────────────── */}
-      <Pressable
+      {/* <Pressable
         android_ripple={{ color: "rgba(0,0,0,0.07)" }}
         className={row}
         onPress={showComingSoon}
@@ -144,23 +144,10 @@ export default function SettingsScreen() {
         <Link href="/alerts" asChild>
           <Chevron />
         </Link>
-      </Pressable>
-
-      {/* ───────────────────── MODO OSCURO (v2) ───────────────────── */}
-      {/* <View className={row}>
-        <Ionicons name="moon-outline" size={22} color={iconColor} style={{ marginRight: 16 }} />
-        <Text className="flex-1 text-base" style={{ color: textColor }}>Modo oscuro</Text>
-        <Switch
-          value={colorScheme === "dark"}
-          onValueChange={handleDarkModeToggle}
-          thumbColor={colorScheme === "dark" ? "rgb(60,200,220)" : "#fff"}
-          trackColor={{ false: "#9ca3af", true: "rgb(60,200,220)" }}
-          ios_backgroundColor="#9ca3af"
-        />
-      </View> */}
+      </Pressable> */}
 
       {/* ───────────────────── DALTONISMO ───────────────────── */}
-      <View className={row}>
+      {/* <View className={row}>
         <Ionicons
           name="eye-outline"
           size={22}
@@ -177,10 +164,10 @@ export default function SettingsScreen() {
           trackColor={{ false: "#9ca3af", true: "rgb(60,200,220)" }}
           ios_backgroundColor="#9ca3af"
         />
-      </View>
+      </View> */}
 
       {/* ─────────────────────── IDIOMA ─────────────────────── */}
-      <Pressable
+      {/* <Pressable
         android_ripple={{ color: "rgba(0,0,0,0.07)" }}
         className={row}
         onPress={showComingSoon}
@@ -198,7 +185,7 @@ export default function SettingsScreen() {
           Español
         </Text>
         <Chevron />
-      </Pressable>
+      </Pressable> */}
 
       {/* ─────────────────────── CUENTA ─────────────────────── */}
       <Pressable

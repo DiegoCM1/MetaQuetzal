@@ -1,26 +1,40 @@
-import { Text, Pressable } from "react-native";
+import { Text, Pressable, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { gradients } from "../utils/theme";
 import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
 
 interface Props {
     title: string;
-    // Strict typing for valid Expo vector icons
     icon: keyof typeof MaterialCommunityIcons.glyphMap; 
-    route: string;
+    route?: string;
+    onPress?: () => void;
+    rightElement?: React.ReactNode;
+    danger?: boolean; 
 }
 
-export default function StandardOption({ title, icon, route }: Props) {
+export default function StandardOption({ title, icon, route, onPress, rightElement, danger }: Props) {
     const router = useRouter();
+
+    const handlePress = () => {
+        if (onPress) {
+            onPress();
+        } else if (route) {
+            router.push(route as any);
+        }
+    };
+
+    // If it's a destructive action, make the text/icon red
+    const contentColor = danger ? "#EF4444" : "white";
 
     return (
         <Pressable
-            // Push forward to the assigned route
-            onPress={() => router.push(route as any)} 
-            className="mb-4 rounded-r-3xl rounded-b-3xl rounded-tl-sm rounded-b- overflow-hidden active:opacity-80 mx-4 shadow-sm"
+            onPress={handlePress}
+            // Disable the press effect if it's just a display row (like the Switch row)
+            disabled={!onPress && !route} 
+            className="mb-4 mx-4 rounded-r-3xl rounded-bl-3xl rounded-tl-sm overflow-hidden active:opacity-80 shadow-sm"
             accessibilityRole="button"
-            accessibilityLabel={`Go to ${title}`}
         >
             <LinearGradient
                 colors={gradients.header}
@@ -28,15 +42,22 @@ export default function StandardOption({ title, icon, route }: Props) {
                 end={{ x: 1, y: 0 }}
                 className="py-4 px-5 flex-row items-center"
             >
-                {/* Dynamic Icon from props */}
-                <MaterialCommunityIcons name={icon} size={24} color="white" />
+                <MaterialCommunityIcons name={icon} size={24} color={contentColor} />
                 
-                <Text className="flex-1 text-white font-poppins-semibold text-lg ml-4">
+                <Text className="flex-1 font-poppins-semibold text-lg ml-4" style={{ color: contentColor }}>
                     {title}
                 </Text>
                 
-                {/* Standard UX: Right chevron implies navigating deeper */}
-                <MaterialCommunityIcons name="chevron-right" size={24} color="rgba(255,255,255,0.7)" />
+                {/* Logic: Render custom right element, OR a chevron if clickable, OR nothing */}
+                {rightElement ? (
+                    rightElement
+                ) : (route || onPress) ? (
+                    <MaterialCommunityIcons 
+                        name="chevron-right" 
+                        size={24} 
+                        color={danger ? "#EF4444" : "rgba(255,255,255,0.7)"} 
+                    />
+                ) : null}
             </LinearGradient>
         </Pressable>
     );
