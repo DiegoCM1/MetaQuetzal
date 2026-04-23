@@ -57,7 +57,7 @@ export default function SubscriptionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900 items-center justify-center">
+      <SafeAreaView className="flex-1 bg-transparent items-center justify-center">
         <ActivityIndicator size="large" color="rgb(50, 180, 200)" />
       </SafeAreaView>
     );
@@ -65,7 +65,7 @@ export default function SubscriptionScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
       edges={['top', 'left', 'right', 'bottom']}
     >
       <ScreenHeader title="Suscripción" />

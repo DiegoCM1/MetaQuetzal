@@ -74,7 +74,7 @@ export default function NoteDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900 items-center justify-center">
+      <SafeAreaView className="flex-1 bg-transparent items-center justify-center">
         <ActivityIndicator size="large" color={iconColor} />
       </SafeAreaView>
     );
@@ -82,7 +82,7 @@ export default function NoteDetailScreen() {
 
   if (error || !note) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900 items-center justify-center px-6">
+      <SafeAreaView className="flex-1 bg-transparent items-center justify-center px-6">
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
         <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark mt-4">
           {error || 'Nota no encontrada'}
@@ -103,7 +103,7 @@ export default function NoteDetailScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
       edges={['bottom']}
     >
       {/* Header */}

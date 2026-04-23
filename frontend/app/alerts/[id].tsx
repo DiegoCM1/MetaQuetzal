@@ -88,7 +88,7 @@ export default function AlertDetailsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <ActivityIndicator size="large" color="#38bdf8" />
       </View>
     );
@@ -96,7 +96,7 @@ export default function AlertDetailsScreen() {
 
   if (error) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <Text className="dark:text-white">
           {error.status === 404
             ? "Alerta no encontrada"
@@ -112,7 +112,7 @@ export default function AlertDetailsScreen() {
   const bannerColor = `${baseColor}80`;
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-white dark:bg-neutral-900">
+    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-transparent">
       <ScreenHeader title="Detalles de alerta" />
       {/* banner */}
       <View

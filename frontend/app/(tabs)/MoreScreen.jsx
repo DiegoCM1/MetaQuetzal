@@ -25,7 +25,7 @@ export default function MoreScreen() {
   return (
     <SafeAreaView
       edges={["top", "left", "right", "bottom"]}
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
     >
       {items.map(({ label, icon, route }) => (
         <Pressable

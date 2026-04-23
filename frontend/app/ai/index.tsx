@@ -59,7 +59,7 @@ export default function ChatAIScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1"
       edges={["top", "left", "right", "bottom"]}
     >
       <StatusBar style="light" translucent={false} />

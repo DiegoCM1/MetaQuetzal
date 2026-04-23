@@ -11,7 +11,7 @@ export default function AlertsListScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <ActivityIndicator size="large" color="#38bdf8" />
       </View>
     );
@@ -19,7 +19,7 @@ export default function AlertsListScreen() {
 
   if (error) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <Text className="text-red-500">Error al cargar alertas, verifica tu conexión a internet</Text>
       </View>
     );
@@ -27,7 +27,7 @@ export default function AlertsListScreen() {
 
   if (!data || data.length === 0) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <Text className="dark:text-white">No hay alertas</Text>
       </View>
     );
@@ -35,7 +35,7 @@ export default function AlertsListScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
       edges={["top", "left", "right", "bottom"]}
     >
       {/* Header with history button */}

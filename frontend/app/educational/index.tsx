@@ -47,7 +47,7 @@ export default function EducationalContentScreen() {
   if (loading) {
     return (
       <SafeAreaView
-        className="flex-1 bg-white dark:bg-neutral-900 items-center justify-center"
+        className="flex-1 bg-transparent items-center justify-center"
         edges={['top', 'left', 'right', 'bottom']}
       >
         <ActivityIndicator size="large" color={iconColor} />
@@ -61,7 +61,7 @@ export default function EducationalContentScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
       edges={['top', 'left', 'right', 'bottom']}
     >
       

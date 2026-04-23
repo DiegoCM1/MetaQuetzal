@@ -12,6 +12,7 @@ export default function AlertsLayout() {
       <Stack
         screenOptions={{
           headerTitleStyle: { fontWeight: "bold" },
+        contentStyle: { backgroundColor: 'transparent' },
         }}
       >
       <Stack.Screen

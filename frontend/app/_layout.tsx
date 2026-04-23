@@ -10,6 +10,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { LinearGradient } from "expo-linear-gradient";
+import { gradients } from "../utils/theme";
 import { useEffect } from "react";
 import { useFonts } from "expo-font";
 import { AppState, StatusBar as RNStatusBar } from "react-native";
@@ -198,9 +200,16 @@ export default function Layout() {
             <AuthProvider>
               <AuthGate>
                 <ModelProvider>
+                  <LinearGradient
+                    colors={gradients.primary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={{ flex: 1 }}
+                  >
                   <Stack
                     screenOptions={{
                       headerTitleStyle: { fontWeight: "bold" },
+                      contentStyle: { backgroundColor: "transparent" },
                     }}
                   >
                     <Stack.Screen
@@ -241,6 +250,7 @@ export default function Layout() {
                     />
                   </Stack>
                   <Toast />
+                  </LinearGradient>
                 </ModelProvider>
               </AuthGate>
             </AuthProvider>

@@ -39,7 +39,7 @@ export default function AlertsHistoryByYearScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <ActivityIndicator size="large" color="#38bdf8" />
         <Text className="mt-4 text-gray-600 dark:text-gray-400">
           Cargando historial...
@@ -50,7 +50,7 @@ export default function AlertsHistoryByYearScreen() {
 
   if (error) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <MaterialCommunityIcons
           name="alert-circle-outline"
           size={48}
@@ -63,7 +63,7 @@ export default function AlertsHistoryByYearScreen() {
 
   if (years.length === 0) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <MaterialCommunityIcons
           name="file-document-outline"
           size={48}
@@ -106,7 +106,7 @@ export default function AlertsHistoryByYearScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
       edges={["top", "bottom"]}
     >
       <ScreenHeader title="Historial de alertas " />

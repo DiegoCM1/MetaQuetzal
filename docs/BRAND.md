@@ -36,6 +36,26 @@
 
 ---
 
+## Theming Convention
+
+**Always use `useTheme` from `context/ThemeContext`** to read `colorScheme` imperatively (icon colors, inline styles, switch colors).
+
+Never use `useColorScheme` from NativeWind or React Native directly — they bypass AsyncStorage persistence.
+
+```tsx
+// ✅ correct
+import { useTheme } from "../context/ThemeContext"
+const { colorScheme } = useTheme()
+
+// ❌ wrong
+import { useColorScheme } from "nativewind"
+import { useColorScheme } from "react-native"
+```
+
+NativeWind's `dark:` class prefix works automatically — no hook needed for that.
+
+---
+
 ## Gradients
 
 Defined in `utils/theme.ts`. Use with `expo-linear-gradient`.
@@ -43,9 +63,11 @@ Defined in `utils/theme.ts`. Use with `expo-linear-gradient`.
 | Key | Description | Status |
 |---|---|---|
 | `primary` | Dark navy — default app background | Final |
-| `morado` | Purple-tinted dark | TODO: confirm with designer |
-| `naranja` | Orange-tinted dark | TODO: confirm with designer |
-| `verde` | Green-tinted dark | TODO: confirm with designer |
+| `morado` | Purple-tinted dark |
+| `naranja` | Orange-tinted dark |
+| `verde` | Green-tinted dark |
+| `header` | blue-tinted dark |
+
 
 ---
 

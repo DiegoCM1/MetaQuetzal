@@ -41,7 +41,7 @@ export default function ManageSubscriptionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900 items-center justify-center">
+      <SafeAreaView className="flex-1 bg-transparent items-center justify-center">
         <ActivityIndicator size="large" color="rgb(50, 180, 200)" />
       </SafeAreaView>
     );
@@ -49,7 +49,7 @@ export default function ManageSubscriptionScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
       edges={['left', 'right', 'bottom']}
     >
       {/* Header */}

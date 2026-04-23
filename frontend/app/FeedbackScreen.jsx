@@ -64,7 +64,7 @@ export default function FeedbackScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1"
       edges={["top", "bottom"]}
     >
       <ScreenHeader title="Feedback" />
