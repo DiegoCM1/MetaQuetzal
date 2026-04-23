@@ -101,7 +101,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false, sceneContainerStyle: { backgroundColor: 'transparent' } }}
+      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="MapScreen" />
       <Tabs.Screen name="ChatAIScreen" />

@@ -70,7 +70,7 @@ export default function EducationalContentScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View className="px-6 py-8 items-center border-b border-gray-200 dark:border-neutral-700">
+        <View className="px-6 py-8 items-center border-b border-gray-200">
           <Ionicons name="school" size={64} color={iconColor} />
           <Text className="text-2xl font-bold mt-4" style={{ color: textColor }}>
             Contenido Educativo
@@ -87,7 +87,7 @@ export default function EducationalContentScreen() {
 
         {/* Notes Section */}
         <View className="px-6 mb-6">
-          <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark mb-4">
+          <Text className="text-xl font-bold text-phase2Titles mb-4">
             Descubre lo que puedes aprender
           </Text>
 

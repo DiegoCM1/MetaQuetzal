@@ -73,10 +73,10 @@ export default function SubscriptionScreen() {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View className="px-6 py-8 items-center">
-          <Text className="text-4xl font-bold text-phase2Titles dark:text-phase2TitlesDark mb-2">
+          <Text className="text-4xl font-bold text-phase2Titles mb-2">
             Protege a tu familia
           </Text>
-          <Text className="text-lg text-center text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark">
+          <Text className="text-lg text-center text-phase2SecondaryTxt">
             Elige el plan ideal para ti
           </Text>
         </View>

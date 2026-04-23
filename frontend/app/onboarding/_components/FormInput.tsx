@@ -27,7 +27,7 @@ export const FormInput: React.FC<FormInputProps> = ({
   return (
     <View className="mb-4">
       {/* Label */}
-      <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+      <Text className="text-sm font-semibold text-gray-700 mb-2">
         {label}
         {required && <Text className="text-red-500"> *</Text>}
       </Text>
@@ -42,12 +42,12 @@ export const FormInput: React.FC<FormInputProps> = ({
         autoCapitalize={autoCapitalize}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className={`px-4 py-3 rounded-lg text-base text-gray-900 dark:text-white ${
+        className={`px-4 py-3 rounded-lg text-base text-gray-900 ${
           error
-            ? 'border-2 border-red-500 bg-red-50 dark:bg-red-900/20'
+            ? 'border-2 border-red-500 bg-red-50'
             : isFocused
-            ? 'border-2 border-phase2Buttons bg-white dark:bg-gray-800'
-            : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+            ? 'border-2 border-phase2Buttons bg-white'
+            : 'border border-gray-300 bg-white'
         }`}
         accessibilityLabel={label}
         accessibilityHint={placeholder}
@@ -56,7 +56,7 @@ export const FormInput: React.FC<FormInputProps> = ({
 
       {/* Error Message */}
       {error && (
-        <Text className="text-sm text-red-600 dark:text-red-400 mt-1">
+        <Text className="text-sm text-red-600 mt-1">
           {error}
         </Text>
       )}

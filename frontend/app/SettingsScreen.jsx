@@ -51,7 +51,7 @@ export default function SettingsScreen() {
   };
 
   const row =
-    "flex-row items-center px-5 py-3 border-b border-gray-200 dark:border-neutral-700";
+    "flex-row items-center px-5 py-3 border-b border-gray-200"
 
   const Chevron = () => (
     <MaterialCommunityIcons name="chevron-right" size={24} color={arrowColor} />
@@ -146,17 +146,10 @@ export default function SettingsScreen() {
         </Link>
       </Pressable>
 
-      {/* ───────────────────── MODO OSCURO ───────────────────── */}
-      <View className={row}>
-        <Ionicons
-          name="moon-outline"
-          size={22}
-          color={iconColor}
-          style={{ marginRight: 16 }}
-        />
-        <Text className="flex-1 text-base" style={{ color: textColor }}>
-          Modo oscuro
-        </Text>
+      {/* ───────────────────── MODO OSCURO (v2) ───────────────────── */}
+      {/* <View className={row}>
+        <Ionicons name="moon-outline" size={22} color={iconColor} style={{ marginRight: 16 }} />
+        <Text className="flex-1 text-base" style={{ color: textColor }}>Modo oscuro</Text>
         <Switch
           value={colorScheme === "dark"}
           onValueChange={handleDarkModeToggle}
@@ -164,7 +157,7 @@ export default function SettingsScreen() {
           trackColor={{ false: "#9ca3af", true: "rgb(60,200,220)" }}
           ios_backgroundColor="#9ca3af"
         />
-      </View>
+      </View> */}
 
       {/* ───────────────────── DALTONISMO ───────────────────── */}
       <View className={row}>
@@ -273,7 +266,7 @@ export default function SettingsScreen() {
               Descargando modelo IA... {Math.round(downloadProgress * 100)}%
             </Text>
           </View>
-          <View className="w-full h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden ml-10">
+          <View className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden ml-10">
             <View
               className="h-full bg-phase2Buttons rounded-full"
               style={{ width: `${Math.round(downloadProgress * 100)}%` }}

@@ -71,14 +71,14 @@ export default function FeedbackScreen() {
 
 
       <View className="px-6 py-6">
-        <Text className="text-lg text-phase2Titles dark:text-phase2TitlesDark">
+        <Text className="text-lg text-phase2Titles">
           Cuéntanos qué te gusta, qué podemos mejorar o reporta algún error.
         </Text>
       </View>
 
       <View className="flex-1 p-6">
         {/* Star Rating */}
-        <Text className="text-base mb-2 text-phase2Titles dark:text-phase2TitlesDark">
+        <Text className="text-base mb-2 text-phase2Titles">
           ¿Cómo nos calificas?
         </Text>
         <View className="flex-row mb-4">
@@ -110,7 +110,7 @@ export default function FeedbackScreen() {
           keyboardType="email-address"
           autoCapitalize="none"
           accessibilityLabel="Correo electrónico"
-          className="mb-1 p-3 border rounded-lg bg-white dark:bg-phase2CardsDark border-phase2Borders dark:border-phase2BordersDark text-phase2Titles dark:text-phase2TitlesDark"
+          className="mb-1 p-3 border rounded-lg bg-white border-phase2Borders text-phase2Titles"
         />
         {errors.email && (
           <Text className="text-red-500 mb-2">{errors.email}</Text>
@@ -124,7 +124,7 @@ export default function FeedbackScreen() {
           multiline
           numberOfLines={4}
           accessibilityLabel="Mensaje"
-          className="mb-4 p-3 border rounded-lg bg-white dark:bg-phase2CardsDark border-phase2Borders dark:border-phase2BordersDark text-phase2Titles dark:text-phase2TitlesDark h-24 text-top"
+          className="mb-4 p-3 border rounded-lg bg-white border-phase2Borders text-phase2Titles h-24 text-top"
         />
         {errors.message && (
           <Text className="text-red-500 mb-2">{errors.message}</Text>
@@ -136,8 +136,8 @@ export default function FeedbackScreen() {
           disabled={loading}
           className={`py-3 rounded-lg items-center ${
             loading
-              ? "bg-phase2Buttons/50 dark:bg-phase2ButtonsDark/50"
-              : "bg-phase2Buttons dark:bg-phase2ButtonsDark"
+              ? "bg-phase2Buttons/50"
+              : "bg-phase2Buttons"
           }`}
         >
           {loading ? (

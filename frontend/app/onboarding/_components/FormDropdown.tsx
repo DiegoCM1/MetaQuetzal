@@ -35,7 +35,7 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
   return (
     <View className="mb-4">
       {/* Label */}
-      <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+      <Text className="text-sm font-semibold text-gray-700 mb-2">
         {label}
         {required && <Text className="text-red-500"> *</Text>}
       </Text>
@@ -45,8 +45,8 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
         onPress={() => setIsOpen(true)}
         className={`px-4 py-3 rounded-lg flex-row items-center justify-between ${
           error
-            ? 'border-2 border-red-500 bg-red-50 dark:bg-red-900/20'
-            : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+            ? 'border-2 border-red-500 bg-red-50'
+            : 'border border-gray-300 bg-white'
         }`}
         accessibilityLabel={label}
         accessibilityRole="button"
@@ -55,8 +55,8 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
         <Text
           className={
             value
-              ? 'text-base text-gray-900 dark:text-white'
-              : 'text-base text-gray-400 dark:text-gray-500'
+              ? 'text-base text-gray-900'
+              : 'text-base text-gray-400'
           }
         >
           {value || placeholder}
@@ -70,7 +70,7 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
 
       {/* Error Message */}
       {error && (
-        <Text className="text-sm text-red-600 dark:text-red-400 mt-1">
+        <Text className="text-sm text-red-600 mt-1">
           {error}
         </Text>
       )}
@@ -87,10 +87,10 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
           activeOpacity={1}
           onPress={() => setIsOpen(false)}
         >
-          <View className="bg-white dark:bg-gray-800 rounded-t-3xl max-h-96">
+          <View className="bg-white rounded-t-3xl max-h-96">
             {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <Text className="text-lg font-semibold text-gray-900 dark:text-white">
+            <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
+              <Text className="text-lg font-semibold text-gray-900">
                 {label}
               </Text>
               <TouchableOpacity onPress={() => setIsOpen(false)}>
@@ -105,14 +105,14 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => handleSelect(item)}
-                  className="px-6 py-4 border-b border-gray-100 dark:border-gray-700"
+                  className="px-6 py-4 border-b border-gray-100"
                 >
                   <View className="flex-row items-center justify-between">
                     <Text
                       className={`text-base ${
                         item === value
-                          ? 'font-semibold text-phase2Buttons dark:text-phase2ButtonsDark'
-                          : 'text-gray-900 dark:text-white'
+                          ? 'font-semibold text-phase2Buttons'
+                          : 'text-gray-900'
                       }`}
                     >
                       {item}

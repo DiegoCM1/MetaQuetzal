@@ -28,7 +28,7 @@ export default function AlertsListScreen() {
   if (!data || data.length === 0) {
     return (
       <View className="flex-1 justify-center items-center bg-transparent">
-        <Text className="dark:text-white">No hay alertas</Text>
+        <Text className="text-white">No hay alertas</Text>
       </View>
     );
   }
@@ -39,11 +39,11 @@ export default function AlertsListScreen() {
       edges={["top", "left", "right", "bottom"]}
     >
       {/* Header with history button */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <Text className="text-xl font-bold dark:text-white">Alertas</Text>
+      <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200">
+        <Text className="text-xl font-bold text-white">Alertas</Text>
         <Pressable
           onPress={() => router.push("/alerts/history")}
-          className="flex-row items-center bg-gray-100 dark:bg-neutral-800 px-3 py-2 rounded-lg"
+          className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg"
           android_ripple={{ color: "#ddd" }}
         >
           <MaterialCommunityIcons
@@ -51,9 +51,7 @@ export default function AlertsListScreen() {
             size={20}
             color="#38bdf8"
           />
-          <Text className="ml-2 text-sm font-medium dark:text-white">
-            Por año
-          </Text>
+          <Text className="ml-2 text-sm font-medium text-white">Por año</Text>
         </Pressable>
       </View>
 

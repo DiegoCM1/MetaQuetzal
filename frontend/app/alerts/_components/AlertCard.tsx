@@ -33,7 +33,7 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
 
   return (
     <Pressable
-      className="w-full border-b border-b-gray-200 dark:border-b-gray-700 rounded-lg mb-2"
+      className="w-full border-b border-b-gray-200 rounded-lg mb-2"
       style={{ backgroundColor: bannerColor }}
       android_ripple={{ color: "#ccc" }}
       onPress={() => {
@@ -52,17 +52,17 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
           size={32}
           color="#38bdf8"
         />
-        <Text className="flex-1 text-xl font-bold ml-2 dark:text-phase2TitlesDark">
+        <Text className="flex-1 text-xl font-bold ml-2">
           {title}
         </Text>
-        <Text className="text-base text-right text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark">
+        <Text className="text-base text-right text-phase2SecondaryTxt">
           {dayjs(timestamp).fromNow()}
         </Text>
       </View>
 
       {/* descripción */}
       <View className="flex-row items-start px-4 pb-4">
-        <Text className="text-base w-5/6 text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark pr-2">
+        <Text className="text-base w-5/6 text-phase2SecondaryTxt pr-2">
           {description}
         </Text>
       </View>

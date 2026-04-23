@@ -19,13 +19,13 @@ export default function PlanCard({
   const featureTitle = plan.id === 'basic' ? 'Incluye:' : 'Todo en Básico, más:';
 
   return (
-    <View className="bg-phase2Cards dark:bg-phase2CardsDark rounded-2xl p-6 mb-4">
+    <View className="bg-phase2Cards rounded-2xl p-6 mb-4">
       {/* Plan name and description */}
       <View className="mb-6">
-        <Text className="text-2xl font-bold text-phase2Titles dark:text-phase2TitlesDark mb-1">
+        <Text className="text-2xl font-bold text-phase2Titles mb-1">
           {plan.name}
         </Text>
-        <Text className="text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark text-base">
+        <Text className="text-phase2SecondaryTxt text-base">
           {plan.description}
         </Text>
       </View>
@@ -40,10 +40,10 @@ export default function PlanCard({
       {/* CTA Button */}
       <TouchableOpacity
         onPress={onSubscribe}
-        className="bg-phase2Buttons dark:bg-phase2ButtonsDark rounded-xl py-4 mb-6"
+        className="bg-phase2Buttons rounded-xl py-4 mb-6"
         activeOpacity={0.8}
       >
-        <Text className="text-white dark:text-phase2TitlesDark text-center text-lg font-bold">
+        <Text className="text-white text-center text-lg font-bold">
           Obtener {plan.name}
         </Text>
       </TouchableOpacity>
@@ -53,7 +53,7 @@ export default function PlanCard({
 
       {/* Terms note for premium */}
       {plan.id === 'premium' && (
-        <Text className="text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark text-xs mt-4 opacity-70">
+        <Text className="text-phase2SecondaryTxt text-xs mt-4 opacity-70">
           Límites aplican según términos de servicio
         </Text>
       )}

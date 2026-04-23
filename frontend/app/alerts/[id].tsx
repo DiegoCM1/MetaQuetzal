@@ -97,7 +97,7 @@ export default function AlertDetailsScreen() {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-transparent">
-        <Text className="dark:text-white">
+        <Text className="">
           {error.status === 404
             ? "Alerta no encontrada"
             : "Error al cargar alerta"}
@@ -139,18 +139,18 @@ export default function AlertDetailsScreen() {
       >
         {/* descripción */}
         {alert.short && (
-          <Text className="text-lg text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark">
+          <Text className="text-lg text-phase2SecondaryTxt">
             {alert.short}
           </Text>
         )}
 
         {/* métricas */}
-        <View className="flex-row justify-around bg-neutral-100 dark:bg-neutral-800 rounded-xl p-4">
+        <View className="flex-row justify-around bg-neutral-100 rounded-xl p-4">
           <View className="items-center">
-            <Text className="font-bold text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text className="font-bold text-lg text-phase2Titles">
               {alert.level}
             </Text>
-            <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark">
+            <Text className="text-xs text-phase2SecondaryTxt">
               Nivel de categoría
             </Text>
           </View>
@@ -159,13 +159,13 @@ export default function AlertDetailsScreen() {
         {/* recomendaciones */}
         {alert.recommendations && alert.recommendations.length > 0 && (
           <View>
-            <Text className="font-bold mb-2 dark:text-phase2TitlesDark">
+            <Text className="font-bold mb-2">
               Recomendaciones
             </Text>
             {alert.recommendations.map((r, i) => (
               <Text
                 key={i}
-                className="mb-1 text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark"
+                className="mb-1 text-phase2SecondaryTxt"
               >
                 • {r}
               </Text>
@@ -176,13 +176,13 @@ export default function AlertDetailsScreen() {
         {/* factores */}
         {alert.factors && alert.factors.length > 0 && (
           <View>
-            <Text className="font-bold mb-2 mt-2 dark:text-phase2TitlesDark">
+            <Text className="font-bold mb-2 mt-2">
               Factores
             </Text>
             {alert.factors.map((f, i) => (
               <Text
                 key={i}
-                className="mb-1 text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark"
+                className="mb-1 text-phase2SecondaryTxt"
               >
                 • {f}
               </Text>
@@ -194,7 +194,7 @@ export default function AlertDetailsScreen() {
       {/* acciones */}
       <View className="px-4 pb-6 flex-row justify-between gap-3">
         <TouchableOpacity
-          className="flex-1 bg-phase2Buttons dark:bg-phase2CardsDark rounded-2xl py-3 items-center"
+          className="flex-1 bg-phase2Buttons rounded-2xl py-3 items-center"
           activeOpacity={0.7}
           onPress={() => {
             track("details_map_tap", {
@@ -205,12 +205,12 @@ export default function AlertDetailsScreen() {
             router.push("/(tabs)/MapScreen");
           }}
         >
-          <Text className="text-white dark:text-phase2TitlesDark font-bold">
+          <Text className="text-white font-bold">
             Ver en mapa
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          className="flex-1 bg-phase2Buttons dark:bg-phase2CardsDark rounded-2xl py-3 items-center"
+          className="flex-1 bg-phase2Buttons rounded-2xl py-3 items-center"
           activeOpacity={0.7}
           onPress={() => {
             track("details_boletin_tap", {
@@ -221,7 +221,7 @@ export default function AlertDetailsScreen() {
             handleOpenBoletin();
           }}
         >
-          <Text className="text-white dark:text-phase2TitlesDark font-bold">
+          <Text className="text-white font-bold">
             Ver Boletín oficial
           </Text>
         </TouchableOpacity>

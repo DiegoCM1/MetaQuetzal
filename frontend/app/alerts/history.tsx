@@ -41,7 +41,7 @@ export default function AlertsHistoryByYearScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-transparent">
         <ActivityIndicator size="large" color="#38bdf8" />
-        <Text className="mt-4 text-gray-600 dark:text-gray-400">
+        <Text className="mt-4 text-gray-600">
           Cargando historial...
         </Text>
       </View>
@@ -69,7 +69,7 @@ export default function AlertsHistoryByYearScreen() {
           size={48}
           color="#9CA3AF"
         />
-        <Text className="mt-4 text-gray-600 dark:text-gray-400">
+        <Text className="mt-4 text-gray-600">
           No hay historial de alertas
         </Text>
       </View>
@@ -117,7 +117,7 @@ export default function AlertsHistoryByYearScreen() {
         renderItem={renderYearItem}
         ListHeaderComponent={
           <View className="mb-4">
-            <Text className="text-gray-600 dark:text-gray-400 text-center">
+            <Text className="text-gray-600 text-center">
               Selecciona un año para ver las alertas
             </Text>
           </View>

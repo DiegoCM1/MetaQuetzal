@@ -32,7 +32,7 @@ export default function MoreScreen() {
           key={route}
           onPress={() => router.push(route)}
           android_ripple={{ color: "rgba(0,0,0,0.07)" }}
-          className="flex-row items-center px-5 py-3 border-b border-gray-200 dark:border-neutral-700"
+          className="flex-row items-center px-5 py-3 border-b border-gray-200"
         >
           <MaterialCommunityIcons
             name={icon}

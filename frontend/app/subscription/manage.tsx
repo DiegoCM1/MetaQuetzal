@@ -53,7 +53,7 @@ export default function ManageSubscriptionScreen() {
       edges={['left', 'right', 'bottom']}
     >
       {/* Header */}
-      <View className="flex-row items-center px-6 py-4 border-b border-gray-200 dark:border-neutral-700">
+      <View className="flex-row items-center px-6 py-4 border-b border-gray-200">
         <TouchableOpacity
           onPress={() => router.back()}
           className="mr-4"
@@ -69,7 +69,7 @@ export default function ManageSubscriptionScreen() {
           size={28}
           color="rgb(50, 180, 200)"
         />
-        <Text className="text-2xl font-bold text-phase2Titles dark:text-phase2TitlesDark ml-2">
+        <Text className="text-2xl font-bold text-phase2Titles ml-2">
           Suscripción
         </Text>
       </View>

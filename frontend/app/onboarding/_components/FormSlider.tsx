@@ -50,7 +50,7 @@ export const FormSlider: React.FC<FormSliderProps> = ({
   return (
     <View className="mb-6">
       {/* Label */}
-      <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+      <Text className="text-sm font-semibold text-gray-700 mb-3">
         {label}
       </Text>
 
@@ -62,8 +62,8 @@ export const FormSlider: React.FC<FormSliderProps> = ({
           disabled={value <= minimumValue}
           className={`w-12 h-12 rounded-full items-center justify-center ${
             value <= minimumValue
-              ? 'bg-gray-200 dark:bg-gray-700'
-              : 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
+              ? 'bg-gray-200'
+              : 'bg-phase2Buttons'
           }`}
           accessibilityLabel="Disminuir valor"
         >
@@ -76,8 +76,8 @@ export const FormSlider: React.FC<FormSliderProps> = ({
 
         {/* Value Display */}
         <View className="flex-1 mx-4 items-center">
-          <View className="bg-phase2Cards dark:bg-phase2CardsDark px-6 py-3 rounded-2xl">
-            <Text className="text-3xl font-bold text-phase2Buttons dark:text-phase2ButtonsDark">
+          <View className="bg-phase2Cards px-6 py-3 rounded-2xl">
+            <Text className="text-3xl font-bold text-phase2Buttons">
               {value}
             </Text>
           </View>
@@ -89,8 +89,8 @@ export const FormSlider: React.FC<FormSliderProps> = ({
           disabled={value >= maximumValue}
           className={`w-12 h-12 rounded-full items-center justify-center ${
             value >= maximumValue
-              ? 'bg-gray-200 dark:bg-gray-700'
-              : 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
+              ? 'bg-gray-200'
+              : 'bg-phase2Buttons'
           }`}
           accessibilityLabel="Aumentar valor"
         >
@@ -112,8 +112,8 @@ export const FormSlider: React.FC<FormSliderProps> = ({
               key={index}
               className={`flex-1 h-2 rounded-full ${
                 isActive
-                  ? 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
-                  : 'bg-gray-200 dark:bg-gray-700'
+                  ? 'bg-phase2Buttons'
+                  : 'bg-gray-200'
               }`}
             />
           );
@@ -123,10 +123,10 @@ export const FormSlider: React.FC<FormSliderProps> = ({
       {/* Min/Max Labels */}
       {(minimumLabel || maximumLabel) && (
         <View className="flex-row justify-between">
-          <Text className="text-xs text-gray-500 dark:text-gray-400">
+          <Text className="text-xs text-gray-500">
             {minimumLabel || minimumValue}
           </Text>
-          <Text className="text-xs text-gray-500 dark:text-gray-400">
+          <Text className="text-xs text-gray-500">
             {maximumLabel || maximumValue}
           </Text>
         </View>
@@ -134,7 +134,7 @@ export const FormSlider: React.FC<FormSliderProps> = ({
 
       {/* Error Message */}
       {error && (
-        <Text className="text-sm text-red-600 dark:text-red-400 mt-2">
+        <Text className="text-sm text-red-600 mt-2">
           {error}
         </Text>
       )}

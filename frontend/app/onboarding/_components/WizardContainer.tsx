@@ -42,13 +42,13 @@ export const WizardContainer: React.FC<WizardContainerProps> = ({
   isLoading = false,
 }) => {
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
       >
         {/* Header with Progress */}
-        <View className="bg-phase2Cards dark:bg-phase2CardsDark border-b border-gray-200 dark:border-gray-700">
+        <View className="bg-phase2Cards border-b border-gray-200">
           <ProgressIndicator totalSteps={totalSteps} currentStep={currentStep} />
         </View>
 
@@ -61,11 +61,11 @@ export const WizardContainer: React.FC<WizardContainerProps> = ({
         >
           {/* Title Section */}
           <View className="mb-6">
-            <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <Text className="text-2xl font-bold text-gray-900 mb-2">
               {title}
             </Text>
             {subtitle && (
-              <Text className="text-base text-gray-600 dark:text-gray-400">
+              <Text className="text-base text-gray-600">
                 {subtitle}
               </Text>
             )}
@@ -76,18 +76,18 @@ export const WizardContainer: React.FC<WizardContainerProps> = ({
         </ScrollView>
 
         {/* Footer with Navigation Buttons */}
-        <View className="px-6 py-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+        <View className="px-6 py-4 bg-white border-t border-gray-200">
           <View className="flex-row gap-3">
             {/* Back Button (conditional) */}
             {onBack && (
               <TouchableOpacity
                 onPress={onBack}
                 disabled={isLoading}
-                className="flex-1 py-4 bg-gray-200 dark:bg-gray-700 rounded-lg items-center justify-center"
+                className="flex-1 py-4 bg-gray-200 rounded-lg items-center justify-center"
                 accessibilityRole="button"
                 accessibilityLabel={backLabel}
               >
-                <Text className="text-base font-semibold text-gray-700 dark:text-gray-300">
+                <Text className="text-base font-semibold text-gray-700">
                   {backLabel}
                 </Text>
               </TouchableOpacity>
@@ -101,8 +101,8 @@ export const WizardContainer: React.FC<WizardContainerProps> = ({
                 onBack ? 'flex-1' : 'w-full'
               } ${
                 nextDisabled || isLoading
-                  ? 'bg-gray-300 dark:bg-gray-600'
-                  : 'bg-phase2Buttons dark:bg-phase2ButtonsDark'
+                  ? 'bg-gray-300'
+                  : 'bg-phase2Buttons'
               }`}
               accessibilityRole="button"
               accessibilityLabel={nextLabel}
@@ -111,7 +111,7 @@ export const WizardContainer: React.FC<WizardContainerProps> = ({
               <Text
                 className={`text-base font-semibold ${
                   nextDisabled || isLoading
-                    ? 'text-gray-500 dark:text-gray-400'
+                    ? 'text-gray-500'
                     : 'text-white'
                 }`}
               >
