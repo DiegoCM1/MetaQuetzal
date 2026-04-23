@@ -201,6 +201,9 @@ RAG
        - Build, firmar y subir APK
        - Enviar — Apr 25
 
+    9. Possible next requirements
+      9.1 Google changed the rules for personal accounts: You need 20 testers for 14 days before you can even hit "Publish" to the real store.
+
   iOS (after Play Store submitted):
     - Register Apple Developer account ($99/year) (DEV-DIEGO)
     - First iOS build setup (Xcode, provisioning profiles, certificates) (DEV-DIEGO)
