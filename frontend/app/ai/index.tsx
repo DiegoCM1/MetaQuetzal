@@ -39,7 +39,7 @@ export default function ChatAIScreen() {
   // Send button component
   const SendButton = () => (
     <TouchableOpacity
-      className={`h-10 w-10 rounded-full bg-phase2Buttons items-center justify-center ${isLoading ? "opacity-50" : ""}`}
+      className={`h-10 w-10 rounded-full items-center justify-center ${isLoading ? "opacity-50" : ""}`}
       onPress={handleSendMessage}
       disabled={isLoading}
     >
@@ -58,7 +58,7 @@ export default function ChatAIScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1"
+      className="flex-1 bg-transparent"
       edges={["top", "left", "right", "bottom"]}
     >
       <StatusBar style="light" translucent={false} />
@@ -76,7 +76,7 @@ export default function ChatAIScreen() {
 
       {/* Restart Conversation Button */}
       <TouchableOpacity
-        className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 bg-phase2Buttons items-center justify-center"
+        className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 items-center justify-center"
         style={{ top: insets.top }} // safe‑area padding
         onPress={restartConversation}
       >
@@ -96,13 +96,13 @@ export default function ChatAIScreen() {
             contentContainerStyle={{ paddingBottom: 20 }}
             ListEmptyComponent={() => (
               <View style={{ height: 600 }} className="flex-row items-center justify-center">
-                <Text className="text-3xl font-semibold text-phase2Buttons text-center">
+                <Text className="text-3xl font-semibold text-center">
                   ¿
                 </Text>
                 <Text className="text-3xl font-semibold text-gray-500 text-center">
                   En qué puedo ayudar
                 </Text>
-                <Text className="text-3xl font-semibold text-phase2Buttons text-center">
+                <Text className="text-3xl font-semibold text-center">
                   ?
                 </Text>
               </View>
@@ -117,7 +117,7 @@ export default function ChatAIScreen() {
                 <View
                   className={`rounded-2xl ${
                     item.role === "user"
-                      ? "max-w-[80%] bg-phase2Buttons rounded-tr-none py-3 px-4"
+                      ? "max-w-[80%] rounded-tr-none py-3 px-4"
                       : "flex-1 rounded-tl-none py-1 px-2"
                   }`}
                 >

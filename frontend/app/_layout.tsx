@@ -249,6 +249,7 @@ export default function Layout() {
                       options={{ headerShown: false }}
                     />
                   </Stack>
+                  <Toast />
                   </LinearGradient>
                 </ModelProvider>
               </AuthGate>
@@ -256,7 +257,6 @@ export default function Layout() {
           </SafeAreaProvider>
         </ThemeProvider>
       </DaltonicModeProvider>
-      <Toast autoHide visibilityTime={3000} />
     </GestureHandlerRootView>
   );
 }
