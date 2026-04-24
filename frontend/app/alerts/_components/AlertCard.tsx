@@ -2,14 +2,16 @@ import { View, Text, Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "../../../utils/date";
 import { track } from "../../../utils/analytics";
+import { colors } from '../../../utils/theme';
+
 
 export const colorForLevel = (l: number): string =>
   ({
-    1: "#22C55E", // verde
-    2: "#15803D", // verde oscuro
-    3: "#FACC15", // amarillo
-    4: "#EF4444", // rojo
-    5: "#C026D3", // morado
+    1: colors.brandTeal,
+    2: colors.brandGreen,
+    3: colors.brandYellow,
+    4: colors.brandOrange,
+    5: colors.brandRed,
   })[l] || "#6B7280";
 
 interface Alert {
@@ -29,11 +31,12 @@ interface AlertCardProps {
 export default function AlertCard({ alert, onPress }: AlertCardProps) {
   const { id, level, title, short: description, timestamp } = alert;
 
-  const bannerColor = `${colorForLevel(level)}33`;
+  const bannerColor = `${colorForLevel(level)}50`;
+  const iconColor = colorForLevel(level);
 
   return (
     <Pressable
-      className="w-full border-b border-b-gray-200 rounded-lg mb-2"
+      className="w-full border-b rounded-lg mb-2"
       style={{ backgroundColor: bannerColor }}
       android_ripple={{ color: "#ccc" }}
       onPress={() => {
@@ -50,19 +53,19 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
         <MaterialCommunityIcons
           name="weather-hurricane"
           size={32}
-          color="#38bdf8"
+          color={iconColor}
         />
-        <Text className="flex-1 text-xl font-bold ml-2">
+        <Text className="flex-1 text-lg font-poppins-semibold ml-2 text-white">
           {title}
         </Text>
-        <Text className="text-base text-right text-phase2SecondaryTxt">
+        <Text className="text-xs font-poppins text-white/60 text-right">
           {dayjs(timestamp).fromNow()}
         </Text>
       </View>
 
       {/* descripción */}
       <View className="flex-row items-start px-4 pb-4">
-        <Text className="text-base w-5/6 text-phase2SecondaryTxt pr-2">
+        <Text className="text-sm font-poppins w-5/6 text-white/80 pr-2">
           {description}
         </Text>
       </View>

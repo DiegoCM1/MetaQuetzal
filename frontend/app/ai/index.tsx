@@ -93,13 +93,13 @@ export default function ChatAIScreen() {
             contentContainerStyle={{ paddingBottom: 20 }}
             ListEmptyComponent={() => (
               <View style={{ height: 600 }} className="flex-row items-center justify-center">
-                <Text className="text-3xl font-semibold text-center">
+                <Text className="text-3xl font-semibold text-center text-white">
                   ¿
                 </Text>
-                <Text className="text-3xl font-semibold text-gray-500 text-center">
+                <Text className="text-3xl font-semibold text-white text-center">
                   En qué puedo ayudar
                 </Text>
-                <Text className="text-3xl font-semibold text-center">
+                <Text className="text-3xl font-semibold text-center text-white">
                   ?
                 </Text>
               </View>
