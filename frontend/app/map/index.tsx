@@ -25,23 +25,20 @@ const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
 
-function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
   return (
     <Marker
       coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
       onPress={onPress}
-      tracksViewChanges={tracksViewChanges}
     >
       <Image
         source={MARKER_IMAGES[zone.type]}
         style={{ width: 44, height: 44 }}
         resizeMode="contain"
-        onLoad={() => setTracksViewChanges(false)}
       />
     </Marker>
   );
-}
+});
 
 export default function WeatherMapNativewind() {
   const [region, setRegion] = useState(DEFAULT_REGION);
