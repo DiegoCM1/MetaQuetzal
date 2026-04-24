@@ -14,6 +14,7 @@ import MapView, { UrlTile, PROVIDER_GOOGLE, Circle, Marker } from "react-native-
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
 import { loadRedZones, saveRedZone, generateZoneId } from "../../services/redZonesService";
+import { darkMapStyle } from "./mapStyle";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
@@ -200,11 +201,12 @@ export default function WeatherMapNativewind() {
         initialRegion={region}
         onPress={handleMapPress}
         // Disable default UI components
-        showsCompass={false} // Removes the compass
-        showsMyLocationButton={false} // Removes default location button
-        showsScale={false} // Removes scale bar
-        zoomControlEnabled={false} // Disables zoom +/- buttons (Android only)
-        toolbarEnabled={false} // Disables long-press toolbar on Android
+        customMapStyle={darkMapStyle}
+        showsCompass={false}
+        showsMyLocationButton={false}
+        showsScale={false}
+        zoomControlEnabled={false}
+        toolbarEnabled={false}
       >
         {showWind && (
           <UrlTile
