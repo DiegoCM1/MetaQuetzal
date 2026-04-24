@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Linking,
   StyleSheet,
+  ImageBackground
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -122,99 +123,102 @@ export default function AlertDetailsScreen() {
   const baseColor = colorForLevel(alert.level);
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-transparent">
-      <ScreenHeader title="Detalles de alerta" />
+    <ImageBackground source={require("../../assets/images/BACK-PANTALLA-INICIO.png")} resizeMode="cover" className="flex-1">
 
-      {/* Timestamp */}
-      <Text style={{ color: baseColor, fontFamily: fonts.poppins, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', paddingHorizontal: 20, paddingTop: 12 }}>
-        Ultima Actualización: {dayjs(alert.timestamp).format("DD/MM/YY - HH:mm")}
-      </Text>
+      <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-transparent">
+        <ScreenHeader title="Detalles de alerta" />
 
-      {/* Hero card */}
-      <View style={[styles.glassCard, { margin: 16, alignItems: 'center', paddingVertical: 28 }]}>
-        <MaterialCommunityIcons name="weather-hurricane" size={52} color={baseColor} />
-        <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 28, textAlign: 'center', marginTop: 12 }}>
-          {alert.title}
+        {/* Timestamp */}
+        <Text style={{ color: baseColor, fontFamily: fonts.poppins, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', paddingHorizontal: 20, paddingTop: 12 }}>
+          Ultima Actualización: {dayjs(alert.timestamp).format("DD/MM/YY - HH:mm")}
         </Text>
-      </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 16 }}>
-
-        {/* Metrics row */}
-        <LinearGradient
-          colors={[`${baseColor}00`, baseColor]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}
-        >
-          <Text style={{ flex: 1, color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 12, letterSpacing: 1 }}>
-            IMPACTO MÁXIMO
+        {/* Hero card */}
+        <View style={[styles.glassCard, { margin: 16, alignItems: 'center', paddingVertical: 28 }]}>
+          <MaterialCommunityIcons name="weather-hurricane" size={52} color={baseColor} />
+          <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 28, textAlign: 'center', marginTop: 12 }}>
+            {alert.title}
           </Text>
-          <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 15 }}>
-            Categoría {alert.level}
-          </Text>
-        </LinearGradient>
+        </View>
 
-        {/* Description */}
-        {alert.short && (
-          <Text style={{ color: 'rgba(255,255,255,0.8)', fontFamily: fonts.poppins, fontSize: 15, lineHeight: 22 }}>
-            {alert.short}
-          </Text>
-        )}
+        <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 16 }}>
 
-        {/* Recommendations */}
-        {alert.recommendations && alert.recommendations.length > 0 && (
-          <View>
-            <SectionPill title="RECOMENDACIONES:" color={baseColor} />
-            <View style={styles.glassCard}>
-              {alert.recommendations.map((r, i) => (
-                <Text key={i} style={{ color: 'white', fontFamily: fonts.poppins, fontSize: 14, marginBottom: i < alert.recommendations!.length - 1 ? 8 : 0 }}>
-                  • {r}
-                </Text>
-              ))}
+          {/* Metrics row */}
+          <LinearGradient
+            colors={[`${baseColor}00`, baseColor]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}
+          >
+            <Text style={{ flex: 1, color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 12, letterSpacing: 1 }}>
+              IMPACTO MÁXIMO
+            </Text>
+            <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 15 }}>
+              Categoría {alert.level}
+            </Text>
+          </LinearGradient>
+
+          {/* Description */}
+          {alert.short && (
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontFamily: fonts.poppins, fontSize: 15, lineHeight: 22 }}>
+              {alert.short}
+            </Text>
+          )}
+
+          {/* Recommendations */}
+          {alert.recommendations && alert.recommendations.length > 0 && (
+            <View>
+              <SectionPill title="RECOMENDACIONES:" color={baseColor} />
+              <View style={styles.glassCard}>
+                {alert.recommendations.map((r, i) => (
+                  <Text key={i} style={{ color: 'white', fontFamily: fonts.poppins, fontSize: 14, marginBottom: i < alert.recommendations!.length - 1 ? 8 : 0 }}>
+                    • {r}
+                  </Text>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {/* Factors */}
-        {alert.factors && alert.factors.length > 0 && (
-          <View>
-            <SectionPill title="FACTORES:" color={baseColor} />
-            <View style={styles.glassCard}>
-              {alert.factors.map((f, i) => (
-                <Text key={i} style={{ color: 'white', fontFamily: fonts.poppins, fontSize: 14, marginBottom: i < alert.factors!.length - 1 ? 8 : 0 }}>
-                  • {f}
-                </Text>
-              ))}
+          {/* Factors */}
+          {alert.factors && alert.factors.length > 0 && (
+            <View>
+              <SectionPill title="FACTORES:" color={baseColor} />
+              <View style={styles.glassCard}>
+                {alert.factors.map((f, i) => (
+                  <Text key={i} style={{ color: 'white', fontFamily: fonts.poppins, fontSize: 14, marginBottom: i < alert.factors!.length - 1 ? 8 : 0 }}>
+                    • {f}
+                  </Text>
+                ))}
+              </View>
             </View>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
 
-      {/* CTAs */}
-      <View className="px-4 pb-6 flex-row gap-3">
-        <TouchableOpacity
-          style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
-          activeOpacity={0.7}
-          onPress={() => {
-            track("details_map_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
-            router.push("/(tabs)/MapScreen");
-          }}
-        >
-          <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold }}>Ver en mapa</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
-          activeOpacity={0.7}
-          onPress={() => {
-            track("details_boletin_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
-            handleOpenBoletin();
-          }}
-        >
-          <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold }}>Ver Boletín oficial</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+        {/* CTAs */}
+        <View className="px-4 pb-6 flex-row gap-3">
+          <TouchableOpacity
+            style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
+            activeOpacity={0.7}
+            onPress={() => {
+              track("details_map_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
+              router.push("/(tabs)/MapScreen");
+            }}
+          >
+            <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold }}>Ver en mapa</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
+            activeOpacity={0.7}
+            onPress={() => {
+              track("details_boletin_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
+              handleOpenBoletin();
+            }}
+          >
+            <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold }}>Ver Boletín oficial</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
