@@ -8,12 +8,13 @@ import {
   Modal,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
-import { loadRedZones, saveRedZone, generateZoneId, clearAllZones } from "./service";
+import { loadRedZones, saveRedZone, updateRedZone, deleteRedZone, generateZoneId, clearAllZones } from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, ZONE_TYPES } from "./config";
 import { colors } from "../../utils/theme";
@@ -24,18 +25,13 @@ const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
 
 function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
-  const [ready, setReady] = useState(false);
   const config = ZONE_TYPES[zone.type];
   return (
     <Marker
       coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
       onPress={onPress}
-      tracksViewChanges={!ready}
     >
-      <View
-        style={{ backgroundColor: config.color, borderRadius: 8, padding: 6 }}
-        onLayout={() => setReady(true)}
-      >
+      <View style={{ backgroundColor: config.color, borderRadius: 8, padding: 6 }}>
         <MaterialCommunityIcons name={config.icon as any} size={24} color="#fff" />
       </View>
     </Marker>
@@ -57,11 +53,13 @@ export default function WeatherMapNativewind() {
   const [selectedType, setSelectedType] = useState<ZoneType | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
   const [zoneDescription, setZoneDescription] = useState("");
   const [descriptionError, setDescriptionError] = useState(false);
 
   useEffect(() => {
-    let timeoutId;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     (async () => {
       try {
@@ -132,10 +130,51 @@ export default function WeatherMapNativewind() {
 
   const handleCirclePress = (zone: Zone) => {
     setSelectedZone(zone);
+    setEditDescription(zone.description);
     setShowDetailModal(true);
   };
 
-  const handleSaveZone = async () => {
+  const handleSaveEdit = () => {
+    if (!selectedZone || !editDescription.trim()) return;
+    const updated: Zone = { ...selectedZone, description: editDescription.trim() };
+    setZones(prev => prev.map(z => z.id === updated.id ? updated : z));
+    setSelectedZone(updated);
+    setIsEditing(false);
+    updateRedZone(updated).catch((error) => {
+      console.error('[Map] Failed to update zone:', error);
+      setZones(prev => prev.map(z => z.id === selectedZone.id ? selectedZone : z));
+      setSelectedZone(selectedZone);
+      Toast.show({ type: 'error', text1: 'Error al editar', text2: 'No se pudo guardar el cambio' });
+    });
+  };
+
+  const handleDeleteZone = () => {
+    if (!selectedZone) return;
+    Alert.alert(
+      'Eliminar zona',
+      '¿Seguro que quieres eliminar este reporte?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            const deleted = selectedZone;
+            setZones(prev => prev.filter(z => z.id !== deleted.id));
+            setShowDetailModal(false);
+            setIsEditing(false);
+            deleteRedZone(deleted.id).catch((error) => {
+              console.error('[Map] Failed to delete zone:', error);
+              setZones(prev => [...prev, deleted]);
+              Toast.show({ type: 'error', text1: 'Error al eliminar', text2: 'No se pudo eliminar la zona' });
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSaveZone = () => {
     if (!selectedType) return;
     if (!zoneDescription.trim()) {
       setDescriptionError(true);
@@ -152,23 +191,20 @@ export default function WeatherMapNativewind() {
       type: selectedType,
     };
 
-    try {
-      const success = await saveRedZone(newZone);
-      if (success) {
-        setZones(prev => [...prev, newZone]);
-        Toast.show({ type: 'success', text1: 'Zona reportada', text2: 'Gracias por tu reporte' });
-        setShowAddModal(false);
-        setPendingLocation(null);
-        setZoneDescription('');
-        setSelectedType(null);
-        setDescriptionError(false);
-      } else {
-        Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
-      }
-    } catch (error) {
+    // Optimistic update — close modal and show marker immediately
+    setZones(prev => [...prev, newZone]);
+    setShowAddModal(false);
+    setPendingLocation(null);
+    setZoneDescription('');
+    setSelectedType(null);
+    setDescriptionError(false);
+    Toast.show({ type: 'success', text1: 'Zona reportada', text2: 'Gracias por tu reporte' });
+
+    saveRedZone(newZone).catch((error) => {
       console.error('[Map] Failed to save zone:', error);
+      setZones(prev => prev.filter(z => z.id !== newZone.id));
       Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
-    }
+    });
   };
 
   const handleCancelAdd = () => {
@@ -401,55 +437,112 @@ export default function WeatherMapNativewind() {
         </View>
       </Modal>
 
-      {/* Modal: View Zone Details */}
+      {/* Modal: Zone Detail */}
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent
         visible={showDetailModal}
-        onRequestClose={() => setShowDetailModal(false)}
+        onRequestClose={() => { setShowDetailModal(false); setIsEditing(false); }}
       >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white rounded-t-2xl p-6">
-            <View className="flex-row items-center mb-4">
-              <MaterialCommunityIcons
-                name="alert-circle"
-                size={32}
-                color="#EF4444"
-              />
-              <Text className="text-xl font-bold ml-2">Zona Roja Reportada</Text>
-            </View>
-
-            {selectedZone && (
-              <>
-                <View className="mb-4">
-                  <Text className="text-sm text-gray-600 mb-1">Descripción:</Text>
-                  <Text className="text-base">{selectedZone.description}</Text>
+        <View className="flex-1 justify-center bg-black/60" style={{ padding: 24 }}>
+          {selectedZone && (() => {
+            const cfg = ZONE_TYPES[selectedZone.type];
+            return (
+              <View style={{ borderRadius: 20, overflow: 'hidden' }}>
+                {/* Header */}
+                <View style={{ backgroundColor: cfg.color, padding: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <MaterialCommunityIcons name={cfg.icon as any} size={32} color="#fff" />
+                  <View>
+                    <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold', letterSpacing: 2 }}>
+                      {cfg.label.toUpperCase()}
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, letterSpacing: 3 }}>
+                      REPORTADA
+                    </Text>
+                  </View>
                 </View>
 
-                <View className="mb-4">
-                  <Text className="text-sm text-gray-600 mb-1">Ubicación:</Text>
-                  <Text className="text-base">
+                {/* Body */}
+                <View style={{ backgroundColor: '#0d1f3c', padding: 24, paddingBottom: 24 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Descripción:</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editDescription}
+                      onChangeText={setEditDescription}
+                      multiline
+                      style={{
+                        color: '#fff',
+                        fontSize: 15,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.3)',
+                        borderRadius: 8,
+                        padding: 8,
+                        marginTop: 4,
+                        marginBottom: 12,
+                        minHeight: 80,
+                        textAlignVertical: 'top',
+                      }}
+                    />
+                  ) : (
+                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 12 }}>
+                      {selectedZone.description}
+                    </Text>
+                  )}
+
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Ubicación:</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 12 }}>
                     {selectedZone.latitude.toFixed(5)}, {selectedZone.longitude.toFixed(5)}
                   </Text>
-                </View>
 
-                <View className="mb-6">
-                  <Text className="text-sm text-gray-600 mb-1">Reportado:</Text>
-                  <Text className="text-base">
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Reportado:</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 20 }}>
                     {new Date(selectedZone.timestamp).toLocaleString('es-MX')}
                   </Text>
-                </View>
-              </>
-            )}
 
-            <TouchableOpacity
-              onPress={() => setShowDetailModal(false)}
-              className="py-3 rounded-lg items-center"
-              style={{ backgroundColor: '#EF4444' }}
-            >
-              <Text className="font-bold text-white">Cerrar</Text>
-            </TouchableOpacity>
-          </View>
+                  {/* Actions */}
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {isEditing ? (
+                      <>
+                        <TouchableOpacity
+                          onPress={() => setIsEditing(false)}
+                          style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
+                        >
+                          <Text style={{ color: '#fff' }}>Cancelar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleSaveEdit}
+                          style={{ flex: 1, padding: 10, borderRadius: 10, backgroundColor: cfg.color, alignItems: 'center' }}
+                        >
+                          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Guardar</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <>
+                        <TouchableOpacity
+                          onPress={handleDeleteZone}
+                          style={{ padding: 10, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setIsEditing(true)}
+                          style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
+                        >
+                          <Text style={{ color: '#fff' }}>Editar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => setShowDetailModal(false)}
+                          style={{ padding: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
         </View>
       </Modal>
     </View>

@@ -24,6 +24,18 @@ export async function saveRedZone(zone) {
   }
 }
 
+export async function updateRedZone(zone: { id: string; [key: string]: any }) {
+  try {
+    const zones = await loadRedZones();
+    const updated = zones.map((z: { id: string }) => z.id === zone.id ? zone : z);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    return true;
+  } catch (error) {
+    console.error('[RedZones] Error updating zone:', error);
+    return false;
+  }
+}
+
 export async function deleteRedZone(zoneId) {
   try {
     const zones = await loadRedZones();

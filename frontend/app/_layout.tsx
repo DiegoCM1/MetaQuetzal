@@ -256,7 +256,7 @@ export default function Layout() {
           </SafeAreaProvider>
         </ThemeProvider>
       </DaltonicModeProvider>
-      <Toast />
+      <Toast autoHide visibilityTime={3000} />
     </GestureHandlerRootView>
   );
 }
