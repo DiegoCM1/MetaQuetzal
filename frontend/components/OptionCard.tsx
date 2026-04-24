@@ -14,7 +14,7 @@ interface Props {
     danger?: boolean; 
 }
 
-export default function StandardOption({ title, icon, route, onPress, rightElement, danger }: Props) {
+export default function OptionCard({ title, icon, route, onPress, rightElement, danger }: Props) {
     const router = useRouter();
 
     const handlePress = () => {
@@ -25,16 +25,15 @@ export default function StandardOption({ title, icon, route, onPress, rightEleme
         }
     };
 
-    // If it's a destructive action, make the text/icon red
     const contentColor = danger ? "#EF4444" : "white";
 
     return (
         <Pressable
             onPress={handlePress}
-            // Disable the press effect if it's just a display row (like the Switch row)
             disabled={!onPress && !route} 
             className="mb-4 mx-4 rounded-r-3xl rounded-bl-3xl rounded-tl-sm overflow-hidden active:opacity-80 shadow-sm"
             accessibilityRole="button"
+            accessibilityLabel={title}
         >
             <LinearGradient
                 colors={gradients.header}
@@ -48,7 +47,6 @@ export default function StandardOption({ title, icon, route, onPress, rightEleme
                     {title}
                 </Text>
                 
-                {/* Logic: Render custom right element, OR a chevron if clickable, OR nothing */}
                 {rightElement ? (
                     rightElement
                 ) : (route || onPress) ? (
