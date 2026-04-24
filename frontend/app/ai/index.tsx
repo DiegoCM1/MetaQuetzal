@@ -112,7 +112,7 @@ export default function ChatAIScreen() {
               >
                 <View
                   className={`rounded-2xl ${item.role === "user"
-                      ? "max-w-[80%] rounded-tr-none py-3 px-4"
+                      ? "max-w-[80%] rounded-lg py-3 px-4 bg-brand-blue"
                       : "flex-1 rounded-tl-none py-1 px-2"
                     }`}
                 >
@@ -134,9 +134,9 @@ export default function ChatAIScreen() {
           <View className="py-4 border-t border-phase2Borders">
             <View className="flex-row items-center justify-center space-x-2">
               {/* Text Input */}
-              <View className="flex-1 flex-row items-center text-center bg-white rounded-full border border-phase2Borders">
+              <View className="flex-1 flex-row items-center text-center rounded-3xl border border-white">
                 <TextInput
-                  className="flex-1 px-4 py-2 text-phase2Titles border-none items-center outline-none"
+                  className="flex-1 px-4 py-2 border-none items-center outline-none text-white"
                   placeholder="Escribe un mensaje..."
                   placeholderTextColor="rgb(156,163,175)"
                   value={input}
