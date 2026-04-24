@@ -7,10 +7,6 @@ interface FormInputProps extends TextInputProps {
   required?: boolean;
 }
 
-/**
- * Styled text input with label and error handling
- * Matches app's design system with dark mode support
- */
 export const FormInput: React.FC<FormInputProps> = ({
   label,
   error,
@@ -26,37 +22,34 @@ export const FormInput: React.FC<FormInputProps> = ({
 
   return (
     <View className="mb-4">
-      {/* Label */}
-      <Text className="text-sm font-semibold text-gray-700 mb-2">
+      <Text className="text-sm font-semibold text-white mb-2">
         {label}
-        {required && <Text className="text-red-500"> *</Text>}
+        {required && <Text className="text-red-400"> *</Text>}
       </Text>
 
-      {/* Input */}
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor="rgba(255,255,255,0.4)"
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className={`px-4 py-3 rounded-lg text-base text-gray-900 ${
+        className={`px-4 py-3 rounded-lg text-base text-white ${
           error
-            ? 'border-2 border-red-500 bg-red-50'
+            ? 'border-2 border-red-400 bg-red-500/20'
             : isFocused
-            ? 'border-2 border-phase2Buttons bg-white'
-            : 'border border-gray-300 bg-white'
+            ? 'border-2 border-phase2Buttons bg-white/20'
+            : 'border border-white/30 bg-white/10'
         }`}
         accessibilityLabel={label}
         accessibilityHint={placeholder}
         {...rest}
       />
 
-      {/* Error Message */}
       {error && (
-        <Text className="text-sm text-red-600 mt-1">
+        <Text className="text-sm text-red-400 mt-1">
           {error}
         </Text>
       )}

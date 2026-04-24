@@ -5,7 +5,7 @@
 
 ---
 
-## Colors
+## Colors: Theme.ts and tailwind.config.js
 
 ### Primary Palette
 | Token | Hex | Use |

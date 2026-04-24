@@ -6,10 +6,6 @@ interface ProgressIndicatorProps {
   currentStep: number;
 }
 
-/**
- * Progress indicator showing current step in wizard
- * Displays dots with fill state based on completion
- */
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   totalSteps,
   currentStep,
@@ -27,7 +23,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
             className={`h-3 rounded-full ${
               isCompleted || isActive
                 ? 'w-4 bg-phase2Buttons'
-                : 'w-3 bg-gray-300'
+                : 'w-3 bg-white/30'
             }`}
             accessibilityLabel={`Paso ${stepNumber} de ${totalSteps}`}
             accessibilityRole="progressbar"

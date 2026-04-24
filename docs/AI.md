@@ -192,9 +192,9 @@ RAG
       7.1 Frotend config: Design system, logos, images, constants, gradients, classes. ✅
       7.2 Login screen ✅
       7.3 NAVBAR ✅ 
-      7.4 Build the 3 shared components: bottom tab bar, section header ✅ dark card, default blue screen with official gradient
-      7.4 Onboarding
-      7.5 Map/Alerts/Settings
+      7.4 Build the 3 shared components: bottom tab bar, section header Option Card, default blue screen with official gradient ✅ 
+      7.5 Settings ✅ 
+      7.6 Onboarding ✅ / Map / Alerts /
     8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
        - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
        - Configurar perfil de producción en eas.json

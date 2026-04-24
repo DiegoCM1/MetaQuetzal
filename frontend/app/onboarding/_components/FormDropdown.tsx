@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, FlatList, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface FormDropdownProps {
   label: string;
@@ -12,10 +12,6 @@ interface FormDropdownProps {
   required?: boolean;
 }
 
-/**
- * Custom dropdown/picker component
- * Native Picker has poor styling control, this gives better UX
- */
 export const FormDropdown: React.FC<FormDropdownProps> = ({
   label,
   value,
@@ -34,48 +30,34 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
 
   return (
     <View className="mb-4">
-      {/* Label */}
-      <Text className="text-sm font-semibold text-gray-700 mb-2">
+      <Text className="text-sm font-semibold text-white mb-2">
         {label}
-        {required && <Text className="text-red-500"> *</Text>}
+        {required && <Text className="text-red-400"> *</Text>}
       </Text>
 
-      {/* Trigger Button */}
       <TouchableOpacity
         onPress={() => setIsOpen(true)}
         className={`px-4 py-3 rounded-lg flex-row items-center justify-between ${
           error
-            ? 'border-2 border-red-500 bg-red-50'
-            : 'border border-gray-300 bg-white'
+            ? 'border-2 border-red-400 bg-red-500/20'
+            : 'border border-white/30 bg-white/10'
         }`}
         accessibilityLabel={label}
         accessibilityRole="button"
         accessibilityHint="Abre el selector de opciones"
       >
-        <Text
-          className={
-            value
-              ? 'text-base text-gray-900'
-              : 'text-base text-gray-400'
-          }
-        >
+        <Text className={value ? 'text-base text-white' : 'text-base text-white/40'}>
           {value || placeholder}
         </Text>
-        <Ionicons
-          name="chevron-down"
-          size={20}
-          color="#9CA3AF"
-        />
+        <MaterialCommunityIcons name="chevron-down" size={20} color="rgba(255,255,255,0.6)" />
       </TouchableOpacity>
 
-      {/* Error Message */}
       {error && (
-        <Text className="text-sm text-red-600 mt-1">
+        <Text className="text-sm text-red-400 mt-1">
           {error}
         </Text>
       )}
 
-      {/* Modal Picker */}
       <Modal
         visible={isOpen}
         transparent
@@ -88,17 +70,15 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
           onPress={() => setIsOpen(false)}
         >
           <View className="bg-white rounded-t-3xl max-h-96">
-            {/* Header */}
             <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
               <Text className="text-lg font-semibold text-gray-900">
                 {label}
               </Text>
               <TouchableOpacity onPress={() => setIsOpen(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <MaterialCommunityIcons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            {/* Options List */}
             <FlatList
               data={options}
               keyExtractor={(item) => item}
@@ -118,7 +98,7 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({
                       {item}
                     </Text>
                     {item === value && (
-                      <Ionicons name="checkmark" size={20} color="rgb(50, 180, 200)" />
+                      <MaterialCommunityIcons name="check" size={20} color="rgb(50, 180, 200)" />
                     )}
                   </View>
                 </TouchableOpacity>

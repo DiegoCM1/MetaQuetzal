@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { WizardContainer } from '../_components/WizardContainer';
 import { FormInput } from '../_components/FormInput';
@@ -10,11 +10,8 @@ import { useOnboarding } from '../_context/OnboardingContext';
 import { validateStep1 } from '../_validation';
 import { MEXICO_STATES } from '../_types';
 import { track } from '../../../utils/analytics';
+import { colors } from '../../../utils/theme';
 
-/**
- * Step 1: Personal Information Collection
- * Collects name, address, zip code, and state
- */
 export const Step1Screen: React.FC = () => {
   const router = useRouter();
   const { data, updateField, updateMultipleFields } = useOnboarding();
@@ -23,21 +20,14 @@ export const Step1Screen: React.FC = () => {
 
   const handleUseLocation = async () => {
     setIsLoadingLocation(true);
-    console.log('🌍 Starting location request...');
 
     try {
-      // Check if already has permissions
       const existingStatus = await Location.getForegroundPermissionsAsync();
-      console.log('📋 Existing permission status:', existingStatus.status);
-
       let status = existingStatus.status;
 
-      // If not granted, request permissions
       if (status !== 'granted') {
-        console.log('📍 Requesting permissions...');
         const permissionResponse = await Location.requestForegroundPermissionsAsync();
         status = permissionResponse.status;
-        console.log('✅ Permission status:', status);
       }
 
       if (status !== 'granted') {
@@ -49,19 +39,12 @@ export const Step1Screen: React.FC = () => {
             'Por favor acepta el permiso de ubicación en el siguiente cuadro de diálogo.'
           );
         } else {
-          // User denied permanently, need to go to settings
           Alert.alert(
             'Permisos denegados',
             'Los permisos de ubicación fueron denegados. Ve a Configuración de la app para habilitarlos.',
             [
               { text: 'Cancelar', style: 'cancel' },
-              {
-                text: 'Ir a Configuración',
-                onPress: () => {
-                  // This will be handled by the OS
-                  console.log('User should go to settings manually');
-                }
-              }
+              { text: 'Ir a Configuración', onPress: () => {} }
             ]
           );
         }
@@ -70,46 +53,28 @@ export const Step1Screen: React.FC = () => {
         return;
       }
 
-      // Get current location
-      console.log('📡 Getting current position...');
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      console.log('✅ Location obtained:', location.coords.latitude, location.coords.longitude);
 
-      // Reverse geocode to get address details
-      console.log('🔍 Reverse geocoding...');
       const addresses = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
-      console.log('✅ Addresses received:', addresses);
 
       const address = addresses[0];
 
       if (address) {
-        console.log('📦 Address details:', address);
-
-        // Update state and postal code
         const updates: any = {};
 
-        if (address.region) {
-          updates.state = address.region;
-          console.log('State found:', address.region);
-        }
-
-        if (address.postalCode) {
-          updates.zipCode = address.postalCode;
-          console.log('Postal code found:', address.postalCode);
-        }
-
+        if (address.region) updates.state = address.region;
+        if (address.postalCode) updates.zipCode = address.postalCode;
         if (address.street && address.streetNumber) {
           updates.address1 = `${address.street} ${address.streetNumber}`;
         } else if (address.street) {
           updates.address1 = address.street;
         }
 
-        console.log('📝 Updating fields with:', updates);
         updateMultipleFields(updates);
 
         track('onboarding_location_used', {
@@ -117,35 +82,30 @@ export const Step1Screen: React.FC = () => {
           hasPostalCode: !!address.postalCode,
         });
       } else {
-        console.log('⚠️ No address found in geocode result');
+        console.warn('reverseGeocodeAsync returned no results for obtained coordinates');
         Alert.alert('Error', 'No pudimos obtener los detalles de tu ubicación.');
       }
     } catch (error: any) {
-      console.error('❌ Error getting location:', error);
-      console.error('Error details:', error.message, error.code);
+      console.error('handleUseLocation failed:', error.message, error.code);
       Alert.alert(
         'Error',
         `No pudimos obtener tu ubicación: ${error.message || 'Error desconocido'}`
       );
     } finally {
-      console.log('🏁 Location request finished');
       setIsLoadingLocation(false);
     }
   };
 
   const handleNext = () => {
-    // Validate form
     const validation = validateStep1(data);
 
     if (!validation.isValid) {
       setErrors(validation.errors);
-      // Show first error as alert
       const firstError = Object.values(validation.errors)[0];
       Alert.alert('Error de validación', firstError);
       return;
     }
 
-    // Clear errors and proceed
     setErrors({});
     track('onboarding_step1_completed', {
       has_address2: !!data.address2,
@@ -162,16 +122,14 @@ export const Step1Screen: React.FC = () => {
       onNext={handleNext}
       nextLabel="Continuar"
     >
-      {/* Section: Personal Data */}
       <View className="mb-6">
         <View className="flex-row items-center mb-3">
-          <Ionicons name="person-circle" size={24} color="rgb(50, 180, 200)" />
-          <Text className="ml-2 text-lg font-semibold text-phase2Titles">
+          <MaterialCommunityIcons name="account-circle" size={24} color={colors.brandBlue} />
+          <Text className="ml-2 text-lg font-poppins-semibold text-white">
             Datos Personales
           </Text>
         </View>
 
-        {/* Name Row: First Name + Last Name */}
         <View className="flex-row gap-3">
           <View className="flex-1">
             <FormInput
@@ -200,32 +158,31 @@ export const Step1Screen: React.FC = () => {
           </View>
         </View>
 
-        <Text className="text-xs text-phase2SecondaryTxt mt-1">
+        <Text className="text-xs text-white/60 mt-1">
           Usaremos tu nombre para personalizar las alertas
         </Text>
       </View>
 
-      {/* Section: Location */}
       <View className="mb-6">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
-            <Ionicons name="location" size={24} color="rgb(50, 180, 200)" />
-            <Text className="ml-2 text-lg font-semibold text-phase2Titles">
+            <MaterialCommunityIcons name="map-marker" size={24} color={colors.brandBlue} />
+            <Text className="ml-2 text-lg font-poppins-semibold text-white">
               Tu Ubicación
             </Text>
           </View>
 
-          {/* Use Location Button */}
           <TouchableOpacity
             onPress={handleUseLocation}
             disabled={isLoadingLocation}
-            className="flex-row items-center bg-phase2Buttons px-3 py-2 rounded-lg"
+            className="flex-row items-center bg-brand-blue px-3 py-2 rounded-lg"
+
           >
             {isLoadingLocation ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Ionicons name="navigate" size={16} color="#fff" />
+                <MaterialCommunityIcons name="navigation" size={16} color="#fff" />
                 <Text className="ml-1 text-xs font-semibold text-white">
                   Usar mi ubicación
                 </Text>
@@ -234,7 +191,6 @@ export const Step1Screen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Address Line 1 */}
         <FormInput
           label="Dirección"
           value={data.address1}
@@ -247,7 +203,6 @@ export const Step1Screen: React.FC = () => {
           autoCapitalize="words"
         />
 
-        {/* Address Line 2 (Optional) */}
         <FormInput
           label="Dirección 2 (Opcional)"
           value={data.address2}
@@ -258,7 +213,6 @@ export const Step1Screen: React.FC = () => {
           autoCapitalize="words"
         />
 
-        {/* Location Row: ZIP Code + State */}
         <View className="flex-row gap-3">
           <View className="flex-1">
             <FormInput
@@ -288,7 +242,7 @@ export const Step1Screen: React.FC = () => {
           </View>
         </View>
 
-        <Text className="text-xs text-phase2SecondaryTxt mt-1">
+        <Text className="text-xs text-white/60 mt-1">
           Necesitamos tu ubicación para enviarte alertas relevantes de tu zona
         </Text>
       </View>
