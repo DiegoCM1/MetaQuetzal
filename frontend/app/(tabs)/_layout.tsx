@@ -1,70 +1,113 @@
 import { Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useColorScheme } from "nativewind";
+import { Pressable, View, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { useEffect, useRef, useState } from "react";
+import { colors, gradients } from "../../utils/theme";
 
-export default function TabsLayout() {
-  const { colorScheme } = useColorScheme();
-  const barBg =
-    colorScheme === "dark" ? "rgb(40, 60, 80)" : "rgb(60, 200, 220)";
-  const activeTint =
-    colorScheme === "dark" ? "rgb(230, 230, 250)" : "rgb(255, 255, 255)";
-  const inactiveTint =
-    colorScheme === "dark" ? "rgb(180, 180, 200)" : "rgb(220, 220, 220)";
+const TABS = [
+  { name: "MapScreen",           label: "Mapa",    icon: "map-outline"          },
+  { name: "ChatAIScreen",        label: "IA",      icon: "message-text-outline" },
+  { name: "AlertsHistoryScreen", label: "Alertas", icon: "bell-outline"         },
+  { name: "MoreScreen",          label: "Más",     icon: "menu"                 },
+] as const
+
+const MARKER_WIDTH = 28
+
+function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets()
+  const [tabBarWidth, setTabBarWidth] = useState(0)
+  const markerX = useSharedValue(0)
+  const isFirstRender = useRef(true)
+
+  useEffect(() => {
+    if (tabBarWidth === 0) return
+    const tabWidth = tabBarWidth / TABS.length
+    const targetX = state.index * tabWidth + tabWidth / 2 - MARKER_WIDTH / 2
+    if (isFirstRender.current) {
+      markerX.value = targetX
+      isFirstRender.current = false
+    } else {
+      markerX.value = withSpring(targetX, { damping: 60, stiffness: 1000 })
+    }
+  }, [state.index, tabBarWidth])
+
+  const markerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: markerX.value }],
+  }))
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: activeTint,
-        tabBarInactiveTintColor: inactiveTint,
-        tabBarStyle: { backgroundColor: barBg },
-        tabBarHideOnKeyboard: true, // Hide the tab bar when the keyboard is open so it doesn't overlap the text input on Android builds
+    <View
+      style={{
+        backgroundColor: gradients.primary[1],
+        marginHorizontal: 16,
+        marginBottom: Math.max(insets.bottom, 8),
+        borderRadius: 30,
+        paddingHorizontal: 6,
+        paddingBottom: 6,
+        paddingTop: 4,
+      }}
+      onLayout={(e) => {
+        setTabBarWidth(e.nativeEvent.layout.width - 12)
       }}
     >
-      <Tabs.Screen
-        name="MapScreen"
-        options={{
-          title: "Mapa",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="map" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="ChatAIScreen"
-        options={{
-          title: "Chat-AI",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="robot-happy"
-              color={color}
-              size={size}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="AlertsHistoryScreen"
-        options={{
-          title: "Alertas",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="bell-alert-outline"
-              color={color}
-              size={size}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="MoreScreen"
-        options={{
-          title: "Más",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="menu" color={color} size={size} />
-          ),
-        }}
-      />
+      {/* Animated marker row */}
+      <View style={{ height: 6, marginBottom: 2 }}>
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              width: MARKER_WIDTH,
+              height: 3,
+              borderRadius: 2,
+              backgroundColor: colors.brandIndigo,
+              top: 1,
+            },
+            markerStyle,
+          ]}
+        />
+      </View>
+
+      <View style={{
+        flexDirection: 'row',
+        backgroundColor: colors.brandBlue,
+        borderRadius: 24,
+        height: 52,
+      }}>
+        {TABS.map((tab) => (
+          <Pressable
+            key={tab.name}
+            onPress={() => navigation.navigate(tab.name)}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
+          >
+            <MaterialCommunityIcons name={tab.icon} size={22} color="rgb(255, 255, 255)" />
+            <Text style={{
+              color: 'rgb(255, 255, 255)',
+              fontSize: 11,
+              fontFamily: 'Poppins-Light',
+              marginTop: 2,
+            }}>
+              {tab.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+export default function TabsLayout() {
+  return (
+    <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen name="MapScreen" />
+      <Tabs.Screen name="ChatAIScreen" />
+      <Tabs.Screen name="AlertsHistoryScreen" />
+      <Tabs.Screen name="MoreScreen" />
     </Tabs>
   );
 }

@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { useColorScheme } from "nativewind";
 import { StatusBar } from "expo-status-bar";
 
 /**
@@ -7,20 +6,13 @@ import { StatusBar } from "expo-status-bar";
  * Handles: index (list), [id] (details), history (by year)
  */
 export default function AlertsLayout() {
-  const { colorScheme } = useColorScheme();
-
-  const headerBg =
-    colorScheme === "dark" ? "rgb(40, 60, 80)" : "rgb(60, 200, 220)";
-  const headerTint = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#fff";
-
   return (
     <>
-      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
+      <StatusBar style="light" translucent={false} />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: headerBg },
-          headerTintColor: headerTint,
           headerTitleStyle: { fontWeight: "bold" },
+        contentStyle: { backgroundColor: 'transparent' },
         }}
       >
       <Stack.Screen
@@ -32,13 +24,13 @@ export default function AlertsLayout() {
       <Stack.Screen
         name="[id]"
         options={{
-          title: "Detalles de Alerta",
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="history"
         options={{
-          title: "Historial por Año",
+          headerShown: false,
         }}
       />
     </Stack>

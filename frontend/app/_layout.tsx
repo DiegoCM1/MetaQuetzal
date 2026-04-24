@@ -10,8 +10,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useColorScheme } from "nativewind";
+import { LinearGradient } from "expo-linear-gradient";
+import { gradients } from "../utils/theme";
 import { useEffect } from "react";
+import { useFonts } from "expo-font";
 import { AppState, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -22,7 +24,18 @@ import {
 import * as Notifications from "expo-notifications";
 import Toast from "react-native-toast-message";
 import { initAnalytics, track, flush } from "../utils/analytics";
+import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
+
+interface NotificationData {
+  alertId?: string
+  alertLevel?: string
+  fullScreen?: string
+  category?: string
+  alertTitle?: string
+  alertMessage?: string
+  bulletinUrl?: string
+}
 
 function AuthGate({ children }) {
   const { user, loading } = useAuth()
@@ -30,11 +43,29 @@ function AuthGate({ children }) {
   const segments = useSegments()
 
   useEffect(() => {
+    if (!user) return
+    registerForPushNotificationsAsync()
+      .then((token) => console.log("Token guardado:", token))
+      .catch(console.error)
+  }, [user?.uid])
+
+  useEffect(() => {
     if (loading) return
     const inAuthGroup = segments[0] === '(auth)'
-    if (!user && !inAuthGroup) router.replace('/(auth)')
-    if (user && inAuthGroup) router.replace('/(tabs)')
-  }, [user, loading])
+    if (!user && !inAuthGroup) {
+      router.replace('/(auth)')
+    } else if (user && inAuthGroup) {
+      const checkAndRoute = async () => {
+        const completed = await hasCompletedOnboarding()
+        if (completed) {
+          router.replace('/(tabs)/MapScreen')
+        } else {
+          router.replace('/onboarding/step1')
+        }
+      }
+      checkAndRoute()
+    }
+  }, [user, loading, segments])
 
   return children
 }
@@ -43,7 +74,11 @@ function AuthGate({ children }) {
 export default function Layout() {
   const router = useRouter();
 
-  const { colorScheme } = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    'Square721': require('../assets/fonts/square-721-bold-extended-bt.ttf'),
+    'Poppins-Light': require('../assets/fonts/Poppins-Light.otf'),
+    'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.otf'),
+  });
 
   useEffect(() => {
     initAnalytics().catch(console.error);
@@ -54,21 +89,12 @@ export default function Layout() {
     RNStatusBar.setTranslucent(false);
   }, []);
 
-  // ⚡ Solicitar token FCM al montar
-  useEffect(() => {
-    registerForPushNotificationsAsync()
-      .then((token) => {
-        // Aquí podrías enviarlo a tu backend si quieres
-        console.log("Token guardado:", token);
-      })
-      .catch(console.error);
-  }, []);
-
   useEffect(() => {
     setForegroundNotificationHandler();
 
     // 👇 Cuando el usuario pulse la notificación (o llegue automáticamente si es critical)
-    const sub = addNotificationResponseListener(async (data) => {
+    const sub = addNotificationResponseListener(async (rawData) => {
+      const data = rawData as NotificationData
       if (data?.alertId) {
         await initAnalytics();
         track("push_open", {
@@ -107,7 +133,7 @@ export default function Layout() {
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
-      const data = initial?.notification?.request?.content?.data;
+      const data = initial?.notification?.request?.content?.data as NotificationData | undefined
       const alertId = data?.alertId;
 
       if (alertId) {
@@ -163,57 +189,69 @@ export default function Layout() {
     return () => sub.remove();
   }, []);
 
-  const headerBg =
-    colorScheme === "dark" ? "rgb(40, 60, 80)" : "rgb(60, 200, 220)";
-  const headerTint = colorScheme === "dark" ? "rgb(230, 230, 250)" : "#fff";
+  if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" backgroundColor={headerBg} translucent={false} />
+      <StatusBar style="light" translucent={false} />
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
             <AuthProvider>
               <AuthGate>
-              <ModelProvider>
-              <Stack
-                screenOptions={{
-                  headerStyle: { backgroundColor: headerBg },
-                  headerTintColor: headerTint,
-                  headerTitleStyle: { fontWeight: "bold" },
-                }}
-              >
-                  <Stack.Screen
-                    name="(auth)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="onboarding"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="SettingsScreen"
-                    options={{ title: "Ajustes" }}
-                  />
-                  <Stack.Screen
-                    name="AlarmScreen"
-                    options={{ title: "Alarma" }}
-                  />
-                  <Stack.Screen
-                    name="FeedbackScreen"
-                    options={{ title: "Feedback" }}
-                  />
-                  <Stack.Screen
-                    name="alerts"
-                    options={{ headerShown: false }}
-                  />
-                </Stack>
-              <Toast />
-              </ModelProvider>
+                <ModelProvider>
+                  <LinearGradient
+                    colors={gradients.primary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={{ flex: 1 }}
+                  >
+                  <Stack
+                    screenOptions={{
+                      headerTitleStyle: { fontWeight: "bold" },
+                      contentStyle: { backgroundColor: "transparent" },
+                    }}
+                  >
+                    <Stack.Screen
+                      name="(auth)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="onboarding"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="SettingsScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="AlarmScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="FeedbackScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="alerts"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="educational"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="subscription"
+                      options={{ headerShown: false }}
+                    />
+                  </Stack>
+                  <Toast />
+                  </LinearGradient>
+                </ModelProvider>
               </AuthGate>
             </AuthProvider>
           </SafeAreaProvider>

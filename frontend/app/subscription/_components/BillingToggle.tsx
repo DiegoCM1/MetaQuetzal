@@ -19,8 +19,8 @@ export default function BillingToggle({
         onPress={() => onBillingChange('monthly')}
         className={`flex-1 mr-2 p-4 rounded-xl border-2 ${
           billingPeriod === 'monthly'
-            ? 'border-phase2Buttons dark:border-phase2ButtonsDark bg-phase2Buttons/10 dark:bg-phase2ButtonsDark/10'
-            : 'border-phase2SecondaryTxt/30 dark:border-phase2SecondaryTxtDark/30 bg-transparent'
+            ? 'border-phase2Buttons bg-phase2Buttons/10'
+            : 'border-phase2SecondaryTxt/30 bg-transparent'
         }`}
         activeOpacity={0.7}
       >
@@ -28,8 +28,8 @@ export default function BillingToggle({
           <View
             className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
               billingPeriod === 'monthly'
-                ? 'border-phase2Buttons dark:border-phase2ButtonsDark bg-phase2Buttons dark:bg-phase2ButtonsDark'
-                : 'border-phase2SecondaryTxt dark:border-phase2SecondaryTxtDark bg-transparent'
+                ? 'border-phase2Buttons bg-phase2Buttons'
+                : 'border-phase2SecondaryTxt bg-transparent'
             }`}
           >
             {billingPeriod === 'monthly' && (
@@ -37,10 +37,10 @@ export default function BillingToggle({
             )}
           </View>
         </View>
-        <Text className="text-phase2Titles dark:text-phase2TitlesDark text-xl font-bold">
+        <Text className="text-phase2Titles text-xl font-bold">
           ${plan.monthlyPrice.toFixed(2)}
         </Text>
-        <Text className="text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark text-sm">Facturación mensual</Text>
+        <Text className="text-phase2SecondaryTxt text-sm">Facturación mensual</Text>
       </TouchableOpacity>
 
       {/* Annual option */}
@@ -48,8 +48,8 @@ export default function BillingToggle({
         onPress={() => onBillingChange('annual')}
         className={`flex-1 ml-2 p-4 rounded-xl border-2 ${
           billingPeriod === 'annual'
-            ? 'border-phase2Buttons dark:border-phase2ButtonsDark bg-phase2Buttons/10 dark:bg-phase2ButtonsDark/10'
-            : 'border-phase2SecondaryTxt/30 dark:border-phase2SecondaryTxtDark/30 bg-transparent'
+            ? 'border-phase2Buttons bg-phase2Buttons/10'
+            : 'border-phase2SecondaryTxt/30 bg-transparent'
         }`}
         activeOpacity={0.7}
       >
@@ -57,24 +57,24 @@ export default function BillingToggle({
           <View
             className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
               billingPeriod === 'annual'
-                ? 'border-phase2Buttons dark:border-phase2ButtonsDark bg-phase2Buttons dark:bg-phase2ButtonsDark'
-                : 'border-phase2SecondaryTxt dark:border-phase2SecondaryTxtDark bg-transparent'
+                ? 'border-phase2Buttons bg-phase2Buttons'
+                : 'border-phase2SecondaryTxt bg-transparent'
             }`}
           >
             {billingPeriod === 'annual' && (
               <View className="w-2 h-2 rounded-full bg-white" />
             )}
           </View>
-          <View className="bg-phase2Buttons/20 dark:bg-phase2ButtonsDark/20 px-2 py-1 rounded">
-            <Text className="text-phase2Buttons dark:text-phase2ButtonsDark text-xs font-semibold">
+          <View className="bg-phase2Buttons/20 px-2 py-1 rounded">
+            <Text className="text-phase2Buttons text-xs font-semibold">
               Ahorra {plan.annualDiscount}%
             </Text>
           </View>
         </View>
-        <Text className="text-phase2Titles dark:text-phase2TitlesDark text-xl font-bold">
+        <Text className="text-phase2Titles text-xl font-bold">
           ${plan.annualPrice.toFixed(2)}
         </Text>
-        <Text className="text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark text-sm">Facturación anual</Text>
+        <Text className="text-phase2SecondaryTxt text-sm">Facturación anual</Text>
       </TouchableOpacity>
     </View>
   );

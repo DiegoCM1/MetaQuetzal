@@ -17,7 +17,7 @@ export default function YearListItem({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center justify-between p-4 bg-gray-100 dark:bg-neutral-800 rounded-lg"
+      className="flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"
       android_ripple={{ color: "#ddd" }}
     >
       <View className="flex-row items-center">
@@ -26,7 +26,7 @@ export default function YearListItem({
           size={28}
           color="#38bdf8"
         />
-        <Text className="text-xl font-bold ml-3 dark:text-white">{year}</Text>
+        <Text className="text-xl font-bold ml-3"></Text>
       </View>
 
       <View className="flex-row items-center">

@@ -1,44 +1,43 @@
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native'
+import { View, Text, ImageBackground } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { GoogleSigninButton } from '@react-native-google-signin/google-signin'
 import { useAuth } from './_context/AuthContext'
+import BluaiLogo from '../../assets/images/BLUAI_LOGO_BLANCO.svg'
 
 export default function LoginScreen() {
-  const { signInWithGoogle, loading } = useAuth()
+  const { signInWithGoogle, loading, error } = useAuth()
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" />
-      </View>
+      <ImageBackground source={require("../../assets/images/BACK-PANTALLA-INICIO.png")} resizeMode="cover" className="flex-1">
+        <BluaiLogo width={160} height={124} />
+      </ImageBackground>
     )
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>BLUAI</Text>
-      <Text style={styles.subtitle}>Protección ante huracanes</Text>
-      <GoogleSigninButton
-        size={GoogleSigninButton.Size.Wide}
-        color={GoogleSigninButton.Color.Dark}
-        onPress={signInWithGoogle}
-      />
-    </View>
+    <ImageBackground source={require("../../assets/images/BACK-PANTALLA-INICIO.png")} resizeMode="cover" className="flex-1">
+      <SafeAreaView className="flex-1 items-center justify-between px-8 py-12">
+        <View className="flex-1 items-center justify-center gap-4">
+          <BluaiLogo width={180} height={140} />
+          <Text className="text-white/70 font-poppins text-base tracking-widest uppercase">
+            Protección ante huracanes
+          </Text>
+        </View>
+
+        <View className="w-full items-center gap-3">
+          {error && (
+            <Text className="text-brand-red text-sm text-center font-poppins">
+              {error}
+            </Text>
+          )}
+          <GoogleSigninButton
+            size={GoogleSigninButton.Size.Wide}
+            color={GoogleSigninButton.Color.Dark}
+            onPress={signInWithGoogle}
+          />
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  title: {
-    fontSize: 40,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 32,
-  },
-})

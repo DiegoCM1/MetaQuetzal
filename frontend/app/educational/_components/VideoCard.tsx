@@ -27,7 +27,7 @@ export default function VideoCard({ video }: VideoCardProps) {
   return (
     <TouchableOpacity
       onPress={handlePress}
-      className="bg-white dark:bg-neutral-800 rounded-2xl overflow-hidden mr-4 w-[280px]"
+      className="bg-white rounded-2xl overflow-hidden mr-4 w-[280px]"
       activeOpacity={0.7}
     >
       {/* Thumbnail with play button overlay */}
@@ -56,14 +56,14 @@ export default function VideoCard({ video }: VideoCardProps) {
       {/* Content */}
       <View className="p-4">
         <Text
-          className="text-lg font-bold text-phase2Titles dark:text-phase2TitlesDark mb-2"
+          className="text-lg font-bold text-phase2Titles mb-2"
           numberOfLines={2}
         >
           {video.title}
         </Text>
 
         <Text
-          className="text-sm text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mb-3"
+          className="text-sm text-phase2SecondaryTxt mb-3"
           numberOfLines={2}
         >
           {video.description}
@@ -71,8 +71,8 @@ export default function VideoCard({ video }: VideoCardProps) {
 
         {/* Category badge */}
         <View className="flex-row items-center">
-          <View className="bg-red-600/10 dark:bg-red-600/20 px-3 py-1 rounded-full">
-            <Text className="text-xs text-red-600 dark:text-red-400 capitalize">
+          <View className="bg-red-600/10 px-3 py-1 rounded-full">
+            <Text className="text-xs text-red-600 capitalize">
               {video.category.replace('-', ' ')}
             </Text>
           </View>

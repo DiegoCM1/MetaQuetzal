@@ -184,16 +184,25 @@ RAG
        - Categoría de la app + cuestionario de clasificación de contenido
        - Política de privacidad — URL real y pública (puede ser página simple)
        - Formulario de seguridad de datos — declarar qué datos recopila la app y por qué (obligatorio, bloquea el envío si falta)
-    6.5 Integration tests — backend endpoints owned by Diego (DEV-DIEGO-EXTRA) — Apr 21
-       - POST /ai/chat — happy path + auth failure
-       - POST /feedback — happy path + auth failure
-       - POST /push-token — happy path + auth failure
-    7. Pulir frontend — UX, edge cases, limpieza visual, integración alertas (DEV-DIEGO) — Apr 22–23
+    6.5 Integration tests — backend endpoints owned by Diego (DEV-DIEGO-EXTRA) — Apr 21 ✅
+       - POST /ai/chat — happy path + auth failure ✅
+       - POST /feedback — happy path + auth failure ✅
+       - POST /push-token — happy path + auth failure ✅
+    7. Pulir frontend — UX, edge cases, limpieza visual (DEV-DIEGO) — Apr 22–23
+      7.1 Frotend config: Design system, logos, images, constants, gradients, classes. ✅
+      7.2 Login screen ✅
+      7.3 NAVBAR ✅ 
+      7.4 Build the 3 shared components: bottom tab bar, section header Option Card, default blue screen with official gradient ✅ 
+      7.5 Settings ✅ 
+      7.6 Onboarding ✅ / Map / Alerts (Fix fetching error) /
     8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
        - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
        - Configurar perfil de producción en eas.json
        - Build, firmar y subir APK
        - Enviar — Apr 25
+
+    9. Possible next requirements
+      9.1 Google changed the rules for personal accounts: You need 20 testers for 14 days before you can even hit "Publish" to the real store.
 
   iOS (after Play Store submitted):
     - Register Apple Developer account ($99/year) (DEV-DIEGO)
@@ -215,9 +224,11 @@ RAG
     Phase 7 (Post launch)
 
     0. Backend migration from Railway to Cloud Run
-    1. Architectural cleanup — move feature code out of app/ into src/features/
+    1. Frotend Architectural cleanup — move feature code out of app/ into src/features/
+      1.1 Use useSafeAreaInsets on ScreenHeader.tsx so it handles everything (non-blocking, best practices: DRY)
     2. Define tool schemas and usage
     3. Add tool examples to dataset
     4. Create dataset v2 multiturn and tool examples
     5. Train 1b, 3b, Llama Model (If permitted by provider) V2
+    6. Build a custom button for login — Pressable + Google icon + your own text. Full control, but you're rolling your own Google-branded UI
     ---

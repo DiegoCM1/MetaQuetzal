@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Linking,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "../../utils/date";
@@ -14,6 +15,8 @@ import { colorForLevel } from "./_components/AlertCard";
 import { track } from "../../utils/analytics";
 import { authFetch } from '../../utils/api'
 import { API_BASE_URL } from '../../utils/config'
+import  ScreenHeader from "../../components/ScreenHeader"
+
 
 interface AlertData {
   id: string;
@@ -85,7 +88,7 @@ export default function AlertDetailsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
+      <View className="flex-1 justify-center items-center bg-transparent">
         <ActivityIndicator size="large" color="#38bdf8" />
       </View>
     );
@@ -93,8 +96,8 @@ export default function AlertDetailsScreen() {
 
   if (error) {
     return (
-      <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-900">
-        <Text className="dark:text-white">
+      <View className="flex-1 justify-center items-center bg-transparent">
+        <Text className="">
           {error.status === 404
             ? "Alerta no encontrada"
             : "Error al cargar alerta"}
@@ -109,7 +112,8 @@ export default function AlertDetailsScreen() {
   const bannerColor = `${baseColor}80`;
 
   return (
-    <View className="flex-1 bg-white dark:bg-neutral-900">
+    <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-transparent">
+      <ScreenHeader title="Detalles de alerta" />
       {/* banner */}
       <View
         style={{ backgroundColor: bannerColor }}
@@ -135,18 +139,18 @@ export default function AlertDetailsScreen() {
       >
         {/* descripción */}
         {alert.short && (
-          <Text className="text-lg text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark">
+          <Text className="text-lg text-phase2SecondaryTxt">
             {alert.short}
           </Text>
         )}
 
         {/* métricas */}
-        <View className="flex-row justify-around bg-neutral-100 dark:bg-neutral-800 rounded-xl p-4">
+        <View className="flex-row justify-around bg-neutral-100 rounded-xl p-4">
           <View className="items-center">
-            <Text className="font-bold text-lg text-phase2Titles dark:text-phase2TitlesDark">
+            <Text className="font-bold text-lg text-phase2Titles">
               {alert.level}
             </Text>
-            <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark">
+            <Text className="text-xs text-phase2SecondaryTxt">
               Nivel de categoría
             </Text>
           </View>
@@ -155,13 +159,13 @@ export default function AlertDetailsScreen() {
         {/* recomendaciones */}
         {alert.recommendations && alert.recommendations.length > 0 && (
           <View>
-            <Text className="font-bold mb-2 dark:text-phase2TitlesDark">
+            <Text className="font-bold mb-2">
               Recomendaciones
             </Text>
             {alert.recommendations.map((r, i) => (
               <Text
                 key={i}
-                className="mb-1 text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark"
+                className="mb-1 text-phase2SecondaryTxt"
               >
                 • {r}
               </Text>
@@ -172,13 +176,13 @@ export default function AlertDetailsScreen() {
         {/* factores */}
         {alert.factors && alert.factors.length > 0 && (
           <View>
-            <Text className="font-bold mb-2 mt-2 dark:text-phase2TitlesDark">
+            <Text className="font-bold mb-2 mt-2">
               Factores
             </Text>
             {alert.factors.map((f, i) => (
               <Text
                 key={i}
-                className="mb-1 text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark"
+                className="mb-1 text-phase2SecondaryTxt"
               >
                 • {f}
               </Text>
@@ -190,7 +194,7 @@ export default function AlertDetailsScreen() {
       {/* acciones */}
       <View className="px-4 pb-6 flex-row justify-between gap-3">
         <TouchableOpacity
-          className="flex-1 bg-phase2Buttons dark:bg-phase2CardsDark rounded-2xl py-3 items-center"
+          className="flex-1 bg-phase2Buttons rounded-2xl py-3 items-center"
           activeOpacity={0.7}
           onPress={() => {
             track("details_map_tap", {
@@ -201,12 +205,12 @@ export default function AlertDetailsScreen() {
             router.push("/(tabs)/MapScreen");
           }}
         >
-          <Text className="text-white dark:text-phase2TitlesDark font-bold">
+          <Text className="text-white font-bold">
             Ver en mapa
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          className="flex-1 bg-phase2Buttons dark:bg-phase2CardsDark rounded-2xl py-3 items-center"
+          className="flex-1 bg-phase2Buttons rounded-2xl py-3 items-center"
           activeOpacity={0.7}
           onPress={() => {
             track("details_boletin_tap", {
@@ -217,11 +221,11 @@ export default function AlertDetailsScreen() {
             handleOpenBoletin();
           }}
         >
-          <Text className="text-white dark:text-phase2TitlesDark font-bold">
+          <Text className="text-white font-bold">
             Ver Boletín oficial
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

@@ -12,7 +12,7 @@ export default function MemberListItem({ member }: MemberListItemProps) {
       : `${member.distance} mts`;
 
   return (
-    <View className="flex-row items-center px-6 py-4 bg-white dark:bg-neutral-800 mb-2 rounded-xl">
+    <View className="flex-row items-center px-6 py-4 bg-white mb-2 rounded-xl">
       {/* Avatar */}
       <View
         className="w-12 h-12 rounded-full items-center justify-center mr-4"
@@ -22,12 +22,12 @@ export default function MemberListItem({ member }: MemberListItemProps) {
       </View>
 
       {/* Name */}
-      <Text className="flex-1 text-lg font-semibold text-phase2Titles dark:text-phase2TitlesDark">
+      <Text className="flex-1 text-lg font-semibold text-phase2Titles">
         {member.name}
       </Text>
 
       {/* Distance */}
-      <Text className="text-base text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark">
+      <Text className="text-base text-phase2SecondaryTxt">
         {distanceText}
       </Text>
     </View>
