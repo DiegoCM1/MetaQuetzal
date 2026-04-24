@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import { useEffect, useRef, useState } from "react";
+import { colors, gradients } from "../../utils/theme";
 
 const TABS = [
   { name: "MapScreen",           label: "Mapa",    icon: "map-outline"          },
@@ -40,7 +41,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <View
       style={{
-        backgroundColor: '#060f1e',
+        backgroundColor: gradients.primary[1],
         marginHorizontal: 16,
         marginBottom: Math.max(insets.bottom, 8),
         borderRadius: 30,
@@ -61,7 +62,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               width: MARKER_WIDTH,
               height: 3,
               borderRadius: 2,
-              backgroundColor: '#3900ff',
+              backgroundColor: colors.brandIndigo,
               top: 1,
             },
             markerStyle,
@@ -71,7 +72,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
       <View style={{
         flexDirection: 'row',
-        backgroundColor: 'rgb(49, 103, 255)',
+        backgroundColor: colors.brandBlue,
         borderRadius: 24,
         height: 52,
       }}>

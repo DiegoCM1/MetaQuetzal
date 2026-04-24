@@ -15,18 +15,13 @@ import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
 import { loadRedZones, saveRedZone, generateZoneId } from "../../services/redZonesService";
 import { darkMapStyle } from "./mapStyle";
+import { DEFAULT_REGION, ZONE_TYPES } from "./config";
+import type { Zone, ZoneType } from "./types";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
-// Default region: Mexico
-const DEFAULT_REGION = {
-  latitude: 23.6345, // Mexico center
-  longitude: -102.5528,
-  latitudeDelta: 12,
-  longitudeDelta: 12,
-};
+type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
 
-type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']         
 export default function WeatherMapNativewind() {
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
@@ -35,11 +30,11 @@ export default function WeatherMapNativewind() {
   const [layerModalVisible, setLayerModalVisible] = useState(false);
   const mapRef = useRef(null);
 
-  // Red zones states
-  const [redZones, setRedZones] = useState([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [isAddingMode, setIsAddingMode] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState(null);
-  const [selectedZone, setSelectedZone] = useState(null);
+  const [pendingLocation, setPendingLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
+  const [selectedType, setSelectedType] = useState<ZoneType | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [zoneDescription, setZoneDescription] = useState("");
@@ -55,12 +50,10 @@ export default function WeatherMapNativewind() {
           return;
         }
 
-        // Timeout promise: reject after 15 seconds
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => reject(new Error('Location timeout')), 15000);
         });
 
-        // Race between getting location and timeout
         const { coords } = await Promise.race([
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
           timeoutPromise,
@@ -76,11 +69,7 @@ export default function WeatherMapNativewind() {
         };
 
         setRegion(userRegion);
-
-        // Animate to user's location
         mapRef.current?.animateToRegion(userRegion, 1000);
-
-        console.log("✅ User location obtained:", coords.latitude, coords.longitude);
       } catch (error) {
         console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
       }
@@ -91,17 +80,17 @@ export default function WeatherMapNativewind() {
     };
   }, []);
 
-  // Load red zones on mount
   useEffect(() => {
     (async () => {
-      console.log('🗺️ [Map] Loading red zones on mount...');
-      const zones = await loadRedZones();
-      console.log('🗺️ [Map] Setting', zones.length, 'zones to state');
-      setRedZones(zones);
+      try {
+        const loaded = await loadRedZones();
+        setZones(loaded);
+      } catch (error) {
+        console.error('[Map] Failed to load zones:', error);
+      }
     })();
   }, []);
 
-  // Toggle adding mode
   const handleToggleAddingMode = () => {
     setIsAddingMode(!isAddingMode);
     if (!isAddingMode) {
@@ -120,24 +109,22 @@ export default function WeatherMapNativewind() {
     }
   };
 
-  // Handle map press
-  const handleMapPress = (e) => {
+  const handleMapPress = (e: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
     if (isAddingMode) {
       const { latitude, longitude } = e.nativeEvent.coordinate;
       setPendingLocation({ latitude, longitude });
       setShowAddModal(true);
-      setIsAddingMode(false); // Disable adding mode after selecting location
+      setIsAddingMode(false);
     }
   };
 
-  // Handle circle press (zone detail)
-  const handleCirclePress = (zone) => {
+  const handleCirclePress = (zone: Zone) => {
     setSelectedZone(zone);
     setShowDetailModal(true);
   };
 
-  // Save new red zone
   const handleSaveZone = async () => {
+    if (!selectedType) return;
     if (!zoneDescription.trim()) {
       Toast.show({
         type: 'error',
@@ -147,42 +134,39 @@ export default function WeatherMapNativewind() {
       return;
     }
 
-    const newZone = {
+    const newZone: Zone = {
       id: generateZoneId(),
       latitude: pendingLocation.latitude,
       longitude: pendingLocation.longitude,
       description: zoneDescription.trim(),
       timestamp: new Date().toISOString(),
-      radius: 500, // 500 meters
+      radius: 500,
+      type: selectedType,
     };
 
-    const success = await saveRedZone(newZone);
-    if (success) {
-      const updatedZones = [...redZones, newZone];
-      setRedZones(updatedZones);
-      console.log('🗺️ [Map] Zone added to state. Total zones now:', updatedZones.length);
-      Toast.show({
-        type: 'success',
-        text1: 'Zona roja reportada',
-        text2: 'Gracias por tu reporte',
-      });
-      setShowAddModal(false);
-      setPendingLocation(null);
-      setZoneDescription('');
-    } else {
-      Toast.show({
-        type: 'error',
-        text1: 'Error al guardar',
-        text2: 'No se pudo guardar la zona roja',
-      });
+    try {
+      const success = await saveRedZone(newZone);
+      if (success) {
+        setZones(prev => [...prev, newZone]);
+        Toast.show({ type: 'success', text1: 'Zona reportada', text2: 'Gracias por tu reporte' });
+        setShowAddModal(false);
+        setPendingLocation(null);
+        setZoneDescription('');
+        setSelectedType(null);
+      } else {
+        Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
+      }
+    } catch (error) {
+      console.error('[Map] Failed to save zone:', error);
+      Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
     }
   };
 
-  // Cancel adding zone
   const handleCancelAdd = () => {
     setShowAddModal(false);
     setPendingLocation(null);
     setZoneDescription('');
+    setSelectedType(null);
   };
 
   const layers: Array<{ label: string; state: boolean; setter: (v: boolean) => void; icon: MCIName }> = [
@@ -196,11 +180,10 @@ export default function WeatherMapNativewind() {
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
-        style={styles.map} // <— real style prop
+        style={styles.map}
         showsUserLocation
         initialRegion={region}
         onPress={handleMapPress}
-        // Disable default UI components
         customMapStyle={darkMapStyle}
         showsCompass={false}
         showsMyLocationButton={false}
@@ -236,40 +219,29 @@ export default function WeatherMapNativewind() {
           />
         )}
 
-        {/* Red zones: Marker (always visible) + Circle (area) */}
-        {redZones.map((zone) => (
-          <React.Fragment key={zone.id}>
-            {/* Pin/Icon - Always visible, fixed size */}
-            <Marker
-              coordinate={{
-                latitude: zone.latitude,
-                longitude: zone.longitude,
-              }}
-              onPress={() => handleCirclePress(zone)}
-              tracksViewChanges={false}
-            >
-              <View className="items-center justify-center bg-white rounded-full p-1 shadow-lg">
-                <MaterialCommunityIcons
-                  name="alert-circle"
-                  size={28}
-                  color="#EF4444"
-                />
-              </View>
-            </Marker>
-
-            {/* Circle - Shows affected area, scales with zoom */}
-            <Circle
-              center={{
-                latitude: zone.latitude,
-                longitude: zone.longitude,
-              }}
-              radius={zone.radius}
-              fillColor="rgba(239, 68, 68, 0.2)" // red with 20% opacity
-              strokeColor="#EF4444" // solid red
-              strokeWidth={2}
-            />
-          </React.Fragment>
-        ))}
+        {zones.map((zone) => {
+          const config = ZONE_TYPES[zone.type] ?? ZONE_TYPES.peligro;
+          return (
+            <React.Fragment key={zone.id}>
+              <Marker
+                coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
+                onPress={() => handleCirclePress(zone)}
+                tracksViewChanges={false}
+              >
+                <View style={{ backgroundColor: config.color, borderRadius: 8, padding: 6 }}>
+                  <MaterialCommunityIcons name={config.icon as any} size={24} color="#fff" />
+                </View>
+              </Marker>
+              <Circle
+                center={{ latitude: zone.latitude, longitude: zone.longitude }}
+                radius={zone.radius}
+                fillColor={`${config.color}33`}
+                strokeColor={config.color}
+                strokeWidth={2}
+              />
+            </React.Fragment>
+          );
+        })}
       </MapView>
 
       {/* Layer selector */}
