@@ -8,7 +8,8 @@ import AlertCard from "./_components/AlertCard";
 import YearListItem from "./_components/YearListItem";
 import { groupAlertsByYear, getSortedYears } from "./_utils/groupByYear";
 import { track } from "../../utils/analytics";
-import  ScreenHeader from "../../components/ScreenHeader"
+import ScreenHeader from "../../components/ScreenHeader"
+import { colors } from "../../utils/theme"
 
 
 export default function AlertsHistoryByYearScreen() {
@@ -40,8 +41,8 @@ export default function AlertsHistoryByYearScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-transparent">
-        <ActivityIndicator size="large" color="#38bdf8" />
-        <Text className="mt-4 text-gray-600">
+        <ActivityIndicator size="large" color={colors.brandBlue} />
+        <Text className="mt-4 font-poppins text-white/60">
           Cargando historial...
         </Text>
       </View>
@@ -54,9 +55,9 @@ export default function AlertsHistoryByYearScreen() {
         <MaterialCommunityIcons
           name="alert-circle-outline"
           size={48}
-          color="#EF4444"
+          color={colors.brandRed}
         />
-        <Text className="mt-4 text-red-500">Error al cargar el historial</Text>
+        <Text className="mt-4 font-poppins text-brand-red">Error al cargar el historial</Text>
       </View>
     );
   }
@@ -67,9 +68,9 @@ export default function AlertsHistoryByYearScreen() {
         <MaterialCommunityIcons
           name="file-document-outline"
           size={48}
-          color="#9CA3AF"
+          color={colors.brandBlue}
         />
-        <Text className="mt-4 text-gray-600">
+        <Text className="mt-4 font-poppins text-white/50">
           No hay historial de alertas
         </Text>
       </View>
@@ -117,7 +118,7 @@ export default function AlertsHistoryByYearScreen() {
         renderItem={renderYearItem}
         ListHeaderComponent={
           <View className="mb-4">
-            <Text className="text-gray-600 text-center">
+            <Text className="font-poppins text-white/50 text-center">
               Selecciona un año para ver las alertas
             </Text>
           </View>
