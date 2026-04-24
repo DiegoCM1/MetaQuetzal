@@ -10,17 +10,37 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import MapView, { UrlTile, PROVIDER_GOOGLE, Circle, Marker } from "react-native-maps";
+import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
-import { loadRedZones, saveRedZone, generateZoneId } from "../../services/redZonesService";
+import { loadRedZones, saveRedZone, generateZoneId, clearAllZones } from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, ZONE_TYPES } from "./config";
+import { colors } from "../../utils/theme";
 import type { Zone, ZoneType } from "./types";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
+
+function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
+  const [ready, setReady] = useState(false);
+  const config = ZONE_TYPES[zone.type];
+  return (
+    <Marker
+      coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
+      onPress={onPress}
+      tracksViewChanges={!ready}
+    >
+      <View
+        style={{ backgroundColor: config.color, borderRadius: 8, padding: 6 }}
+        onLayout={() => setReady(true)}
+      >
+        <MaterialCommunityIcons name={config.icon as any} size={24} color="#fff" />
+      </View>
+    </Marker>
+  );
+}
 
 export default function WeatherMapNativewind() {
   const [region, setRegion] = useState(DEFAULT_REGION);
@@ -38,6 +58,7 @@ export default function WeatherMapNativewind() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [zoneDescription, setZoneDescription] = useState("");
+  const [descriptionError, setDescriptionError] = useState(false);
 
   useEffect(() => {
     let timeoutId;
@@ -84,7 +105,12 @@ export default function WeatherMapNativewind() {
     (async () => {
       try {
         const loaded = await loadRedZones();
-        setZones(loaded);
+        const valid = loaded.filter((z: Zone) => z.type && ZONE_TYPES[z.type]);
+        if (valid.length !== loaded.length) {
+          await clearAllZones();
+          for (const z of valid) await saveRedZone(z);
+        }
+        setZones(valid);
       } catch (error) {
         console.error('[Map] Failed to load zones:', error);
       }
@@ -92,21 +118,7 @@ export default function WeatherMapNativewind() {
   }, []);
 
   const handleToggleAddingMode = () => {
-    setIsAddingMode(!isAddingMode);
-    if (!isAddingMode) {
-      Toast.show({
-        type: 'info',
-        text1: 'Modo de reporte activado',
-        text2: 'Toca el mapa donde quieres reportar la zona roja',
-        position: 'top',
-      });
-    } else {
-      Toast.show({
-        type: 'info',
-        text1: 'Modo de reporte desactivado',
-        position: 'top',
-      });
-    }
+    setIsAddingMode(prev => !prev);
   };
 
   const handleMapPress = (e: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
@@ -126,11 +138,7 @@ export default function WeatherMapNativewind() {
   const handleSaveZone = async () => {
     if (!selectedType) return;
     if (!zoneDescription.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Descripción requerida',
-        text2: 'Por favor describe qué sucede en esta zona',
-      });
+      setDescriptionError(true);
       return;
     }
 
@@ -153,6 +161,7 @@ export default function WeatherMapNativewind() {
         setPendingLocation(null);
         setZoneDescription('');
         setSelectedType(null);
+        setDescriptionError(false);
       } else {
         Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
       }
@@ -167,6 +176,7 @@ export default function WeatherMapNativewind() {
     setPendingLocation(null);
     setZoneDescription('');
     setSelectedType(null);
+    setDescriptionError(false);
   };
 
   const layers: Array<{ label: string; state: boolean; setter: (v: boolean) => void; icon: MCIName }> = [
@@ -219,29 +229,9 @@ export default function WeatherMapNativewind() {
           />
         )}
 
-        {zones.map((zone) => {
-          const config = ZONE_TYPES[zone.type] ?? ZONE_TYPES.peligro;
-          return (
-            <React.Fragment key={zone.id}>
-              <Marker
-                coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
-                onPress={() => handleCirclePress(zone)}
-                tracksViewChanges={false}
-              >
-                <View style={{ backgroundColor: config.color, borderRadius: 8, padding: 6 }}>
-                  <MaterialCommunityIcons name={config.icon as any} size={24} color="#fff" />
-                </View>
-              </Marker>
-              <Circle
-                center={{ latitude: zone.latitude, longitude: zone.longitude }}
-                radius={zone.radius}
-                fillColor={`${config.color}33`}
-                strokeColor={config.color}
-                strokeWidth={2}
-              />
-            </React.Fragment>
-          );
-        })}
+        {zones.map((zone) => (
+          <ZoneMarker key={zone.id} zone={zone} onPress={() => handleCirclePress(zone)} />
+        ))}
       </MapView>
 
       {/* Layer selector */}
@@ -286,17 +276,24 @@ export default function WeatherMapNativewind() {
         </View>
       </Modal>
 
-      {/* FAB - Add red zone */}
+      {/* FAB - Add zone */}
       <TouchableOpacity
         onPress={handleToggleAddingMode}
-        className="absolute bottom-28 right-4 p-4 rounded-full shadow-lg"
         style={{
-          backgroundColor: isAddingMode ? '#10B981' : '#EF4444',
+          position: 'absolute',
+          bottom: 112,
+          right: 16,
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          backgroundColor: isAddingMode ? colors.brandBlue : 'rgba(8, 15, 30, 0.85)',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
         <MaterialCommunityIcons
-          name={isAddingMode ? "close-circle" : "plus"}
-          size={28}
+          name={isAddingMode ? "close" : "map-marker-plus-outline"}
+          size={24}
           color="#FFFFFF"
         />
       </TouchableOpacity>
@@ -304,12 +301,22 @@ export default function WeatherMapNativewind() {
       {/* Recenter */}
       <Pressable
         onPress={() => mapRef.current?.animateToRegion(region, 1000)}
-        className="absolute bottom-12 right-4 bg-white bg-opacity-90 p-3 rounded-full shadow-lg"
+        style={{
+          position: 'absolute',
+          bottom: 56,
+          right: 16,
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          backgroundColor: 'rgba(8, 15, 30, 0.85)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        <Text className="text-xl">📍</Text>
+        <MaterialCommunityIcons name="navigation-variant" size={24} color="#FFFFFF" />
       </Pressable>
 
-      {/* Modal: Add Red Zone */}
+      {/* Modal: Report Zone - 2 steps */}
       <Modal
         animationType="slide"
         transparent
@@ -317,43 +324,80 @@ export default function WeatherMapNativewind() {
         onRequestClose={handleCancelAdd}
       >
         <View className="flex-1 justify-end bg-black/40">
-            <View className="bg-white rounded-t-2xl p-6">
-              <Text className="text-xl font-bold mb-4 text-center">
-                Reportar Zona Roja
-              </Text>
-
-              <Text className="text-sm text-gray-600 mb-2">
-                Describe qué está sucediendo en esta zona:
-              </Text>
-
-              <TextInput
-                className="border border-gray-300 rounded-lg p-3 mb-4 min-h-[100px]"
-                placeholder="Ej: Inundación severa, árboles caídos, camino bloqueado..."
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                value={zoneDescription}
-                onChangeText={setZoneDescription}
-                style={{ color: '#000' }}
-              />
-
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={handleCancelAdd}
-                  className="flex-1 py-3 rounded-lg border-2 border-gray-300 items-center"
-                >
-                  <Text className="font-bold text-gray-700">Cancelar</Text>
+          <View className="bg-white rounded-t-2xl p-6">
+            {selectedType === null ? (
+              <>
+                <Text className="text-xl font-bold mb-2 text-center">¿Qué tipo de evento?</Text>
+                <Text className="text-sm text-gray-500 mb-5 text-center">Selecciona la categoría del reporte</Text>
+                <View className="flex-row flex-wrap gap-3 mb-4">
+                  {(Object.entries(ZONE_TYPES) as [ZoneType, typeof ZONE_TYPES[ZoneType]][]).map(([key, cfg]) => (
+                    <TouchableOpacity
+                      key={key}
+                      onPress={() => setSelectedType(key)}
+                      className="flex-1 items-center py-4 rounded-2xl"
+                      style={{ backgroundColor: cfg.color, minWidth: '40%' }}
+                    >
+                      <MaterialCommunityIcons name={cfg.icon as any} size={28} color="#fff" />
+                      <Text className="text-white font-bold mt-2">{cfg.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={handleCancelAdd} className="py-3 items-center">
+                  <Text className="text-gray-500">Cancelar</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity onPress={() => setSelectedType(null)} className="flex-row items-center mb-4">
+                  <MaterialCommunityIcons name="arrow-left" size={20} color="#666" />
+                  <Text className="text-gray-600 ml-1">Cambiar tipo</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={handleSaveZone}
-                  className="flex-1 py-3 rounded-lg items-center"
-                  style={{ backgroundColor: '#EF4444' }}
-                >
-                  <Text className="font-bold text-white">Reportar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                <View className="flex-row items-center mb-4 p-3 rounded-xl" style={{ backgroundColor: ZONE_TYPES[selectedType].color + '22' }}>
+                  <MaterialCommunityIcons name={ZONE_TYPES[selectedType].icon as any} size={24} color={ZONE_TYPES[selectedType].color} />
+                  <Text className="ml-2 font-bold" style={{ color: ZONE_TYPES[selectedType].color }}>
+                    {ZONE_TYPES[selectedType].label}
+                  </Text>
+                </View>
+
+                <Text className="text-sm text-gray-600 mb-2">Describe qué está sucediendo:</Text>
+                <TextInput
+                  className="rounded-lg p-3 mb-1"
+                  style={{
+                    minHeight: 100,
+                    color: '#000',
+                    borderWidth: 2,
+                    borderColor: descriptionError ? '#EF4444' : '#D1D5DB',
+                  }}
+                  placeholder="Ej: Inundación severa, árboles caídos, camino bloqueado..."
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  value={zoneDescription}
+                  onChangeText={(t) => { setZoneDescription(t); if (descriptionError) setDescriptionError(false); }}
+                />
+                {descriptionError && (
+                  <Text className="text-red-500 text-xs mb-3">Por favor describe qué sucede en esta zona</Text>
+                )}
+
+                <View className="flex-row gap-3">
+                  <TouchableOpacity
+                    onPress={handleCancelAdd}
+                    className="flex-1 py-3 rounded-lg border-2 border-gray-300 items-center"
+                  >
+                    <Text className="font-bold text-gray-700">Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleSaveZone}
+                    className="flex-1 py-3 rounded-lg items-center"
+                    style={{ backgroundColor: ZONE_TYPES[selectedType].color }}
+                  >
+                    <Text className="font-bold text-white">Reportar</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
         </View>
       </Modal>
 
