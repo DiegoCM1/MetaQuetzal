@@ -18,7 +18,7 @@ import Toast from "react-native-toast-message";
 import { loadRedZones, saveRedZone, updateRedZone, deleteRedZone, generateZoneId, clearAllZones } from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, ZONE_TYPES, MARKER_IMAGES } from "./config";
-import { colors } from "../../utils/theme";
+import { colors, fonts } from "../../utils/theme";
 import type { Zone, ZoneType } from "./types";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
@@ -193,7 +193,6 @@ export default function WeatherMapNativewind() {
       type: selectedType,
     };
 
-    // Optimistic update — close modal and show marker immediately
     setZones(prev => [...prev, newZone]);
     setShowAddModal(false);
     setPendingLocation(null);
@@ -221,7 +220,7 @@ export default function WeatherMapNativewind() {
     { label: "Viento", state: showWind, setter: setShowWind, icon: "weather-windy" },
     { label: "Precipitación", state: showPrecip, setter: setShowPrecip, icon: "weather-rainy" },
     { label: "Nubes", state: showClouds, setter: setShowClouds, icon: "weather-cloudy" },
-  ]      
+  ]
 
   return (
     <View className="flex-1">
@@ -275,12 +274,13 @@ export default function WeatherMapNativewind() {
       {/* Layer selector */}
       <Pressable
         onPress={() => setLayerModalVisible(true)}
-        className="absolute top-12 right-4 bg-white bg-opacity-90 p-3 rounded-full shadow-md"
+        className="absolute top-12 right-4 p-3 rounded-full"
+        style={{ backgroundColor: 'rgba(8, 15, 30, 0.85)' }}
       >
-        <MaterialCommunityIcons name="layers-outline" size={24} color="#333" />
+        <MaterialCommunityIcons name="layers-outline" size={24} color="white" />
       </Pressable>
 
-      {/* Closing Layer Modal */}
+      {/* Layer Modal */}
       <Modal
         animationType="slide"
         transparent
@@ -288,9 +288,9 @@ export default function WeatherMapNativewind() {
         onRequestClose={() => setLayerModalVisible(false)}
       >
         <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white p-6 rounded-t-2xl">
-            <Text className="text-lg font-bold mb-4 text-center">
-              Map Layers
+          <View className="p-6 rounded-t-2xl" style={{ backgroundColor: colors.brandBlack }}>
+            <Text className="text-lg font-poppins-semibold mb-4 text-center text-white">
+              Capas del mapa
             </Text>
             {layers.map(({ label, state, setter, icon }) => (
               <View
@@ -298,17 +298,23 @@ export default function WeatherMapNativewind() {
                 className="flex-row justify-between items-center mb-3"
               >
                 <View className="flex-row items-center">
-                  <MaterialCommunityIcons name={icon} size={20} color="#333" />
-                  <Text className="ml-2 text-base">{label}</Text>
+                  <MaterialCommunityIcons name={icon} size={20} color="white" />
+                  <Text className="ml-2 text-base font-poppins text-white">{label}</Text>
                 </View>
-                <Switch value={state} onValueChange={setter} />
+                <Switch
+                  value={state}
+                  onValueChange={setter}
+                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: colors.brandBlue }}
+                  thumbColor="white"
+                />
               </View>
             ))}
             <Pressable
               onPress={() => setLayerModalVisible(false)}
-              className="mt-2 bg-blue-600 py-3 rounded-full items-center"
+              className="mt-2 py-3 rounded-full items-center"
+              style={{ backgroundColor: colors.brandBlue }}
             >
-              <Text className="text-white font-semibold">Close</Text>
+              <Text className="text-white font-poppins-semibold">Cerrar</Text>
             </Pressable>
           </View>
         </View>
@@ -354,7 +360,7 @@ export default function WeatherMapNativewind() {
         <MaterialCommunityIcons name="navigation-variant" size={24} color="#FFFFFF" />
       </Pressable>
 
-      {/* Modal: Report Zone - 2 steps */}
+      {/* Modal: Report Zone */}
       <Modal
         animationType="slide"
         transparent
@@ -362,11 +368,11 @@ export default function WeatherMapNativewind() {
         onRequestClose={handleCancelAdd}
       >
         <View className="flex-1 justify-end bg-black/40">
-          <View className="bg-white rounded-t-2xl p-6">
+          <View className="rounded-t-2xl p-6" style={{ backgroundColor: colors.brandBlack }}>
             {selectedType === null ? (
               <>
-                <Text className="text-xl font-bold mb-2 text-center">¿Qué tipo de evento?</Text>
-                <Text className="text-sm text-gray-500 mb-5 text-center">Selecciona la categoría del reporte</Text>
+                <Text className="text-xl font-poppins-semibold mb-2 text-center text-white">¿Qué tipo de evento?</Text>
+                <Text className="text-sm font-poppins text-white/50 mb-5 text-center">Selecciona la categoría del reporte</Text>
                 <View className="flex-row flex-wrap gap-3 mb-4">
                   {(Object.entries(ZONE_TYPES) as [ZoneType, typeof ZONE_TYPES[ZoneType]][]).map(([key, cfg]) => (
                     <TouchableOpacity
@@ -376,37 +382,39 @@ export default function WeatherMapNativewind() {
                       style={{ backgroundColor: cfg.color, minWidth: '40%' }}
                     >
                       <MaterialCommunityIcons name={cfg.icon as any} size={28} color="#fff" />
-                      <Text className="text-white font-bold mt-2">{cfg.label}</Text>
+                      <Text className="text-white font-poppins-semibold mt-2">{cfg.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <TouchableOpacity onPress={handleCancelAdd} className="py-3 items-center">
-                  <Text className="text-gray-500">Cancelar</Text>
+                  <Text className="font-poppins text-white/50">Cancelar</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
                 <TouchableOpacity onPress={() => setSelectedType(null)} className="flex-row items-center mb-4">
-                  <MaterialCommunityIcons name="arrow-left" size={20} color="#666" />
-                  <Text className="text-gray-600 ml-1">Cambiar tipo</Text>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color="rgba(255,255,255,0.6)" />
+                  <Text className="font-poppins text-white/60 ml-1">Cambiar tipo</Text>
                 </TouchableOpacity>
 
                 <View className="flex-row items-center mb-4 p-3 rounded-xl" style={{ backgroundColor: ZONE_TYPES[selectedType].color + '22' }}>
                   <MaterialCommunityIcons name={ZONE_TYPES[selectedType].icon as any} size={24} color={ZONE_TYPES[selectedType].color} />
-                  <Text className="ml-2 font-bold" style={{ color: ZONE_TYPES[selectedType].color }}>
+                  <Text className="ml-2 font-poppins-semibold" style={{ color: ZONE_TYPES[selectedType].color }}>
                     {ZONE_TYPES[selectedType].label}
                   </Text>
                 </View>
 
-                <Text className="text-sm text-gray-600 mb-2">Describe qué está sucediendo:</Text>
+                <Text className="text-sm font-poppins text-white/60 mb-2">Describe qué está sucediendo:</Text>
                 <TextInput
-                  className="rounded-lg p-3 mb-1"
+                  className="rounded-lg p-3 mb-1 font-poppins"
                   style={{
                     minHeight: 100,
-                    color: '#000',
+                    color: 'white',
                     borderWidth: 2,
-                    borderColor: descriptionError ? '#EF4444' : '#D1D5DB',
+                    borderColor: descriptionError ? colors.brandRed : 'rgba(255,255,255,0.2)',
+                    fontFamily: fonts.poppins,
                   }}
+                  placeholderTextColor="rgba(255,255,255,0.3)"
                   placeholder="Ej: Inundación severa, árboles caídos, camino bloqueado..."
                   multiline
                   numberOfLines={4}
@@ -415,22 +423,23 @@ export default function WeatherMapNativewind() {
                   onChangeText={(t) => { setZoneDescription(t); if (descriptionError) setDescriptionError(false); }}
                 />
                 {descriptionError && (
-                  <Text className="text-red-500 text-xs mb-3">Por favor describe qué sucede en esta zona</Text>
+                  <Text className="text-brand-red font-poppins text-xs mb-3">Por favor describe qué sucede en esta zona</Text>
                 )}
 
                 <View className="flex-row gap-3">
                   <TouchableOpacity
                     onPress={handleCancelAdd}
-                    className="flex-1 py-3 rounded-lg border-2 border-gray-300 items-center"
+                    className="flex-1 py-3 rounded-lg items-center"
+                    style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' }}
                   >
-                    <Text className="font-bold text-gray-700">Cancelar</Text>
+                    <Text className="font-poppins-semibold text-white/60">Cancelar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleSaveZone}
                     className="flex-1 py-3 rounded-lg items-center"
                     style={{ backgroundColor: ZONE_TYPES[selectedType].color }}
                   >
-                    <Text className="font-bold text-white">Reportar</Text>
+                    <Text className="font-poppins-semibold text-white">Reportar</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -455,10 +464,10 @@ export default function WeatherMapNativewind() {
                 <View style={{ backgroundColor: cfg.color, padding: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <MaterialCommunityIcons name={cfg.icon as any} size={32} color="#fff" />
                   <View>
-                    <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold', letterSpacing: 2 }}>
+                    <Text style={{ color: '#fff', fontSize: 24, fontFamily: fonts.poppinsSemiBold, letterSpacing: 2 }}>
                       {cfg.label.toUpperCase()}
                     </Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, letterSpacing: 3 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: fonts.poppins, letterSpacing: 3 }}>
                       REPORTADA
                     </Text>
                   </View>
@@ -466,7 +475,7 @@ export default function WeatherMapNativewind() {
 
                 {/* Body */}
                 <View style={{ backgroundColor: '#0d1f3c', padding: 24, paddingBottom: 24 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Descripción:</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Descripción:</Text>
                   {isEditing ? (
                     <TextInput
                       value={editDescription}
@@ -475,6 +484,7 @@ export default function WeatherMapNativewind() {
                       style={{
                         color: '#fff',
                         fontSize: 15,
+                        fontFamily: fonts.poppins,
                         borderWidth: 1,
                         borderColor: 'rgba(255,255,255,0.3)',
                         borderRadius: 8,
@@ -486,18 +496,18 @@ export default function WeatherMapNativewind() {
                       }}
                     />
                   ) : (
-                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 12 }}>
                       {selectedZone.description}
                     </Text>
                   )}
 
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Ubicación:</Text>
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 12 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Ubicación:</Text>
+                  <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 12 }}>
                     {selectedZone.latitude.toFixed(5)}, {selectedZone.longitude.toFixed(5)}
                   </Text>
 
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Reportado:</Text>
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 20 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Reportado:</Text>
+                  <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 20 }}>
                     {new Date(selectedZone.timestamp).toLocaleString('es-MX')}
                   </Text>
 
@@ -509,13 +519,13 @@ export default function WeatherMapNativewind() {
                           onPress={() => setIsEditing(false)}
                           style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
                         >
-                          <Text style={{ color: '#fff' }}>Cancelar</Text>
+                          <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Cancelar</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={handleSaveEdit}
                           style={{ flex: 1, padding: 10, borderRadius: 10, backgroundColor: cfg.color, alignItems: 'center' }}
                         >
-                          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Guardar</Text>
+                          <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold }}>Guardar</Text>
                         </TouchableOpacity>
                       </>
                     ) : (
@@ -530,7 +540,7 @@ export default function WeatherMapNativewind() {
                           onPress={() => setIsEditing(true)}
                           style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
                         >
-                          <Text style={{ color: '#fff' }}>Editar</Text>
+                          <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Editar</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => setShowDetailModal(false)}
