@@ -20,13 +20,12 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useChat } from "./_hooks/useChat"
 import { useModel } from "./_context/ModelContext"
-import { track } from "../../utils/analytics";
 
 
 export default function ChatAIScreen() {
   const { messages, input, setInput, isLoading, restartConversation, handleSendMessage } = useChat()
   const { modelMode } = useModel()
-  const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
+  const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
   const markdownStyles = {
@@ -36,7 +35,6 @@ export default function ChatAIScreen() {
     },
   };
 
-  // Send button component
   const SendButton = () => (
     <TouchableOpacity
       className={`h-10 w-10 rounded-full items-center justify-center ${isLoading ? "opacity-50" : ""}`}
@@ -47,7 +45,6 @@ export default function ChatAIScreen() {
     </TouchableOpacity>
   );
 
-  // Indicator shown while waiting for the AI response
   const ThinkingBubble = () => (
     <View className="mb-2 flex-row justify-start">
       <View className="max-w-[80%] rounded-2xl rounded-tl-none bg-phase2Cards px-4 py-3">
@@ -77,7 +74,7 @@ export default function ChatAIScreen() {
       {/* Restart Conversation Button */}
       <TouchableOpacity
         className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 items-center justify-center"
-        style={{ top: insets.top }} // safe‑area padding
+        style={{ top: insets.top }}
         onPress={restartConversation}
       >
         <MaterialCommunityIcons name="reload" size={20} color="white" />
@@ -110,16 +107,14 @@ export default function ChatAIScreen() {
             ListFooterComponent={isLoading ? <ThinkingBubble /> : null}
             renderItem={({ item }) => (
               <View
-                className={`mb-1 flex-row ${
-                  item.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`mb-1 flex-row ${item.role === "user" ? "justify-end" : "justify-start"
+                  }`}
               >
                 <View
-                  className={`rounded-2xl ${
-                    item.role === "user"
+                  className={`rounded-2xl ${item.role === "user"
                       ? "max-w-[80%] rounded-tr-none py-3 px-4"
                       : "flex-1 rounded-tl-none py-1 px-2"
-                  }`}
+                    }`}
                 >
                   {item.role === "user" ? (
                     <Text className="text-base text-white">{item.text}</Text>
