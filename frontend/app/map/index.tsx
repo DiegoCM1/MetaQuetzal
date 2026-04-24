@@ -9,6 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Image,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
@@ -16,7 +17,7 @@ import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
 import { loadRedZones, saveRedZone, updateRedZone, deleteRedZone, generateZoneId, clearAllZones } from "./service";
 import { darkMapStyle } from "./mapStyle";
-import { DEFAULT_REGION, ZONE_TYPES } from "./config";
+import { DEFAULT_REGION, ZONE_TYPES, MARKER_IMAGES } from "./config";
 import { colors } from "../../utils/theme";
 import type { Zone, ZoneType } from "./types";
 
@@ -25,15 +26,19 @@ const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
 
 function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
-  const config = ZONE_TYPES[zone.type];
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
   return (
     <Marker
       coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
       onPress={onPress}
+      tracksViewChanges={tracksViewChanges}
     >
-      <View style={{ backgroundColor: config.color, borderRadius: 8, padding: 6 }}>
-        <MaterialCommunityIcons name={config.icon as any} size={24} color="#fff" />
-      </View>
+      <Image
+        source={MARKER_IMAGES[zone.type]}
+        style={{ width: 44, height: 44 }}
+        resizeMode="contain"
+        onLoad={() => setTracksViewChanges(false)}
+      />
     </Marker>
   );
 }

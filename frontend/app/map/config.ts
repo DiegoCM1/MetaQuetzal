@@ -14,3 +14,10 @@ export const ZONE_TYPES: Record<ZoneType, { label: string; icon: string; color: 
   peligro: { label: 'Peligro',  icon: 'alert-circle-outline', color: colors.brandOrange },
   ayuda:   { label: 'Ayuda',    icon: 'shield-check-outline', color: colors.brandGreen  },
 }
+
+export const MARKER_IMAGES: Record<ZoneType, any> = {
+    natural: require('../../assets/markers/event-ayuda.png'),                 
+    vial:    require('../../assets/markers/event-ayuda.png'),   
+    peligro: require('../../assets/markers/event-ayuda.png'),
+    ayuda:   require('../../assets/markers/event-ayuda.png'),  
+}     
