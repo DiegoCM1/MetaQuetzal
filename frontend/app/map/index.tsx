@@ -450,7 +450,7 @@ export default function WeatherMapNativewind() {
           {selectedZone && (() => {
             const cfg = ZONE_TYPES[selectedZone.type];
             return (
-              <View style={{ borderRadius: 20, overflow: 'hidden' }}>
+              <View style={{ borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, overflow: 'hidden' }}>
                 {/* Header */}
                 <View style={{ backgroundColor: cfg.color, padding: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <MaterialCommunityIcons name={cfg.icon as any} size={32} color="#fff" />
