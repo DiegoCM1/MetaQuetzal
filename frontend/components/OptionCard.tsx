@@ -31,7 +31,7 @@ export default function OptionCard({ title, icon, route, onPress, rightElement, 
         <Pressable
             onPress={handlePress}
             disabled={!onPress && !route} 
-            className="mb-4 mx-4 rounded-r-3xl rounded-bl-3xl rounded-tl-sm overflow-hidden active:opacity-80 shadow-sm"
+            className="mt-4 mx-4 rounded-r-3xl rounded-bl-3xl rounded-tl-sm overflow-hidden active:opacity-80 shadow-sm"
             accessibilityRole="button"
             accessibilityLabel={title}
         >

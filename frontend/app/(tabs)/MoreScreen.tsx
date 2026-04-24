@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import OptionCard from "../../components/OptionCard";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-// Defining the type for your array so TS stays happy
 type MenuItem = {
   label: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -29,7 +28,7 @@ export default function MoreScreen() {
       >
         {items.map((item) => (
           <OptionCard 
-            key={item.route} // CRITICAL: React needs a unique key for mapped lists
+            key={item.route} 
             title={item.label} 
             icon={item.icon} 
             route={item.route} 
