@@ -1,7 +1,7 @@
 import "../global.css";
 import { clearOnboardingData } from './onboarding/_services/onboardingService';
 import { useState } from "react";
-import { Alert, Switch, Text } from "react-native";
+import { Alert, Switch, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -75,70 +75,77 @@ export default function SettingsScreen() {
     <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
       <ScreenHeader title="Ajustes" />
 
-      <OptionCard
-        icon="bell-outline"
-        title="Notificaciones"
-        rightElement={
-          <Switch
-            value={isNotificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            thumbColor="#fff"
-            trackColor={{ false: "#9ca3af", true: "rgb(60,200,220)" }}
-            ios_backgroundColor="#9ca3af"
+      <ScrollView
+        className="flex-1 pt-6"
+        showsVerticalScrollIndicator={false}
+      >
+
+        <OptionCard
+          icon="bell-outline"
+          title="Notificaciones"
+          rightElement={
+            <Switch
+              value={isNotificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              thumbColor="#fff"
+              trackColor={{ false: "#9ca3af", true: "rgb(60,200,220)" }}
+              ios_backgroundColor="#9ca3af"
+            />
+          }
+        />
+
+        <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} />
+
+        <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
+
+        <OptionCard
+          icon="alert-outline"
+          title="Ver Alerta de Emergencia"
+          onPress={() => {
+            track('demo_alarm_view');
+            router.push('/AlarmScreen');
+          }}
+        />
+
+        {modelOptedIn && !modelReady && !modelError && (
+          <OptionCard
+            icon="cloud-download-outline"
+            title="Descargando modelo IA..."
+            rightElement={
+              <Text style={{ color: "white", fontWeight: "600" }}>
+                {Math.round(downloadProgress * 100)}%
+              </Text>
+            }
           />
-        }
-      />
+        )}
 
-      <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} />
+        {modelOptedIn && modelError && (
+          <OptionCard
+            icon="alert-circle-outline"
+            title="Error al descargar IA offline — reintentar"
+            onPress={retryDownload}
+            danger
+          />
+        )}
 
-      <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
+        {modelOptedIn && modelReady && (
+          <OptionCard
+            icon="check-circle-outline"
+            title="Modelo IA listo"
+            onPress={handleDeleteModel}
+            rightElement={
+              <MaterialCommunityIcons name="trash-can-outline" color="#EF4444" size={22} />
+            }
+          />
+        )}
 
-      <OptionCard
-        icon="alert-outline"
-        title="Ver Alerta de Emergencia"
-        onPress={() => {
-          track('demo_alarm_view');
-          router.push('/AlarmScreen');
-        }}
-      />
+        {!modelOptedIn && (
+          <OptionCard icon="chip" title="Activar modo sin conexión" onPress={handleDownloadModel} />
+        )}
 
-      {modelOptedIn && !modelReady && !modelError && (
-        <OptionCard
-          icon="cloud-download-outline"
-          title="Descargando modelo IA..."
-          rightElement={
-            <Text style={{ color: "white", fontWeight: "600" }}>
-              {Math.round(downloadProgress * 100)}%
-            </Text>
-          }
-        />
-      )}
+        <OptionCard icon="logout" title="Cerrar sesión" onPress={handleSignOut} danger />
+      </ScrollView>
 
-      {modelOptedIn && modelError && (
-        <OptionCard
-          icon="alert-circle-outline"
-          title="Error al descargar IA offline — reintentar"
-          onPress={retryDownload}
-          danger
-        />
-      )}
-
-      {modelOptedIn && modelReady && (
-        <OptionCard
-          icon="check-circle-outline"
-          title="Modelo IA listo"
-          onPress={handleDeleteModel}
-          rightElement={
-            <MaterialCommunityIcons name="trash-can-outline" color="#EF4444" size={22} />
-          }
-        />
-      )}
-
-      {!modelOptedIn && (
-        <OptionCard icon="chip" title="Activar modo sin conexión" onPress={handleDownloadModel} />
-      )}
-
-      <OptionCard icon="logout" title="Cerrar sesión" onPress={handleSignOut} danger />
     </SafeAreaView>
   );
 }
