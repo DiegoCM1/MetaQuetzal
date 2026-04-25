@@ -7,13 +7,13 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { submitFeedback } from "../services/feedbackService";
 import { track } from "../utils/analytics";
-import  ScreenHeader from "../components/ScreenHeader"
+import ScreenHeader from "../components/ScreenHeader"
+import { colors, fonts } from "../utils/theme"
 
 
 export default function FeedbackScreen() {
@@ -64,21 +64,21 @@ export default function FeedbackScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1"
+      className="flex-1 bg-transparent"
       edges={["top", "bottom"]}
     >
       <ScreenHeader title="Feedback" />
 
 
       <View className="px-6 py-6">
-        <Text className="text-lg text-phase2Titles">
+        <Text className="text-base font-poppins text-white/70">
           Cuéntanos qué te gusta, qué podemos mejorar o reporta algún error.
         </Text>
       </View>
 
       <View className="flex-1 p-6">
         {/* Star Rating */}
-        <Text className="text-base mb-2 text-phase2Titles">
+        <Text className="text-base font-poppins-semibold mb-2 text-white">
           ¿Cómo nos calificas?
         </Text>
         <View className="flex-row mb-4">
@@ -87,19 +87,13 @@ export default function FeedbackScreen() {
               <MaterialCommunityIcons
                 name={i <= rating ? "star" : "star-outline"}
                 size={32}
-                color={
-                  i <= rating
-                    ? "#FFD700"
-                    : colorScheme === "dark"
-                      ? "#888"
-                      : "#ccc"
-                }
+                color={i <= rating ? colors.brandYellow : "rgba(255,255,255,0.25)"}
               />
             </TouchableOpacity>
           ))}
         </View>
         {errors.rating && (
-          <Text className="text-red-500 mb-2">{errors.rating}</Text>
+          <Text className="text-brand-red font-poppins mb-2">{errors.rating}</Text>
         )}
 
         {/* Email Input */}
@@ -107,13 +101,15 @@ export default function FeedbackScreen() {
           value={email}
           onChangeText={setEmail}
           placeholder="Correo electrónico"
+          placeholderTextColor="rgba(255,255,255,0.3)"
           keyboardType="email-address"
           autoCapitalize="none"
           accessibilityLabel="Correo electrónico"
-          className="mb-1 p-3 border rounded-lg bg-white border-phase2Borders text-phase2Titles"
+          className="mb-1 p-3 border rounded-lg"
+          style={{ borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(10,28,50,0.6)', color: 'white', fontFamily: fonts.poppins }}
         />
         {errors.email && (
-          <Text className="text-red-500 mb-2">{errors.email}</Text>
+          <Text className="text-brand-red font-poppins mb-2">{errors.email}</Text>
         )}
 
         {/* Feedback Message */}
@@ -121,35 +117,35 @@ export default function FeedbackScreen() {
           value={message}
           onChangeText={setMessage}
           placeholder="Escribe tus pensamientos..."
+          placeholderTextColor="rgba(255,255,255,0.3)"
           multiline
           numberOfLines={4}
+          textAlignVertical="top"
           accessibilityLabel="Mensaje"
-          className="mb-4 p-3 border rounded-lg bg-white border-phase2Borders text-phase2Titles h-24 text-top"
+          className="mb-4 p-3 border rounded-lg h-24"
+          style={{ borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(10,28,50,0.6)', color: 'white', fontFamily: fonts.poppins }}
         />
         {errors.message && (
-          <Text className="text-red-500 mb-2">{errors.message}</Text>
+          <Text className="text-brand-red font-poppins mb-2">{errors.message}</Text>
         )}
 
         {/* Submit Button */}
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={loading}
-          className={`py-3 rounded-lg items-center ${
-            loading
-              ? "bg-phase2Buttons/50"
-              : "bg-phase2Buttons"
-          }`}
+          className="py-3 rounded-full items-center"
+          style={{ backgroundColor: loading ? `${colors.brandBlue}80` : colors.brandBlue }}
         >
           {loading ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text className="text-white text-lg font-semibold">Enviar</Text>
+            <Text className="text-white font-poppins-semibold text-base uppercase">Enviar</Text>
           )}
         </TouchableOpacity>
 
         {/* Success Message */}
         {success && (
-          <Text className="mt-4 text-center text-green-600">
+          <Text className="mt-4 text-center font-poppins text-brand-green">
             ¡Gracias por tu feedback!
           </Text>
         )}
