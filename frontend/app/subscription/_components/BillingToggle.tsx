@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { BillingPeriod, Plan } from '../_types';
+import { colors, fonts } from '../../../utils/theme';
 
 interface BillingToggleProps {
   plan: Plan;
@@ -7,74 +8,79 @@ interface BillingToggleProps {
   onBillingChange: (period: BillingPeriod) => void;
 }
 
-export default function BillingToggle({
-  plan,
-  billingPeriod,
-  onBillingChange,
-}: BillingToggleProps) {
+export default function BillingToggle({ plan, billingPeriod, onBillingChange }: BillingToggleProps) {
+  const isMonthly = billingPeriod === 'monthly';
+  const isAnnual = billingPeriod === 'annual';
+
   return (
-    <View className="flex-row mb-4">
-      {/* Monthly option */}
+    <View style={{ flexDirection: 'row' }}>
+      {/* Monthly */}
       <TouchableOpacity
         onPress={() => onBillingChange('monthly')}
-        className={`flex-1 mr-2 p-4 rounded-xl border-2 ${
-          billingPeriod === 'monthly'
-            ? 'border-phase2Buttons bg-phase2Buttons/10'
-            : 'border-phase2SecondaryTxt/30 bg-transparent'
-        }`}
         activeOpacity={0.7}
+        style={{
+          flex: 1,
+          marginRight: 8,
+          padding: 14,
+          borderRadius: 12,
+          borderWidth: 2,
+          borderColor: isMonthly ? colors.brandBlue : 'rgba(255,255,255,0.2)',
+          backgroundColor: isMonthly ? `${colors.brandBlue}18` : 'transparent',
+        }}
       >
-        <View className="flex-row items-center mb-2">
-          <View
-            className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-              billingPeriod === 'monthly'
-                ? 'border-phase2Buttons bg-phase2Buttons'
-                : 'border-phase2SecondaryTxt bg-transparent'
-            }`}
-          >
-            {billingPeriod === 'monthly' && (
-              <View className="w-2 h-2 rounded-full bg-white" />
-            )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <View style={{
+            width: 18, height: 18, borderRadius: 9, borderWidth: 2,
+            borderColor: isMonthly ? colors.brandBlue : 'rgba(255,255,255,0.4)',
+            backgroundColor: isMonthly ? colors.brandBlue : 'transparent',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {isMonthly && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: 'white' }} />}
           </View>
         </View>
-        <Text className="text-phase2Titles text-xl font-bold">
+        <Text style={{ fontFamily: fonts.poppinsSemiBold, color: 'white', fontSize: 20 }}>
           ${plan.monthlyPrice.toFixed(2)}
         </Text>
-        <Text className="text-phase2SecondaryTxt text-sm">Facturación mensual</Text>
+        <Text style={{ fontFamily: fonts.poppins, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
+          Facturación mensual
+        </Text>
       </TouchableOpacity>
 
-      {/* Annual option */}
+      {/* Annual */}
       <TouchableOpacity
         onPress={() => onBillingChange('annual')}
-        className={`flex-1 ml-2 p-4 rounded-xl border-2 ${
-          billingPeriod === 'annual'
-            ? 'border-phase2Buttons bg-phase2Buttons/10'
-            : 'border-phase2SecondaryTxt/30 bg-transparent'
-        }`}
         activeOpacity={0.7}
+        style={{
+          flex: 1,
+          marginLeft: 8,
+          padding: 14,
+          borderRadius: 12,
+          borderWidth: 2,
+          borderColor: isAnnual ? colors.brandBlue : 'rgba(255,255,255,0.2)',
+          backgroundColor: isAnnual ? `${colors.brandBlue}18` : 'transparent',
+        }}
       >
-        <View className="flex-row items-center justify-between mb-2">
-          <View
-            className={`w-5 h-5 rounded-full border-2 items-center justify-center ${
-              billingPeriod === 'annual'
-                ? 'border-phase2Buttons bg-phase2Buttons'
-                : 'border-phase2SecondaryTxt bg-transparent'
-            }`}
-          >
-            {billingPeriod === 'annual' && (
-              <View className="w-2 h-2 rounded-full bg-white" />
-            )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <View style={{
+            width: 18, height: 18, borderRadius: 9, borderWidth: 2,
+            borderColor: isAnnual ? colors.brandBlue : 'rgba(255,255,255,0.4)',
+            backgroundColor: isAnnual ? colors.brandBlue : 'transparent',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {isAnnual && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: 'white' }} />}
           </View>
-          <View className="bg-phase2Buttons/20 px-2 py-1 rounded">
-            <Text className="text-phase2Buttons text-xs font-semibold">
+          <View style={{ backgroundColor: `${colors.brandBlue}30`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+            <Text style={{ fontFamily: fonts.poppinsSemiBold, color: colors.brandCyan, fontSize: 11 }}>
               Ahorra {plan.annualDiscount}%
             </Text>
           </View>
         </View>
-        <Text className="text-phase2Titles text-xl font-bold">
+        <Text style={{ fontFamily: fonts.poppinsSemiBold, color: 'white', fontSize: 20 }}>
           ${plan.annualPrice.toFixed(2)}
         </Text>
-        <Text className="text-phase2SecondaryTxt text-sm">Facturación anual</Text>
+        <Text style={{ fontFamily: fonts.poppins, color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
+          Facturación anual
+        </Text>
       </TouchableOpacity>
     </View>
   );

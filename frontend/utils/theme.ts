@@ -22,3 +22,9 @@ export const gradients = {
   verde:   ['#010806', '#02160b', '#032412', '#043218', '#05401e'] as const,
   header: ['#060f1e', '#3167ff'] as const
 } satisfies Record<string, readonly string[]>
+
+export const fonts = {
+  square721:       'Square721',
+  poppins:         'Poppins-Light',
+  poppinsSemiBold: 'Poppins-SemiBold',
+} as const

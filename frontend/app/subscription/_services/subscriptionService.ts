@@ -16,26 +16,7 @@ export const PLANS: Plan[] = [
       'Contenido educativo básico',
       'Soporte por email',
     ],
-  },
-  {
-    id: 'premium',
-    name: 'Plan Premium',
-    description: 'Para familias grandes y grupos',
-    monthlyPrice: 9.99,
-    annualPrice: 99.99,
-    annualDiscount: 17,
-    popular: true,
-    recommended: true,
-    features: [
-      'Alertas para hasta 10 miembros',
-      'Ubicación en tiempo real de familia',
-      'Notificaciones coordinadas',
-      'Plan de emergencia familiar',
-      'Contenido educativo premium',
-      'Soporte prioritario 24/7',
-      'Historial de alertas extendido',
-    ],
-  },
+  }
 ];
 
 /**

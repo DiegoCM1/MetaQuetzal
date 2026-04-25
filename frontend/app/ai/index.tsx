@@ -9,8 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useTheme } from "../../context/ThemeContext";
 import { FlashList } from "@shopify/flash-list";
+import { colors, fonts } from "../../utils/theme";
 import { StatusBar } from "expo-status-bar";
 import {
   SafeAreaView,
@@ -20,23 +20,22 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useChat } from "./_hooks/useChat"
 import { useModel } from "./_context/ModelContext"
-import { track } from "../../utils/analytics";
 
 
 export default function ChatAIScreen() {
   const { messages, input, setInput, isLoading, restartConversation, handleSendMessage } = useChat()
   const { modelMode } = useModel()
-  const insets = useSafeAreaInsets(); // ← gives you { top, bottom, left, right }
+  const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
   const markdownStyles = {
     body: {
       color: "white",
       fontSize: 16,
+      fontFamily: fonts.poppins,
     },
   };
 
-  // Send button component
   const SendButton = () => (
     <TouchableOpacity
       className={`h-10 w-10 rounded-full items-center justify-center ${isLoading ? "opacity-50" : ""}`}
@@ -47,10 +46,9 @@ export default function ChatAIScreen() {
     </TouchableOpacity>
   );
 
-  // Indicator shown while waiting for the AI response
   const ThinkingBubble = () => (
     <View className="mb-2 flex-row justify-start">
-      <View className="max-w-[80%] rounded-2xl rounded-tl-none bg-phase2Cards px-4 py-3">
+      <View className="max-w-[80%] rounded-2xl rounded-tl-none bg-brand-blue/20 px-4 py-3">
         <ActivityIndicator size="small" color="gray" />
       </View>
     </View>
@@ -66,7 +64,7 @@ export default function ChatAIScreen() {
       {/* Model Mode Disclaimer */}
       {modelMode && (
         <View className="items-center py-1">
-          <Text className="text-xs text-gray-400">
+          <Text className="text-xs font-poppins text-white/40">
             {modelMode === 'offline'
               ? 'Modo sin conexión — IA local activa'
               : 'Modo en línea — IA en la nube activa'}
@@ -77,7 +75,7 @@ export default function ChatAIScreen() {
       {/* Restart Conversation Button */}
       <TouchableOpacity
         className="h-10 w-10 absolute top-0 left-4 rounded-full z-50 items-center justify-center"
-        style={{ top: insets.top }} // safe‑area padding
+        style={{ top: insets.top }}
         onPress={restartConversation}
       >
         <MaterialCommunityIcons name="reload" size={20} color="white" />
@@ -96,13 +94,13 @@ export default function ChatAIScreen() {
             contentContainerStyle={{ paddingBottom: 20 }}
             ListEmptyComponent={() => (
               <View style={{ height: 600 }} className="flex-row items-center justify-center">
-                <Text className="text-3xl font-semibold text-center">
+                <Text className="text-3xl font-poppins-semibold text-center text-white">
                   ¿
                 </Text>
-                <Text className="text-3xl font-semibold text-gray-500 text-center">
+                <Text className="text-3xl font-poppins-semibold text-white/60 text-center">
                   En qué puedo ayudar
                 </Text>
-                <Text className="text-3xl font-semibold text-center">
+                <Text className="text-3xl font-poppins-semibold text-center text-white">
                   ?
                 </Text>
               </View>
@@ -110,21 +108,19 @@ export default function ChatAIScreen() {
             ListFooterComponent={isLoading ? <ThinkingBubble /> : null}
             renderItem={({ item }) => (
               <View
-                className={`mb-1 flex-row ${
-                  item.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`mb-1 flex-row ${item.role === "user" ? "justify-end" : "justify-start"
+                  }`}
               >
                 <View
-                  className={`rounded-2xl ${
-                    item.role === "user"
-                      ? "max-w-[80%] rounded-tr-none py-3 px-4"
+                  className={`rounded-2xl ${item.role === "user"
+                      ? "max-w-[80%] rounded-lg py-3 px-4 bg-brand-blue"
                       : "flex-1 rounded-tl-none py-1 px-2"
-                  }`}
+                    }`}
                 >
                   {item.role === "user" ? (
-                    <Text className="text-base text-white">{item.text}</Text>
+                    <Text className="text-base font-poppins text-white">{item.text}</Text>
                   ) : item.error === true ? (
-                    <Text className="text-base text-red-700">
+                    <Text className="text-base font-poppins text-brand-red">
                       {item.text}
                     </Text>
                   ) : (
@@ -136,12 +132,12 @@ export default function ChatAIScreen() {
           />
 
           {/* Input Area */}
-          <View className="py-4 border-t border-phase2Borders">
+          <View className="py-4 border-t border-brand-blue/30">
             <View className="flex-row items-center justify-center space-x-2">
               {/* Text Input */}
-              <View className="flex-1 flex-row items-center text-center bg-white rounded-full border border-phase2Borders">
+              <View className="flex-1 flex-row items-center text-center rounded-3xl border border-white">
                 <TextInput
-                  className="flex-1 px-4 py-2 text-phase2Titles border-none items-center outline-none"
+                  className="flex-1 px-4 py-2 border-none items-center outline-none text-white font-poppins"
                   placeholder="Escribe un mensaje..."
                   placeholderTextColor="rgb(156,163,175)"
                   value={input}

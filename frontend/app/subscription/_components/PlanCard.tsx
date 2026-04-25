@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Plan, BillingPeriod } from '../_types';
 import BillingToggle from './BillingToggle';
 import FeatureList from './FeatureList';
+import { colors, fonts } from '../../../utils/theme';
 
 interface PlanCardProps {
   plan: Plan;
@@ -10,53 +11,49 @@ interface PlanCardProps {
   onSubscribe: () => void;
 }
 
-export default function PlanCard({
-  plan,
-  billingPeriod,
-  onBillingChange,
-  onSubscribe,
-}: PlanCardProps) {
-  const featureTitle = plan.id === 'basic' ? 'Incluye:' : 'Todo en Básico, más:';
-
+export default function PlanCard({ plan, billingPeriod, onBillingChange, onSubscribe }: PlanCardProps) {
   return (
-    <View className="bg-phase2Cards rounded-2xl p-6 mb-4">
-      {/* Plan name and description */}
-      <View className="mb-6">
-        <Text className="text-2xl font-bold text-phase2Titles mb-1">
-          {plan.name}
-        </Text>
-        <Text className="text-phase2SecondaryTxt text-base">
-          {plan.description}
-        </Text>
+    <View style={styles.card}>
+      {/* Plan name */}
+      <Text style={{ fontFamily: fonts.poppinsSemiBold, color: 'white', fontSize: 22, marginBottom: 16 }}>
+        {plan.name}
+      </Text>
+
+      {/* Features */}
+      <FeatureList features={plan.features} title="INCLUYE:" />
+
+      {/* Billing toggle */}
+      <View style={{ marginTop: 16 }}>
+        <BillingToggle plan={plan} billingPeriod={billingPeriod} onBillingChange={onBillingChange} />
       </View>
 
-      {/* Billing period selector */}
-      <BillingToggle
-        plan={plan}
-        billingPeriod={billingPeriod}
-        onBillingChange={onBillingChange}
-      />
-
-      {/* CTA Button */}
+      {/* CTA */}
       <TouchableOpacity
         onPress={onSubscribe}
-        className="bg-phase2Buttons rounded-xl py-4 mb-6"
         activeOpacity={0.8}
+        style={[styles.cta, { backgroundColor: colors.brandBlue }]}
       >
-        <Text className="text-white text-center text-lg font-bold">
-          Obtener {plan.name}
+        <Text style={{ fontFamily: fonts.poppinsSemiBold, color: 'white', fontSize: 15, letterSpacing: 1 }}>
+          OBTENER {plan.name.toUpperCase()}
         </Text>
       </TouchableOpacity>
-
-      {/* Features list */}
-      <FeatureList features={plan.features} title={featureTitle} />
-
-      {/* Terms note for premium */}
-      {plan.id === 'premium' && (
-        <Text className="text-phase2SecondaryTxt text-xs mt-4 opacity-70">
-          Límites aplican según términos de servicio
-        </Text>
-      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: 'rgba(10, 28, 50, 0.7)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 20,
+    marginBottom: 16,
+  },
+  cta: {
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+});

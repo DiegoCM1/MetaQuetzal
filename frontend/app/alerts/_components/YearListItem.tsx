@@ -1,5 +1,6 @@
 import { View, Text, Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { colors } from "../../../utils/theme";
 
 interface YearListItemProps {
   year: number;
@@ -17,26 +18,27 @@ export default function YearListItem({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center justify-between p-4 bg-gray-100 rounded-lg"
-      android_ripple={{ color: "#ddd" }}
+      className="flex-row items-center justify-between p-4 rounded-lg"
+      style={{ backgroundColor: 'rgba(49, 103, 255, 0.1)' }}
+      android_ripple={{ color: colors.brandBlue }}
     >
       <View className="flex-row items-center">
         <MaterialCommunityIcons
           name="file-document-outline"
           size={28}
-          color="#38bdf8"
+          color={colors.brandCyan}
         />
-        <Text className="text-xl font-bold ml-3"></Text>
+        <Text className="text-xl font-poppins-semibold text-white ml-3">{year}</Text>
       </View>
 
       <View className="flex-row items-center">
-        <View className="bg-sky-500 px-3 py-1 rounded-full mr-3">
-          <Text className="text-white font-semibold">{alertCount}</Text>
+        <View className="px-3 py-1 rounded-full mr-3" style={{ backgroundColor: colors.brandBlue }}>
+          <Text className="text-white font-poppins-semibold">{alertCount}</Text>
         </View>
         <MaterialCommunityIcons
           name={isExpanded ? "chevron-up" : "chevron-down"}
           size={24}
-          color="#6B7280"
+          color="white"
         />
       </View>
     </Pressable>

@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import useAlerts from "./_hooks/useAlerts";
 import AlertCard from "./_components/AlertCard";
+import { colors } from '../../utils/theme';
+
 
 export default function AlertsListScreen() {
   const router = useRouter();
@@ -12,7 +14,7 @@ export default function AlertsListScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-transparent">
-        <ActivityIndicator size="large" color="#38bdf8" />
+        <ActivityIndicator size="large" color={colors.brandBlue} />
       </View>
     );
   }
@@ -40,18 +42,18 @@ export default function AlertsListScreen() {
     >
       {/* Header with history button */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200">
-        <Text className="text-xl font-bold text-white">Alertas</Text>
+        <Text className="text-xl font-square721 text-white">Alertas</Text>
         <Pressable
           onPress={() => router.push("/alerts/history")}
-          className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg"
+          className="flex-row items-center px-3 py-2 rounded-lg bg-brand-blue"
           android_ripple={{ color: "#ddd" }}
         >
           <MaterialCommunityIcons
             name="calendar-clock"
             size={20}
-            color="#38bdf8"
+            color="#ffff"
           />
-          <Text className="ml-2 text-sm font-medium text-white">Por año</Text>
+          <Text className="ml-2 text-sm font-poppins-semibold text-white">Por año</Text>
         </Pressable>
       </View>
 
