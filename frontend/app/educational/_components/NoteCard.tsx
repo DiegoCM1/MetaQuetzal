@@ -1,4 +1,5 @@
-import { TouchableOpacity, Text, View, Image, useColorScheme } from 'react-native';
+import { TouchableOpacity, Text, View, Image } from 'react-native';
+import { useTheme } from '../../../context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Note } from '../_types';
@@ -10,7 +11,7 @@ interface NoteCardProps {
 
 export default function NoteCard({ note }: NoteCardProps) {
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useTheme();
 
   const handlePress = () => {
     track('educational_note_tap', {
@@ -24,7 +25,7 @@ export default function NoteCard({ note }: NoteCardProps) {
   return (
     <TouchableOpacity
       onPress={handlePress}
-      className="bg-white dark:bg-neutral-800 rounded-2xl overflow-hidden mr-4 w-[280px]"
+      className="bg-white rounded-2xl overflow-hidden mr-4 w-[280px]"
       activeOpacity={0.7}
     >
       {/* Thumbnail */}
@@ -37,14 +38,14 @@ export default function NoteCard({ note }: NoteCardProps) {
       {/* Content */}
       <View className="p-4">
         <Text
-          className="text-lg font-bold text-phase2Titles dark:text-phase2TitlesDark mb-2"
+          className="text-lg font-bold text-phase2Titles mb-2"
           numberOfLines={2}
         >
           {note.title}
         </Text>
 
         <Text
-          className="text-sm text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mb-3"
+          className="text-sm text-phase2SecondaryTxt mb-3"
           numberOfLines={2}
         >
           {note.description}
@@ -58,13 +59,13 @@ export default function NoteCard({ note }: NoteCardProps) {
               size={16}
               color={colorScheme === 'dark' ? '#9CA3AF' : '#6B7280'}
             />
-            <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark ml-1">
+            <Text className="text-xs text-phase2SecondaryTxt ml-1">
               {note.readTime} min
             </Text>
           </View>
 
-          <View className="bg-phase2Buttons/10 dark:bg-phase2CardsDark px-3 py-1 rounded-full">
-            <Text className="text-xs text-phase2Buttons dark:text-phase2TitlesDark capitalize">
+          <View className="bg-phase2Buttons/10 px-3 py-1 rounded-full">
+            <Text className="text-xs text-phase2Buttons capitalize">
               {note.category.replace('-', ' ')}
             </Text>
           </View>

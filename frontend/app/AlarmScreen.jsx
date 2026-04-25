@@ -151,7 +151,7 @@ export default function AlarmScreen() {
 
 function Stat({ label, value }) {
   return (
-    <Text className="text-phase2Titles dark:text-phase2TitlesDark">
+    <Text className="text-phase2Titles">
       <Text className="font-bold">{label}: </Text>
       {value}
     </Text>

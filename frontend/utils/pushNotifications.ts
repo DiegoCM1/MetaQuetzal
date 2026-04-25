@@ -4,6 +4,9 @@ import * as Device from "expo-device";
 import { Alert } from "react-native";
 import Toast from "react-native-toast-message";
 import { track } from "./analytics";
+import { authFetch } from './api'
+import { API_BASE_URL } from './config'
+
 
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
@@ -35,11 +38,10 @@ export async function registerForPushNotificationsAsync() {
   console.log("FCM token →", fcmToken);
 
   try {
-    await fetch(
-      "https://metaquetzal-production.up.railway.app/api/push-token",
+    await authFetch(
+      `${API_BASE_URL}/push-token`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: fcmToken }),
       },
     );
@@ -60,9 +62,11 @@ export async function registerForPushNotificationsAsync() {
 export function setForegroundNotificationHandler() {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: false, // 👈 evitamos el alert nativo
+      shouldShowAlert: false,
       shouldPlaySound: false,
       shouldSetBadge: false,
+      shouldShowBanner: false,
+      shouldShowList: false,
     }),
   });
 
@@ -77,7 +81,7 @@ export function setForegroundNotificationHandler() {
 }
 
 // Devuelve el unsubscribe para limpiarlo en unuseEffect
-export function addNotificationResponseListener(onTap) {
+export function addNotificationResponseListener(onTap: (data: Record<string, unknown>) => void) {
   return Notifications.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data;
     onTap(data); // envía los datos al callback que definas en el layout
