@@ -97,3 +97,36 @@ class MexicoWeatherOverviewResponse(BaseModel):
     points_count: int
     points_with_alerts: int
     points: list[MexicoWeatherPoint]
+
+
+class ActiveAlertItem(BaseModel):
+    source: str          # "SIAT-CT" | "SYSTEM" | "SMN"
+    type: str            # "cyclonic" | "system" | "bulletin"
+    level: int           # 1–5 (SIAT scale)
+    color: str | None    # "AZUL"|"VERDE"|"AMARILLO"|"NARANJA"|"ROJO"|None
+    title: str
+    short: str
+
+
+class SiatUserState(BaseModel):
+    level: int
+    color: str
+    reason: str
+    updated_at: datetime
+
+
+class SMNBulletin(BaseModel):
+    aviso_num: int | None
+    issued_at: str | None
+    headline: str
+    summary: str | None
+    pdf_url: str | None = None
+    source: str
+
+
+class ActiveAlertsResponse(BaseModel):
+    generated_at: datetime
+    user_siat: SiatUserState | None
+    cyclonic_alerts: list[ActiveAlertItem]
+    general_alerts: list[ActiveAlertItem]
+    smn_bulletin: SMNBulletin | None

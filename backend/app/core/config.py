@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     #OpenWeather
     OPENWEATHER_API_KEY:str
 
-    # AI 
-    LLM_API_KEY: str                                                  
-    LLM_BASE_URL: str                                                 
-    LLM_MODEL: str      
+    # AI (optional - only needed for ai/chat feature)
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = ""
+    LLM_MODEL: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

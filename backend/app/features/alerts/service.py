@@ -41,6 +41,27 @@ async def create_alert(
     return result.mappings().first()
 
 
+async def get_user_siat_state(db: AsyncSession, user_id: int) -> dict | None:
+    """
+    Returns the user's current SIAT state joined with the latest assessment reason.
+    The reason field contains cyclone name, distance, wind, and ETA — much more
+    useful for the /active endpoint than a generic title.
+    """
+    result = await db.execute(
+        text("""
+            SELECT uas.current_level, uas.siat_color, uas.updated_at,
+                   sa.reason, sa.distance_km, sa.eta_hours
+            FROM user_alert_states uas
+            LEFT JOIN siat_assessments sa
+                ON sa.user_id = uas.user_id
+                AND sa.cyclone_event_id = uas.active_cyclone_id
+            WHERE uas.user_id = :uid
+        """),
+        {"uid": user_id},
+    )
+    return result.mappings().first()
+
+
 async def get_alerts_with_siat(db: AsyncSession, user_id: int | None, limit: int, offset: int):
     alerts = await get_alerts(db, limit, offset)
     siat_level, siat_color = None, None

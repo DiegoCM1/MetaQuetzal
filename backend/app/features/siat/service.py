@@ -316,6 +316,14 @@ async def run_cycle(db: AsyncSession) -> dict:
         for user in users:
             try:
                 assessment = evaluate_user(user["lat"], user["lon"], cyclone)
+
+                if assessment.get("out_of_range"):
+                    logger.debug(
+                        "user_id=%d: cyclone %s out of range (%.0f km), skipping assessment",
+                        user["id"], cyclone["name"], assessment["distance_km"],
+                    )
+                    continue
+
                 old_state = await _get_user_state(db, user["id"])
                 old_level = old_state["current_level"] if old_state else None
                 new_level = assessment["siat_level"]
