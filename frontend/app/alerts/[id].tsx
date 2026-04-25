@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import dayjs from "../../utils/date";
-import { colorForLevel } from "./_components/AlertCard";
+import { colorForLevel, labelForLevel } from "./_components/AlertCard";
 import { track } from "../../utils/analytics";
 import { authFetch } from '../../utils/api'
 import { API_BASE_URL } from '../../utils/config'
@@ -121,6 +121,7 @@ export default function AlertDetailsScreen() {
   if (!alert) return null;
 
   const baseColor = colorForLevel(alert.level);
+  const impactLabel = labelForLevel(alert.level);
 
   return (
     <ImageBackground source={require("../../assets/images/BACK-PANTALLA-INICIO.png")} resizeMode="cover" className="flex-1">
@@ -151,7 +152,7 @@ export default function AlertDetailsScreen() {
             style={{ borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}
           >
             <Text style={{ flex: 1, color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 12, letterSpacing: 1 }}>
-              IMPACTO MÁXIMO
+              {impactLabel.toUpperCase()}
             </Text>
             <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 15 }}>
               Categoría {alert.level}

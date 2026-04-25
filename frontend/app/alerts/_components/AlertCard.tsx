@@ -5,6 +5,16 @@ import { track } from "../../../utils/analytics";
 import { colors } from '../../../utils/theme';
 
 
+// TODO: replace with backend field once AlertDetail exposes SIAT label
+export const labelForLevel = (l: number): string =>
+  ({
+    1: 'Aviso',
+    2: 'Prevención',
+    3: 'Preparación',
+    4: 'Alarma',
+    5: 'Afectación',
+  })[l] || 'Desconocido';
+
 export const colorForLevel = (l: number): string =>
   ({
     1: colors.brandTeal,
@@ -29,7 +39,7 @@ interface AlertCardProps {
 }
 
 export default function AlertCard({ alert, onPress }: AlertCardProps) {
-  const { id, level, title, short: description, timestamp } = alert;
+  const { level, title, short: description, timestamp } = alert;
 
   const bannerColor = `${colorForLevel(level)}50`;
   const iconColor = colorForLevel(level);

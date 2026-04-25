@@ -194,7 +194,7 @@ RAG
       7.3 NAVBAR ✅ 
       7.4 Build the 3 shared components: bottom tab bar, section header Option Card, default blue screen with official gradient ✅ 
       7.5 Settings ✅ 
-      7.6 Onboarding ✅ / Map / Alerts (Fix fetching error) /
+      7.6 Onboarding ✅ / Map ✅ / Alerts ✅ (Fix fetching error) /
     8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
        - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
        - Configurar perfil de producción en eas.json
