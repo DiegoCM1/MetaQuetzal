@@ -60,7 +60,7 @@ export default function SubscriptionScreen() {
         {/* Hero image — swap source when final asset is ready */}
         <View className="px-4 pt-4">
           <Image
-            source={require('../../assets/images/image.webp')}
+            source={require('../../assets/images/SUSCRIPTION-FAMILY.webp')}
             style={{ width: '100%', height: 180, borderRadius: 16 }}
             resizeMode="cover"
           />
