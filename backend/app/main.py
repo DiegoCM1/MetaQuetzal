@@ -8,6 +8,7 @@ from app.features.alerts.router import router as alerts_router
 from app.features.feedback.router import router as feedback_router
 from app.features.notifications.router import router as notifications_router
 from app.features.ai.router import router as ai_router
+from app.features.users.router import router as user_router
 # from app.features.siat.router import router as siat_router
 # from app.features.siat.service import ensure_siat_tables
 import app.core.firebase
@@ -55,4 +56,5 @@ app.include_router(alerts_router)
 app.include_router(feedback_router)
 app.include_router(notifications_router)
 app.include_router(ai_router)
+app.include_router(user_router)
 # app.include_router(siat_router)

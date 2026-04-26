@@ -15,7 +15,28 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel();
-  const { signOut } = useAuth();
+  const { signOut, deleteAccount } = useAuth();
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Eliminar cuenta',
+      '¿Estás seguro? Esta acción es permanente y no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount()
+            } catch {
+              Alert.alert('Error', 'No se pudo eliminar la cuenta. Intenta de nuevo.')
+            }
+          },
+        },
+      ]
+    )
+  }
 
   const handleSignOut = () => {
     Alert.alert(
@@ -144,6 +165,8 @@ export default function SettingsScreen() {
         )}
 
         <OptionCard icon="logout" title="Cerrar sesión" onPress={handleSignOut} danger />
+        <OptionCard icon="account-remove-outline" title="Eliminar cuenta" onPress={handleDeleteAccount} danger />
+
       </ScrollView>
 
     </SafeAreaView>

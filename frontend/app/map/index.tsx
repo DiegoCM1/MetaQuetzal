@@ -30,10 +30,11 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
     <Marker
       coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
       onPress={onPress}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <Image
         source={MARKER_IMAGES[zone.type]}
-        style={{ width: 44, height: 44 }}
+        style={{ width: zone.type === 'ayuda' ? 44 : 38, height: zone.type === 'ayuda' ? 44 : 38 }}
         resizeMode="contain"
       />
     </Marker>
