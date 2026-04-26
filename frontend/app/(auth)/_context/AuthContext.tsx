@@ -49,8 +49,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function deleteAccount() {
+    const currentUser = getAuth().currentUser
+    if (!currentUser) throw new Error('No user logged in')
+    const token = await currentUser.getIdToken()
+    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/account`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error('Failed to delete account')
+    await signOut()
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, error, signInWithGoogle, signOut, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   )
