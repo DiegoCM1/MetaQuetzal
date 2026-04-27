@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "648833411163-kl06mvg5tndh98l0gjqf6oegqr2vn5p2.apps.googleusercontent.com",
+          "client_id": "648833411163-0kvokh6fln4tq6drrc3gk3hprqgmj5og.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.bluai.app",
-            "certificate_hash": "7094480a74dbc2ce63ef5786a562ca32b70df971"
+            "certificate_hash": "b1c63744aaf97ed342d788df8c8ba19b2a84a22f"
           }
         },
         {
