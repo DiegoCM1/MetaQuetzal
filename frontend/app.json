@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "BluEye",
+    "name": "Bluai",
     "slug": "react-native-blueye",
     "version": "1.7.0",
     "orientation": "portrait",
@@ -24,7 +24,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "mobile.blueye.app",
+      "bundleIdentifier": "com.bluai.app",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
@@ -37,7 +37,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#DCF0FF"
       },
-      "package": "mobile.blueye.app",
+      "package": "com.bluai.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
