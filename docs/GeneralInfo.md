@@ -8,6 +8,9 @@ Option A — Physical phone (EAS cloud build)
   2.2 eas build --profile production --platform android
 3. Builds remotely → downloads APK → install on your phone → test there.
 
+Option A.1 - Cancel a build
+1. eas build:cancel id-from-build    
+
 Option B — Emulator or local build trouhgt cable
 1. npx expo run:android
 

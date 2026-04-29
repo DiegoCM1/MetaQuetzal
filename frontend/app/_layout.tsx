@@ -1,3 +1,4 @@
+import "../global.css";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { initExecutorch } from 'react-native-executorch';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
