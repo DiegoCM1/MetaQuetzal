@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithCredential(getAuth(), credential)
     } catch (e: any) {
       if (e?.code === statusCodes.SIGN_IN_CANCELLED) return
+      console.error('[Bluai] Google Sign-In failed', { code: e?.code, message: e?.message, error: e })
       setError('No se pudo iniciar sesión. Intenta de nuevo.')
     }
   }

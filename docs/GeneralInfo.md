@@ -1,6 +1,11 @@
   
 # Frontend
 
+PRODUCTION BUILD
+1. npx expo prebuild --clean -p android
+2. cd android && ./gradlew clean && cd ..                                                                          
+3. eas build --profile production --platform android --local     
+
 Option A — Physical phone (EAS cloud build)
 1. npm install -g eas-cli                                                                                                    
 2. eas build --profile development --platform android (Add --local flag to compile the code in your hardware)
