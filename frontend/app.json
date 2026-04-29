@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bluai",
     "slug": "react-native-blueye",
-    "version": "1.7.0",
+    "version": "1.7.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -67,7 +67,7 @@
         "projectId": "ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
       }
     },
-    "runtimeVersion": "1.7.0",
+    "runtimeVersion": "1.7.1",
     "updates": {
       "url": "https://u.expo.dev/ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
     },
