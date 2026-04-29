@@ -1,5 +1,5 @@
 {
-  "cli": { "appVersionSource": "remote" },
+  "cli": { "appVersionSource": "local" },
   "build": {
     "preview": {
       "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1" },
