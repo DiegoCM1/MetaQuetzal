@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "648833411163-kbkk2uek8gerrf85no160fp56avhk5k1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bluai.app",
+            "certificate_hash": "81712388527467d094e7eb9a3f80d56ec0986b86"
+          }
+        },
+        {
           "client_id": "648833411163-mt0gsiiddg7b8614dnujpo6os88n60k2.apps.googleusercontent.com",
           "client_type": 3
         }
