@@ -34,67 +34,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await GoogleSignin.hasPlayServices()
       const signInResult = await GoogleSignin.signIn()
-      console.log('[Bluai] signIn shape', JSON.stringify({
-        type: (signInResult as any)?.type,
-        hasData: !!signInResult?.data,
-        hasIdToken: !!signInResult?.data?.idToken,
-        idTokenLength: signInResult?.data?.idToken?.length ?? 0,
-        hasServerAuthCode: !!signInResult?.data?.serverAuthCode,
-        serverAuthCodeLength: signInResult?.data?.serverAuthCode?.length ?? 0,
-        hasUser: !!signInResult?.data?.user,
-        dataKeys: signInResult?.data ? Object.keys(signInResult.data) : [],
-        userKeys: signInResult?.data?.user ? Object.keys(signInResult.data.user) : [],
-        topLevelKeys: signInResult ? Object.keys(signInResult) : [],
-      }))
-      let idToken: string | null | undefined = signInResult?.data?.idToken
-      let accessToken: string | null | undefined
+      const idToken = signInResult?.data?.idToken
       if (!idToken) {
-        try {
-          const tokens = await GoogleSignin.getTokens()
-          console.log('[Bluai] getTokens shape', JSON.stringify({
-            hasIdToken: !!tokens?.idToken,
-            idTokenLength: tokens?.idToken?.length ?? 0,
-            hasAccessToken: !!tokens?.accessToken,
-            accessTokenLength: tokens?.accessToken?.length ?? 0,
-          }))
-          idToken = tokens?.idToken
-          accessToken = tokens?.accessToken
-        } catch (tokenError: any) {
-          console.error('[Bluai] getTokens() failed', {
-            code: tokenError?.code,
-            message: tokenError?.message,
-          })
-        }
+        console.error('[Bluai] Google Sign-In returned no ID token', {
+          type: (signInResult as any)?.type,
+        })
+        throw new Error('Google Sign-In returned no ID token')
       }
-      if (!idToken && !accessToken) {
-        throw new Error('Neither idToken nor accessToken available from Google Sign-In')
-      }
-      const credential = GoogleAuthProvider.credential(idToken ?? null, accessToken ?? null)
+      const credential = GoogleAuthProvider.credential(idToken)
       await signInWithCredential(getAuth(), credential)
     } catch (e: any) {
       if (e?.code === statusCodes.SIGN_IN_CANCELLED) return
-      console.error('[Bluai] Google Sign-In failed', { code: e?.code, message: e?.message, error: e })
+      console.error('[Bluai] Google Sign-In failed', {
+        code: e?.code,
+        message: e?.message,
+      })
       setError('No se pudo iniciar sesión. Intenta de nuevo.')
     }
   }
 
   async function signOut() {
-    await GoogleSignin.signOut()
-    if (getAuth().currentUser) {
-      await firebaseSignOut(getAuth())
+    try {
+      await GoogleSignin.signOut()
+      if (getAuth().currentUser) {
+        await firebaseSignOut(getAuth())
+      }
+    } catch (e: any) {
+      console.error('[Bluai] Sign-out failed', {
+        code: e?.code,
+        message: e?.message,
+      })
+      throw e
     }
   }
 
   async function deleteAccount() {
     const currentUser = getAuth().currentUser
     if (!currentUser) throw new Error('No user logged in')
-    const token = await currentUser.getIdToken()
-    const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/account`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!response.ok) throw new Error('Failed to delete account')
-    await signOut()
+    try {
+      const token = await currentUser.getIdToken()
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) {
+        const body = await response.text().catch(() => '')
+        console.error('[Bluai] Delete account failed', {
+          status: response.status,
+          body,
+        })
+        throw new Error('Failed to delete account')
+      }
+      await signOut()
+    } catch (e: any) {
+      console.error('[Bluai] Delete account error', {
+        message: e?.message,
+      })
+      throw e
+    }
   }
 
   return (
