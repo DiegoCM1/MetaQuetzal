@@ -19,7 +19,7 @@ import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
 import { loadRedZones, saveRedZone, updateRedZone, deleteRedZone, generateZoneId, clearAllZones } from "./service";
 import { darkMapStyle } from "./mapStyle";
-import { DEFAULT_REGION, ZONE_TYPES, MARKER_IMAGES } from "./config";
+import { DEFAULT_REGION, ZONE_TYPES } from "./config";
 import { colors, fonts } from "../../utils/theme";
 import type { Zone, ZoneType } from "./types";
 
@@ -35,7 +35,7 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
       anchor={{ x: 0.5, y: 0.5 }}
     >
       <Image
-        source={MARKER_IMAGES[zone.type]}
+        source={ZONE_TYPES[zone.type].image}
         style={{ width: zone.type === 'ayuda' ? 44 : 38, height: zone.type === 'ayuda' ? 44 : 38 }}
         resizeMode="contain"
       />
@@ -388,7 +388,7 @@ export default function WeatherMapNativewind() {
                       className="flex-1 items-center py-4 rounded-2xl"
                       style={{ backgroundColor: cfg.color, minWidth: '40%' }}
                     >
-                      <MaterialCommunityIcons name={cfg.icon as any} size={28} color="#fff" />
+                      <Image source={cfg.image} style={{ width: 28, height: 28 }} resizeMode="contain" />
                       <Text className="text-white font-poppins-semibold mt-2">{cfg.label}</Text>
                     </TouchableOpacity>
                   ))}
@@ -405,7 +405,7 @@ export default function WeatherMapNativewind() {
                 </TouchableOpacity>
 
                 <View className="flex-row items-center mb-4 p-3 rounded-xl" style={{ backgroundColor: ZONE_TYPES[selectedType].color + '22' }}>
-                  <MaterialCommunityIcons name={ZONE_TYPES[selectedType].icon as any} size={24} color={ZONE_TYPES[selectedType].color} />
+                  <Image source={ZONE_TYPES[selectedType].image} style={{ width: 24, height: 24 }} resizeMode="contain" />
                   <Text className="ml-2 font-poppins-semibold" style={{ color: ZONE_TYPES[selectedType].color }}>
                     {ZONE_TYPES[selectedType].label}
                   </Text>
@@ -470,7 +470,7 @@ export default function WeatherMapNativewind() {
               <View style={{ borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, overflow: 'hidden' }}>
                 {/* Header */}
                 <View style={{ backgroundColor: cfg.color, padding: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <MaterialCommunityIcons name={cfg.icon as any} size={32} color="#fff" />
+                  <Image source={cfg.image} style={{ width: 32, height: 32 }} resizeMode="contain" />
                   <View>
                     <Text style={{ color: '#fff', fontSize: 24, fontFamily: fonts.poppinsSemiBold, letterSpacing: 2 }}>
                       {cfg.label.toUpperCase()}
