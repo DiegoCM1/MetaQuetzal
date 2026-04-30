@@ -1,18 +1,18 @@
 {
-  "cli": { "appVersionSource": "remote" },
+  "cli": { "appVersionSource": "local" },
   "build": {
     "preview": {
-      "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1" },
+      "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1", "EXPO_PUBLIC_API_URL": "https://backend-blueye-production.up.railway.app", "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "648833411163-mt0gsiiddg7b8614dnujpo6os88n60k2.apps.googleusercontent.com", "EXPO_PUBLIC_MIXPANEL_PROJECT_TOKEN": "0f9403626c6da58202dec0ea307ddda8"},
       "android": { "buildType": "apk" }
     },
     "development": {
-      "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1" },
+      "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1", "EXPO_PUBLIC_API_URL": "https://backend-blueye-production.up.railway.app", "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "648833411163-mt0gsiiddg7b8614dnujpo6os88n60k2.apps.googleusercontent.com", "EXPO_PUBLIC_MIXPANEL_PROJECT_TOKEN": "0f9403626c6da58202dec0ea307ddda8"},
       "android": { "buildType": "apk" },
       "developmentClient": true
     },
      "production": {
-      "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1" },
-      "android": { "buildType": "apk" }
+      "env": { "NPM_CONFIG_LEGACY_PEER_DEPS": "1", "EXPO_PUBLIC_API_URL": "https://backend-blueye-production.up.railway.app", "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "648833411163-mt0gsiiddg7b8614dnujpo6os88n60k2.apps.googleusercontent.com", "EXPO_PUBLIC_MIXPANEL_PROJECT_TOKEN": "0f9403626c6da58202dec0ea307ddda8"},
+      "android": { "buildType": "app-bundle" }
     }
   }
 }

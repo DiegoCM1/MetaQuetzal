@@ -1,15 +1,24 @@
   
 # Frontend
 
+PRODUCTION BUILD
+1. npx expo prebuild --clean -p android
+2. cd android && ./gradlew clean && cd ..                                                                          
+3. eas build --profile production --platform android --local     
+
 Option A — Physical phone (EAS cloud build)
 1. npm install -g eas-cli                                                                                                    
-2. eas build --profile development --platform android
-  2.1 eas build --profile preview --platform android
-  2.2 eas build --profile production --platform android
+2. eas build --profile development --platform android (Add --local flag to compile the code in your hardware)
+  2.1 eas build --profile preview --platform android (Add --local flag to compile the code in your hardware)
+  2.2 eas build --profile production --platform android (Add --local flag to compile the code in your hardware) 
 3. Builds remotely → downloads APK → install on your phone → test there.
+
+Option A.1 - Cancel a build
+1. eas build:cancel id-from-build    
 
 Option B — Emulator or local build trouhgt cable
 1. npx expo run:android
+2. npx expo run:android --variant release (For testing prod environment)
 
 
 Option C — Actual Phone
