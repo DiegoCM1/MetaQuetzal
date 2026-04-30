@@ -6,4 +6,5 @@ export interface AuthContextValue {
   error: string | null
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
+  deleteAccount: () => Promise<void>
 }

@@ -8,16 +8,10 @@ export const DEFAULT_REGION = {
   longitudeDelta: 12,
 }
 
-export const ZONE_TYPES: Record<ZoneType, { label: string; icon: string; color: string }> = {
-  natural: { label: 'Natural',  icon: 'weather-rainy',        color: colors.brandTeal   },
-  vial:    { label: 'Vial',     icon: 'traffic-cone',         color: colors.brandPurple },
-  peligro: { label: 'Peligro',  icon: 'alert-circle-outline', color: colors.brandOrange },
-  ayuda:   { label: 'Ayuda',    icon: 'shield-check-outline', color: colors.brandGreen  },
+export const ZONE_TYPES: Record<ZoneType, { label: string; color: string; image: any }> = {
+  natural: { label: 'Natural', color: colors.brandTeal,   image: require('../../assets/markers/EVENTO_NATURAL.png') },
+  vial:    { label: 'Vial',    color: colors.brandPurple, image: require('../../assets/markers/OBSTRUCCION.png')    },
+  peligro: { label: 'Peligro', color: colors.brandOrange, image: require('../../assets/markers/PELIGRO.png')        },
+  ayuda:   { label: 'Ayuda',   color: colors.brandGreen,  image: require('../../assets/markers/AYUDA.png')          },
 }
 
-export const MARKER_IMAGES: Record<ZoneType, any> = {
-    natural: require('../../assets/markers/event-ayuda.png'),                 
-    vial:    require('../../assets/markers/event-ayuda.png'),   
-    peligro: require('../../assets/markers/event-ayuda.png'),
-    ayuda:   require('../../assets/markers/event-ayuda.png'),  
-}     

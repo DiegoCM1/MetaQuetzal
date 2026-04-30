@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "BluEye",
+    "name": "Bluai",
     "slug": "react-native-blueye",
-    "version": "1.7.0",
+    "version": "1.7.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,11 +20,11 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#DCF0FF"
+      "backgroundColor": "#030810"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "mobile.blueye.app",
+      "bundleIdentifier": "com.bluai.app",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
@@ -32,12 +32,13 @@
       }
     },
     "android": {
+      "versionCode": 9,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#DCF0FF"
       },
-      "package": "mobile.blueye.app",
+      "package": "com.bluai.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -51,7 +52,6 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -67,7 +67,7 @@
         "projectId": "ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
       }
     },
-    "runtimeVersion": "1.7.0",
+    "runtimeVersion": "1.7.8",
     "updates": {
       "url": "https://u.expo.dev/ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
     },

@@ -140,3 +140,28 @@ Shared components live in `components/`. Build these before individual screens.
 | Settings | `app/SettingsScreen` | Needs styling | Toggles + nav rows |
 | Subscription | — | Not built | Suscripción screen |
 | Profile | — | TODO | May overlap with onboarding step 1 |
+
+
+
+<!-- Explanation of Icons -->
+ICON
+icon.png — The universal app icon. Used by iOS directly, and as a fallback for Android when an adaptive icon    
+isn't supported. This shows up on the home screen, app switcher, and app store listings.                        
+
+ADAPTIVE-ICON                                                                                                             
+adaptive-icon.png — Android-only. Android wraps this in a "mask" that can be a circle, squircle, or square      
+depending on the device OEM. You provide the foreground, Android clips it. Your backgroundColor (#DCF0FF) fills 
+the background layer behind it.
+
+SPLASH-ICON                                                                                                                
+splash-icon.png — The loading screen image shown while the JS bundle boots. Not the full splash screen          
+background — just the image asset inside it. The backgroundColor in app.json is the canvas behind it.
+
+NOTIFICATION-ICON                                                                                                     
+notification-icon.png — Android push notification tray icon. Must be a white-on-transparent PNG (Android ignores
+color on these and renders in white). iOS uses the app icon automatically instead.
+
+FAVICON                                                                                               
+favicon.png — Only relevant if someone runs your app in a web browser via Expo Web. Since Bluai is a pure mobile
+app you're shipping to the Play Store, you don't need this in production. It's there because Expo scaffolds it
+by default. 

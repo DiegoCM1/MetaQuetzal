@@ -33,24 +33,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
     try {
       await GoogleSignin.hasPlayServices()
-      const { data } = await GoogleSignin.signIn()
-      const credential = GoogleAuthProvider.credential(data!.idToken)
+      const signInResult = await GoogleSignin.signIn()
+      const idToken = signInResult?.data?.idToken
+      if (!idToken) {
+        console.error('[Bluai] Google Sign-In returned no ID token', {
+          type: (signInResult as any)?.type,
+        })
+        throw new Error('Google Sign-In returned no ID token')
+      }
+      const credential = GoogleAuthProvider.credential(idToken)
       await signInWithCredential(getAuth(), credential)
     } catch (e: any) {
       if (e?.code === statusCodes.SIGN_IN_CANCELLED) return
+      console.error('[Bluai] Google Sign-In failed', {
+        code: e?.code,
+        message: e?.message,
+      })
       setError('No se pudo iniciar sesión. Intenta de nuevo.')
     }
   }
 
   async function signOut() {
-    await GoogleSignin.signOut()
-    if (getAuth().currentUser) {
-      await firebaseSignOut(getAuth())
+    try {
+      await GoogleSignin.signOut()
+      if (getAuth().currentUser) {
+        await firebaseSignOut(getAuth())
+      }
+    } catch (e: any) {
+      console.error('[Bluai] Sign-out failed', {
+        code: e?.code,
+        message: e?.message,
+      })
+      throw e
+    }
+  }
+
+  async function deleteAccount() {
+    const currentUser = getAuth().currentUser
+    if (!currentUser) throw new Error('No user logged in')
+    try {
+      const token = await currentUser.getIdToken()
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/account`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) {
+        const body = await response.text().catch(() => '')
+        console.error('[Bluai] Delete account failed', {
+          status: response.status,
+          body,
+        })
+        throw new Error('Failed to delete account')
+      }
+      await signOut()
+    } catch (e: any) {
+      console.error('[Bluai] Delete account error', {
+        message: e?.message,
+      })
+      throw e
     }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, error, signInWithGoogle, signOut, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   )
