@@ -20,7 +20,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#DCF0FF"
+      "backgroundColor": "#030810"
     },
     "ios": {
       "supportsTablet": true,
@@ -52,7 +52,6 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
