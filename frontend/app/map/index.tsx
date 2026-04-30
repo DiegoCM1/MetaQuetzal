@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
@@ -368,6 +370,10 @@ export default function WeatherMapNativewind() {
         visible={showAddModal}
         onRequestClose={handleCancelAdd}
       >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
         <View className="flex-1 justify-end bg-black/40">
           <View className="rounded-t-2xl p-6" style={{ backgroundColor: colors.brandBlack }}>
             {selectedType === null ? (
@@ -447,6 +453,7 @@ export default function WeatherMapNativewind() {
             )}
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal: Zone Detail */}
