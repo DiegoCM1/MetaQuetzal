@@ -33,8 +33,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null)
     try {
       await GoogleSignin.hasPlayServices()
-      const { data } = await GoogleSignin.signIn()
-      const credential = GoogleAuthProvider.credential(data!.idToken)
+      const signInResult = await GoogleSignin.signIn()
+      console.log('[Bluai] signIn shape', JSON.stringify({
+        type: (signInResult as any)?.type,
+        hasData: !!signInResult?.data,
+        hasIdToken: !!signInResult?.data?.idToken,
+        idTokenLength: signInResult?.data?.idToken?.length ?? 0,
+        hasServerAuthCode: !!signInResult?.data?.serverAuthCode,
+        serverAuthCodeLength: signInResult?.data?.serverAuthCode?.length ?? 0,
+        hasUser: !!signInResult?.data?.user,
+        dataKeys: signInResult?.data ? Object.keys(signInResult.data) : [],
+        userKeys: signInResult?.data?.user ? Object.keys(signInResult.data.user) : [],
+        topLevelKeys: signInResult ? Object.keys(signInResult) : [],
+      }))
+      let idToken: string | null | undefined = signInResult?.data?.idToken
+      let accessToken: string | null | undefined
+      if (!idToken) {
+        try {
+          const tokens = await GoogleSignin.getTokens()
+          console.log('[Bluai] getTokens shape', JSON.stringify({
+            hasIdToken: !!tokens?.idToken,
+            idTokenLength: tokens?.idToken?.length ?? 0,
+            hasAccessToken: !!tokens?.accessToken,
+            accessTokenLength: tokens?.accessToken?.length ?? 0,
+          }))
+          idToken = tokens?.idToken
+          accessToken = tokens?.accessToken
+        } catch (tokenError: any) {
+          console.error('[Bluai] getTokens() failed', {
+            code: tokenError?.code,
+            message: tokenError?.message,
+          })
+        }
+      }
+      if (!idToken && !accessToken) {
+        throw new Error('Neither idToken nor accessToken available from Google Sign-In')
+      }
+      const credential = GoogleAuthProvider.credential(idToken ?? null, accessToken ?? null)
       await signInWithCredential(getAuth(), credential)
     } catch (e: any) {
       if (e?.code === statusCodes.SIGN_IN_CANCELLED) return
