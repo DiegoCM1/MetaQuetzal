@@ -33,3 +33,23 @@ async def send_notifications(
 ):
     result = await send_all_notifications(db, body.title, body.body, body.data)
     return result
+
+
+# Legacy aliases for cached tester app builds shipped before the /api/v1 migration.
+# Remove after Play Store testers have updated past the migration build.
+@router.post("/push-token", status_code=201, deprecated=True)
+async def save_token_legacy(
+    body: PushTokenCreate,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return await save_token(body=body, db=db, user=user)
+
+
+@router.post("/notifications/send-all", response_model=NotificationResponse, deprecated=True)
+async def send_notifications_legacy(
+    body: NotificationSend,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(verify_api_key),
+):
+    return await send_notifications(body=body, db=db, _=_)
