@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 import httpx
 from fastapi import HTTPException
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 MEXICO_BOUNDS = {
@@ -151,12 +154,16 @@ async def fetch_mexico_overview(exclude: str | None = "minutely,daily"):
             )
             for point in MEXICO_REFERENCE_POINTS
         ]
-        responses = await asyncio.gather(*tasks)
+        # return_exceptions=True ensures a single point failure does not abort all 12 requests
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
 
     points = []
-    for point, data in zip(MEXICO_REFERENCE_POINTS, responses):
+    for point, result in zip(MEXICO_REFERENCE_POINTS, responses):
+        if isinstance(result, Exception):
+            logger.warning("OpenWeather fetch failed for %s: %s", point["name"], result)
+            continue
         normalized = _normalize_onecall_response(
-            data=data,
+            data=result,
             lat=point["lat"],
             lon=point["lon"],
         )

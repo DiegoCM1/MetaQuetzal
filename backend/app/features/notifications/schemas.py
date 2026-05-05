@@ -11,4 +11,5 @@ class NotificationResponse(BaseModel):
 
 class PushTokenCreate(BaseModel):
     token: str
+    user_id: int | None = None  # set server-side from Firebase UID lookup
 
