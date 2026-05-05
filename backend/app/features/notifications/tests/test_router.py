@@ -25,8 +25,8 @@ def _mock_auth():
 
 def test_push_token_saves_for_user():
     with _mock_auth():
-        with patch("app.features.users.service.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=FAKE_DB_USER):
-            with patch("app.features.notifications.service.push_token", new_callable=AsyncMock, return_value=None):
+        with patch("app.features.notifications.router.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=FAKE_DB_USER):
+            with patch("app.features.notifications.router.push_token", new_callable=AsyncMock, return_value=None):
                 r = client.post(
                     "/api/v1/push-token",
                     json={"token": "firebase-device-token-abc123"},
@@ -43,7 +43,7 @@ def test_push_token_requires_auth():
 
 def test_push_token_404_no_profile():
     with _mock_auth():
-        with patch("app.features.users.service.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=None):
+        with patch("app.features.notifications.router.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=None):
             r = client.post(
                 "/api/v1/push-token",
                 json={"token": "firebase-device-token-abc123"},
