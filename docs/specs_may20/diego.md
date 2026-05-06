@@ -9,7 +9,7 @@
 | 1 | Sign in with Apple — Firebase Apple provider | May 6 | E2E + Test + Device |
 | 2 | iOS offline AI — Llama on-device confiable | May 11 | Funciona en device físico sin internet |
 | 3 | iOS pipeline: certs, APNs, EAS build, App Store Connect | May 13 | Build corriendo en iPhone físico |
-| 4 | Sentry en producción — telemetría de crashes | May 14 | Evento visible en dashboard |
+| 4 | ~~Sentry en producción — telemetría de crashes~~ ✅ | May 14 | Evento visible en dashboard |
 | 5 | Frontend general fixes — pantallas y navegación | Continuo | Sin crashes en golden path |
 | 6 | Keystore de producción asegurado y respaldado | May 16 | Backup verificado fuera del equipo |
 | 7 | Store listings — Play Store + App Store (temporada huracanes) | May 16 | Revisado y publicado |
@@ -178,10 +178,14 @@ Sentry.init({
 **Verificar:** lanzar un error manual en dev → confirmar que llega al dashboard de Sentry.
 
 ### Definition of Done
-- [ ] Sentry inicializado en la app
-- [ ] DSN en variables de entorno (no hardcodeado)
-- [ ] Evento de prueba visible en Sentry dashboard
-- [ ] Source maps subidos para que los stack traces sean legibles
+- [x] Sentry inicializado en la app (`@sentry/react-native` via wizard)
+- [x] DSN en variables de entorno — `EXPO_PUBLIC_SENTRY_DSN` en `.env`, `eas.json` (todos los perfiles), y `_layout.tsx` usa `process.env`
+- [x] Evento de prueba visible en Sentry dashboard — confirmado con botón de prueba
+- [x] Source maps — `SENTRY_AUTH_TOKEN` añadido como EAS secret (tipo Secret)
+
+### Extras completados
+- [x] User identity en cada evento — `Sentry.setUser()` en `onAuthStateChanged` (AuthContext)
+- [x] Google Sign-In: loading state + guardrail `IN_PROGRESS` — botón deshabilitado con opacidad 0.5 mientras sign-in está en progreso
 
 ---
 
