@@ -1,7 +1,7 @@
 import "../global.css";
 import { clearOnboardingData } from './onboarding/_services/onboardingService';
 import { useState } from "react";
-import { Alert, Switch, Text, ScrollView, Button } from "react-native";
+import { Alert, Switch, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -10,8 +10,6 @@ import { useModel } from "./ai/_context/ModelContext";
 import { useAuth } from "./(auth)/_context/AuthContext";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
-import * as Sentry from '@sentry/react-native';
-
 export default function SettingsScreen() {
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -119,8 +117,6 @@ export default function SettingsScreen() {
         <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} />
 
         <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
-
-        <Button title='Try!' onPress={ () => { Sentry.captureException(new Error('First error')) }}/>
 
         <OptionCard
           icon="alert-outline"
