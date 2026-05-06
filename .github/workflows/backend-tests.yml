@@ -28,7 +28,7 @@ jobs:
       FIREBASE_PROJECT_ID: test-project
       FIREBASE_CLIENT_EMAIL: test@test-project.iam.gserviceaccount.com
       FIREBASE_PRIVATE_KEY: fake-key
-      NOTIF_API_KEY: test-key
+      NOTIF_API_KEY: s3cret-xyz
       OPENWEATHER_API_KEY: test-key
       LLM_API_KEY: test-key
       LLM_BASE_URL: https://example.com
