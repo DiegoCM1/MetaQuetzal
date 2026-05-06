@@ -1,18 +1,36 @@
+import asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from firebase_admin import messaging
 
-async def push_token(db: AsyncSession, token: str):
-    result = await db.execute(text("""INSERT INTO device_tokens (token)
-    VALUES (:token)
-    ON CONFLICT (token)
-    DO UPDATE SET updated_at = NOW()"""), 
-    {"token": token})
 
+async def push_token(db: AsyncSession, token: str, user_id: int) -> None:
+    await db.execute(
+        text("""
+            INSERT INTO device_tokens (token, user_id)
+            VALUES (:token, :user_id)
+            ON CONFLICT (token)
+            DO UPDATE SET user_id = :user_id, updated_at = NOW()
+        """),
+        {"token": token, "user_id": user_id},
+    )
     await db.commit()
 
-    return None
+
+async def get_tokens_for_users(db: AsyncSession, user_ids: list[int]) -> dict[int, list[str]]:
+    """Returns {user_id: [token, ...]} for the given user IDs."""
+    if not user_ids:
+        return {}
+    # asyncpg accepts Python lists natively as PostgreSQL arrays — no CAST needed
+    result = await db.execute(
+        text("SELECT user_id, token FROM device_tokens WHERE user_id = ANY(:ids)"),
+        {"ids": user_ids},
+    )
+    token_map: dict[int, list[str]] = {}
+    for row in result.mappings():
+        token_map.setdefault(row["user_id"], []).append(row["token"])
+    return token_map
 
 
 
@@ -34,7 +52,7 @@ async def send_all_notifications(db: AsyncSession, title:str, body:str, data:dic
         data=data or {},
         tokens=tokens,
     )
-    response = messaging.send_each_for_multicast(message)
+    response = await asyncio.to_thread(messaging.send_each_for_multicast, message)
 
     # Cleaning up missing/bad tokens
     invalid_tokens = []
@@ -43,8 +61,10 @@ async def send_all_notifications(db: AsyncSession, title:str, body:str, data:dic
             invalid_tokens.append(tokens[i])
     
     if invalid_tokens:
-        await db.execute(text("DELETE FROM device_tokens WHERE token = ANY(CAST(:tokens AS text[]))"),
-        {"tokens": invalid_tokens})
+        await db.execute(
+            text("DELETE FROM device_tokens WHERE token = ANY(:tokens)"),
+            {"tokens": invalid_tokens},
+        )
         
         await db.commit()
 
