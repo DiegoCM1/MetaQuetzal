@@ -135,3 +135,13 @@ A feature is **done** only when all five are true:
 5. PR ≤ 200 lines — large features broken into multiple PRs
 
 If it doesn't meet all five, it's **WIP** — regardless of what the board says.
+
+
+
+---
+## Sprint 2
+
+- Native notification system (Like alarms, for both ios and android)
+- Bluetooth mesh feature → v1.1 (anunciado como v1.1 en sprint philosophy)
+- Revenue Cat / pagos → post-launch
+- SOS
