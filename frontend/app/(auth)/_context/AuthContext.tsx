@@ -8,6 +8,7 @@ import {
   FirebaseAuthTypes,
 } from '@react-native-firebase/auth'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import * as Sentry from '@sentry/react-native'
 import { AuthContextValue } from '../_types'
 
 GoogleSignin.configure({
@@ -26,6 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser) => {
       setUser(firebaseUser)
       setLoading(false)
+      if (firebaseUser) {
+        Sentry.setUser({ id: firebaseUser.uid, email: firebaseUser.email ?? undefined })
+      } else {
+        Sentry.setUser(null)
+      }
     })
     return unsubscribe
   }, [])
