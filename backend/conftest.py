@@ -12,3 +12,15 @@ from unittest.mock import MagicMock
 
 if "sentence_transformers" not in sys.modules:
     sys.modules["sentence_transformers"] = MagicMock()
+
+if "firebase_admin" not in sys.modules:
+    class FakeInvalidIdTokenError(Exception):
+        pass
+
+    mock_firebase = MagicMock()
+    mock_firebase.auth.InvalidIdTokenError = FakeInvalidIdTokenError
+    mock_firebase.auth.verify_id_token = MagicMock(side_effect=FakeInvalidIdTokenError("Invalid token"))
+
+    sys.modules["firebase_admin"] = mock_firebase
+    sys.modules["firebase_admin.credentials"] = mock_firebase.credentials
+    sys.modules["firebase_admin.auth"] = mock_firebase.auth
