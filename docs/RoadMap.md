@@ -145,3 +145,5 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 - Bluetooth mesh feature → v1.1 (anunciado como v1.1 en sprint philosophy)
 - Revenue Cat / pagos → post-launch
 - SOS
+- Limit for online AI
+- Toggle to use offline over online and viceversa, as user wishes

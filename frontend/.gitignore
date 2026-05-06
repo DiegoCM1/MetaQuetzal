@@ -43,3 +43,4 @@ android/
 
 # IOS
 ios/
+.env.local

@@ -57,7 +57,15 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
-      "expo-audio"
+      "expo-audio",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "bluai"
+        }
+      ]
     ],
     "extra": {
       "router": {
