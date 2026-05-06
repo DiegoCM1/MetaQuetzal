@@ -5,7 +5,7 @@ import { useAuth } from './_context/AuthContext'
 import BluaiLogo from '../../assets/images/BLUAI_LOGO_BLANCO.svg'
 
 export default function LoginScreen() {
-  const { signInWithGoogle, loading, error } = useAuth()
+  const { signInWithGoogle, loading, signingIn, error } = useAuth()
 
   if (loading) {
     return (
@@ -31,11 +31,14 @@ export default function LoginScreen() {
               {error}
             </Text>
           )}
-          <GoogleSigninButton
-            size={GoogleSigninButton.Size.Wide}
-            color={GoogleSigninButton.Color.Dark}
-            onPress={signInWithGoogle}
-          />
+          <View style={{ opacity: signingIn ? 0.5 : 1 }}>
+            <GoogleSigninButton
+              size={GoogleSigninButton.Size.Wide}
+              color={GoogleSigninButton.Color.Dark}
+              onPress={signInWithGoogle}
+              disabled={signingIn}
+            />
+          </View>
         </View>
       </SafeAreaView>
     </ImageBackground>

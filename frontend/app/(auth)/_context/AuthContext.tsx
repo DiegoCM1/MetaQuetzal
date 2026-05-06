@@ -8,6 +8,7 @@ import {
   FirebaseAuthTypes,
 } from '@react-native-firebase/auth'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import * as Sentry from '@sentry/react-native'
 import { AuthContextValue } from '../_types'
 
 GoogleSignin.configure({
@@ -19,17 +20,25 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser) => {
       setUser(firebaseUser)
       setLoading(false)
+      if (firebaseUser) {
+        Sentry.setUser({ id: firebaseUser.uid, email: firebaseUser.email ?? undefined })
+      } else {
+        Sentry.setUser(null)
+      }
     })
     return unsubscribe
   }, [])
 
   async function signInWithGoogle() {
+    if (signingIn) return
+    setSigningIn(true)
     setError(null)
     try {
       await GoogleSignin.hasPlayServices()
@@ -45,11 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithCredential(getAuth(), credential)
     } catch (e: any) {
       if (e?.code === statusCodes.SIGN_IN_CANCELLED) return
+      if (e?.code === statusCodes.IN_PROGRESS) return
       console.error('[Bluai] Google Sign-In failed', {
         code: e?.code,
         message: e?.message,
       })
       setError('No se pudo iniciar sesión. Intenta de nuevo.')
+    } finally {
+      setSigningIn(false)
     }
   }
 
@@ -95,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, signInWithGoogle, signOut, deleteAccount }}>
+    <AuthContext.Provider value={{ user, loading, signingIn, error, signInWithGoogle, signOut, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   )

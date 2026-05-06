@@ -10,7 +10,6 @@ import { useModel } from "./ai/_context/ModelContext";
 import { useAuth } from "./(auth)/_context/AuthContext";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
-
 export default function SettingsScreen() {
   const router = useRouter();
   const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
