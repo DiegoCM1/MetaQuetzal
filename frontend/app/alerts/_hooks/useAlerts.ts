@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import { track } from "../../../utils/analytics";
 import { authFetch } from '../../../utils/api'
-import { useAuth } from '../../(auth)/_context/AuthContext'
+import { useAuth } from '../../../features/auth/AuthContext'
 import { API_BASE_URL } from '../../../utils/config'
 
 interface Alert {

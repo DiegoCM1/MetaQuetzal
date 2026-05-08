@@ -8,7 +8,8 @@ import {
   FirebaseAuthTypes,
 } from '@react-native-firebase/auth'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
-import { AuthContextValue } from '../_types'
+
+import type { AuthContextValue } from './types'
 
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
@@ -29,18 +30,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe
   }, [])
 
+  async function getGoogleIdToken() {
+    const signInResult = await GoogleSignin.signIn()
+
+    if (signInResult?.type === 'cancelled') {
+      return { cancelled: true as const, idToken: null }
+    }
+
+    const directIdToken =
+      signInResult?.data?.idToken ??
+      (signInResult as any)?.idToken ??
+      (signInResult as any)?.data?.user?.idToken ??
+      null
+
+    if (directIdToken) {
+      return { cancelled: false as const, idToken: directIdToken }
+    }
+
+    const tokens = await GoogleSignin.getTokens().catch(() => null)
+
+    return {
+      cancelled: false as const,
+      idToken: tokens?.idToken ?? null,
+    }
+  }
+
   async function signInWithGoogle() {
     setError(null)
     try {
+      const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+      if (!webClientId) {
+        throw new Error('Missing EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID')
+      }
+
       await GoogleSignin.hasPlayServices()
-      const signInResult = await GoogleSignin.signIn()
-      const idToken = signInResult?.data?.idToken
+      const { cancelled, idToken } = await getGoogleIdToken()
+
+      if (cancelled) return
+
       if (!idToken) {
         console.error('[Bluai] Google Sign-In returned no ID token', {
-          type: (signInResult as any)?.type,
+          webClientIdConfigured: Boolean(webClientId),
         })
         throw new Error('Google Sign-In returned no ID token')
       }
+
       const credential = GoogleAuthProvider.credential(idToken)
       await signInWithCredential(getAuth(), credential)
     } catch (e: any) {
@@ -49,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         code: e?.code,
         message: e?.message,
       })
-      setError('No se pudo iniciar sesión. Intenta de nuevo.')
+      setError('No se pudo iniciar sesion. Intenta de nuevo.')
     }
   }
 
