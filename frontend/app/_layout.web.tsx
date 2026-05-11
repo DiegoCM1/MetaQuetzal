@@ -23,7 +23,7 @@ import { initAnalytics, track, flush } from "../utils/analytics";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
 
-const DEV_BYPASS_AUTH = true
+const DEV_BYPASS_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH === 'true'
 
 interface NotificationData {
   alertId?: string

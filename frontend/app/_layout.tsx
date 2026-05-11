@@ -29,7 +29,7 @@ if (Platform.OS !== "web") {
   const { ExpoResourceFetcher } = require("react-native-executorch-expo-resource-fetcher");
   initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 }
-const DEV_BYPASS_AUTH = true
+const DEV_BYPASS_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH === 'true'
 
 interface NotificationData {
   alertId?: string
