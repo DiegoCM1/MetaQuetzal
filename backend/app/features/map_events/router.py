@@ -44,20 +44,12 @@ async def get_current_user_id(
 
 
 async def get_map_events_user_id(
+    decoded_token: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> int | None:
+) -> int:
     if DEV_BYPASS_MAP_EVENTS_AUTH:
         return 1
-    return await get_current_user_id(db=db)
-
-
-async def require_map_events_auth():
-    if DEV_BYPASS_MAP_EVENTS_AUTH:
-        return {"uid": "dev-bypass-user"}
-    raise HTTPException(
-        status_code=401,
-        detail="Authorization header required",
-    )
+    return await get_current_user_id(decoded_token=decoded_token, db=db)
 
 
 @router.get("", response_model=list[MapEventResponse])
@@ -66,7 +58,7 @@ async def get_map_events(
     lon: float = Query(...),
     radius_km: float = Query(DEFAULT_RADIUS_KM, gt=0),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_map_events_auth),
+    _: dict = Depends(get_current_user),
 ):
     return await list_map_events(db, lat=lat, lon=lon, radius_km=radius_km)
 
@@ -75,7 +67,7 @@ async def get_map_events(
 async def post_map_event(
     payload: MapEventCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_map_events_user_id),
+    user_id: int = Depends(get_map_events_user_id),
 ):
     return await create_map_event(db, payload, user_id)
 
@@ -85,7 +77,7 @@ async def patch_map_event(
     event_id: UUID,
     payload: MapEventUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_map_events_user_id),
+    user_id: int = Depends(get_map_events_user_id),
 ):
     return await update_map_event(db, event_id, payload, user_id)
 
@@ -94,7 +86,7 @@ async def patch_map_event(
 async def remove_map_event(
     event_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_map_events_user_id),
+    user_id: int = Depends(get_map_events_user_id),
 ):
     await delete_map_event(db, event_id, user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
