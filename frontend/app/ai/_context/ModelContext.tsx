@@ -108,7 +108,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
         }
       })
     }
-  }, [llm])
+  }, [llm.isReady])
 
   useEffect(() => {
     if (llm.downloadProgress > 0) {
