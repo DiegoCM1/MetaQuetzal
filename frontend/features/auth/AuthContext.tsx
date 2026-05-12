@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       if (firebaseUser) {
         Sentry.setUser({ id: firebaseUser.uid, email: firebaseUser.email ?? undefined })
+        upsertUserProfile()
       } else {
         Sentry.setUser(null)
       }
