@@ -17,7 +17,16 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
-import { loadRedZones, saveRedZone, updateRedZone, deleteRedZone, generateZoneId, clearAllZones } from "./service";
+import {
+  canReportFromLocation,
+  createZone,
+  deleteZone,
+  generateZoneId,
+  loadZones,
+  REPORTING_DISTANCE_METERS,
+  syncCachedZones,
+  updateZone,
+} from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, ZONE_TYPES } from "./config";
 import { colors, fonts } from "../../utils/theme";
@@ -48,8 +57,10 @@ export default function WeatherMapNativewind() {
   const [showWind, setShowWind] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
   const [showClouds, setShowClouds] = useState(false);
+  const [showEvents, setShowEvents] = useState(true);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
   const mapRef = useRef(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const [zones, setZones] = useState<Zone[]>([]);
   const [isAddingMode, setIsAddingMode] = useState(false);
@@ -93,6 +104,7 @@ export default function WeatherMapNativewind() {
         };
 
         setRegion(userRegion);
+        setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
         mapRef.current?.animateToRegion(userRegion, 1000);
       } catch (error) {
         console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
@@ -105,20 +117,22 @@ export default function WeatherMapNativewind() {
   }, []);
 
   useEffect(() => {
+    if (!userLocation) return;
+
     (async () => {
       try {
-        const loaded = await loadRedZones();
+        const loaded = await loadZones({
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          radiusKm: 100,
+        });
         const valid = loaded.filter((z: Zone) => z.type && ZONE_TYPES[z.type]);
-        if (valid.length !== loaded.length) {
-          await clearAllZones();
-          for (const z of valid) await saveRedZone(z);
-        }
         setZones(valid);
       } catch (error) {
         console.error('[Map] Failed to load zones:', error);
       }
     })();
-  }, []);
+  }, [userLocation]);
 
   const handleToggleAddingMode = () => {
     setIsAddingMode(prev => !prev);
@@ -127,6 +141,24 @@ export default function WeatherMapNativewind() {
   const handleMapPress = (e: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
     if (isAddingMode) {
       const { latitude, longitude } = e.nativeEvent.coordinate;
+      if (!userLocation) {
+        Toast.show({
+          type: 'error',
+          text1: 'Ubicacion requerida',
+          text2: 'Activa tu ubicacion para reportar una zona',
+        });
+        setIsAddingMode(false);
+        return;
+      }
+      if (!canReportFromLocation({ latitude, longitude }, userLocation)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Reporte demasiado lejos',
+          text2: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
+        });
+        setIsAddingMode(false);
+        return;
+      }
       setPendingLocation({ latitude, longitude });
       setShowAddModal(true);
       setIsAddingMode(false);
@@ -145,7 +177,14 @@ export default function WeatherMapNativewind() {
     setZones(prev => prev.map(z => z.id === updated.id ? updated : z));
     setSelectedZone(updated);
     setIsEditing(false);
-    updateRedZone(updated).catch((error) => {
+    updateZone(updated).then((savedZone) => {
+      setZones(prev => {
+        const next = prev.map(z => z.id === savedZone.id ? savedZone : z);
+        syncCachedZones(next);
+        return next;
+      });
+      setSelectedZone(savedZone);
+    }).catch((error) => {
       console.error('[Map] Failed to update zone:', error);
       setZones(prev => prev.map(z => z.id === selectedZone.id ? selectedZone : z));
       setSelectedZone(selectedZone);
@@ -168,7 +207,13 @@ export default function WeatherMapNativewind() {
             setZones(prev => prev.filter(z => z.id !== deleted.id));
             setShowDetailModal(false);
             setIsEditing(false);
-            deleteRedZone(deleted.id).catch((error) => {
+            deleteZone(deleted.id).then(() => {
+              setZones(prev => {
+                const next = prev.filter(z => z.id !== deleted.id);
+                syncCachedZones(next);
+                return next;
+              });
+            }).catch((error) => {
               console.error('[Map] Failed to delete zone:', error);
               setZones(prev => [...prev, deleted]);
               Toast.show({ type: 'error', text1: 'Error al eliminar', text2: 'No se pudo eliminar la zona' });
@@ -183,6 +228,18 @@ export default function WeatherMapNativewind() {
     if (!selectedType) return;
     if (!zoneDescription.trim()) {
       setDescriptionError(true);
+      return;
+    }
+    if (!pendingLocation || !userLocation) {
+      Toast.show({ type: 'error', text1: 'Ubicacion requerida', text2: 'Necesitamos tu ubicacion para validar el reporte' });
+      return;
+    }
+    if (!canReportFromLocation(pendingLocation, userLocation)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Reporte demasiado lejos',
+        text2: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
+      });
       return;
     }
 
@@ -204,7 +261,13 @@ export default function WeatherMapNativewind() {
     setDescriptionError(false);
     Toast.show({ type: 'success', text1: 'Zona reportada', text2: 'Gracias por tu reporte' });
 
-    saveRedZone(newZone).catch((error) => {
+    createZone(newZone).then((savedZone) => {
+      setZones(prev => {
+        const next = prev.map(z => z.id === newZone.id ? savedZone : z);
+        syncCachedZones(next);
+        return next;
+      });
+    }).catch((error) => {
       console.error('[Map] Failed to save zone:', error);
       setZones(prev => prev.filter(z => z.id !== newZone.id));
       Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
@@ -223,6 +286,7 @@ export default function WeatherMapNativewind() {
     { label: "Viento", state: showWind, setter: setShowWind, icon: "weather-windy" },
     { label: "Precipitación", state: showPrecip, setter: setShowPrecip, icon: "weather-rainy" },
     { label: "Nubes", state: showClouds, setter: setShowClouds, icon: "weather-cloudy" },
+    { label: "Eventos", state: showEvents, setter: setShowEvents, icon: "map-marker-multiple-outline" },
   ]
 
   return (
@@ -269,7 +333,7 @@ export default function WeatherMapNativewind() {
           />
         )}
 
-        {zones.map((zone) => (
+        {showEvents && zones.map((zone) => (
           <ZoneMarker key={zone.id} zone={zone} onPress={() => handleCirclePress(zone)} />
         ))}
       </MapView>

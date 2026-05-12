@@ -1,7 +1,7 @@
 import { View, Text, ImageBackground } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { GoogleSigninButton } from '@react-native-google-signin/google-signin'
-import { useAuth } from './_context/AuthContext'
+import { useAuth } from '../../features/auth/AuthContext'
 import BluaiLogo from '../../assets/images/BLUAI_LOGO_BLANCO.svg'
 
 export default function LoginScreen() {
