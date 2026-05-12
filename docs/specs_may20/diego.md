@@ -11,7 +11,7 @@
 | 3 | iOS pipeline: certs, APNs, EAS build, App Store Connect | May 13 | Build corriendo en iPhone físico |
 | 4 | ~~Sentry en producción — telemetría de crashes~~ ✅ | May 14 | Evento visible en dashboard |
 | 5 | Frontend general fixes — pantallas y navegación | Continuo | Sin crashes en golden path |
-| 6 | Keystore de producción asegurado y respaldado | May 16 | Backup verificado fuera del equipo |
+| 6 | ~~Keystore de producción asegurado y respaldado~~ ✅ | May 16 | Backup verificado fuera del equipo |
 | 7 | Store listings — Play Store + App Store (temporada huracanes) | May 16 | Revisado y publicado |
 | 8 | Closed testing → producción Android (Play Store) | May 19 | Build en producción |
 | 9 | Submission iOS a App Store Connect | May 18 | Submitted, en revisión |
@@ -223,6 +223,12 @@ El keystore de Android es la única llave para publicar updates a Play Store. Si
 3. Documentar: nombre del keystore, alias, y dónde están guardadas las contraseñas
 
 **No subir el keystore a GitHub nunca.**
+
+### ✅ Completado — May 6
+- Keystore gestionado por EAS (copia primaria segura en servidores EAS)
+- Copia local descargada y subida a Google Drive → Mi Unidad/Development/Credentials Keystore
+- Key Alias documentado: `3bc644f9e85f25e3015adbc18431b14c`
+- `.jks` ya estaba en `.gitignore` — nunca en el repo
 
 ---
 
