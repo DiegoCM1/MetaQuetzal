@@ -9,6 +9,7 @@ import {
 } from '@react-native-firebase/auth'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
 import * as Sentry from '@sentry/react-native'
+import { authFetch } from '../../utils/api'
 import type { AuthContextValue } from './types'
 
 GoogleSignin.configure({
@@ -35,6 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return unsubscribe
   }, [])
+
+  async function upsertUserProfile() {
+    try {
+      await authFetch(`${process.env.EXPO_PUBLIC_API_URL}/api/v1/users/me`, { method: 'POST' })
+    } catch (e) {
+      console.warn('[Bluai] Failed to upsert user profile:', e)
+    }
+  }
 
   async function getGoogleIdToken() {
     const signInResult = await GoogleSignin.signIn()
@@ -85,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const credential = GoogleAuthProvider.credential(idToken)
       await signInWithCredential(getAuth(), credential)
+      await upsertUserProfile()
     } catch (e: any) {
       if (e?.code === statusCodes.SIGN_IN_CANCELLED) return
       if (e?.code === statusCodes.IN_PROGRESS) return
