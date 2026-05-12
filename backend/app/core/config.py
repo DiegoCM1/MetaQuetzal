@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = ""
     LLM_MODEL: str = ""
 
-    model_config = SettingsConfigDict(env_file=".env")
+    # Dev-only bypasses
+    DEV_BYPASS_MAP_EVENTS_AUTH: bool = False
+
+    model_config = SettingsConfigDict(env_file=(".env", ".env.local"))
 
 settings = Settings()

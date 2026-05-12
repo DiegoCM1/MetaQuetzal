@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.features.map_events.schemas import (
     MapEventCreate,
@@ -21,7 +22,7 @@ from app.features.map_events.service import (
 )
 
 router = APIRouter(prefix="/api/v1/map-events", tags=["map-events"])
-DEV_BYPASS_MAP_EVENTS_AUTH = True
+DEV_BYPASS_MAP_EVENTS_AUTH = settings.DEV_BYPASS_MAP_EVENTS_AUTH
 
 
 async def get_current_user_id(
