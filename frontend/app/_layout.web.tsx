@@ -2,7 +2,6 @@ import "../global.css";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { ModelProvider } from './ai/_context/ModelContext';
 import { AuthProvider, useAuth } from '../features/auth/AuthContext';
-// import { Drawer } from "expo-router/drawer";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
@@ -11,7 +10,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { gradients } from "../utils/theme";
 import { useEffect } from "react";
 import { useFonts } from "expo-font";
-import { AppState, Platform, StatusBar as RNStatusBar } from "react-native";
+import { AppState, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
   registerForPushNotificationsAsync,
@@ -23,32 +22,7 @@ import Toast from "react-native-toast-message";
 import { initAnalytics, track, flush } from "../utils/analytics";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
-import * as Sentry from '@sentry/react-native';
 
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
-
-  // Enable Logs
-  enableLogs: true,
-
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
-
-if (Platform.OS !== "web") {
-  const { initExecutorch } = require("react-native-executorch");
-  const { ExpoResourceFetcher } = require("react-native-executorch-expo-resource-fetcher");
-  initExecutorch({ resourceFetcher: ExpoResourceFetcher });
-}
 const DEV_BYPASS_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH === 'true'
 
 interface NotificationData {
@@ -102,8 +76,7 @@ function AuthGate({ children }) {
   return children
 }
 
-/* ---------- Layout raíz ---------- */
-export default Sentry.wrap(function Layout() {
+export default function Layout() {
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
@@ -116,7 +89,6 @@ export default Sentry.wrap(function Layout() {
     initAnalytics().catch(console.error);
   }, []);
 
-  // Configure StatusBar to not be translucent (backup for native API)
   useEffect(() => {
     RNStatusBar.setTranslucent(false);
   }, []);
@@ -124,7 +96,6 @@ export default Sentry.wrap(function Layout() {
   useEffect(() => {
     setForegroundNotificationHandler();
 
-    // 👇 Cuando el usuario pulse la notificación (o llegue automáticamente si es critical)
     const sub = addNotificationResponseListener(async (rawData) => {
       const data = rawData as NotificationData
       if (data?.alertId) {
@@ -136,8 +107,6 @@ export default Sentry.wrap(function Layout() {
           origin: "listener",
         });
 
-        // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → Alert details
         if (data.fullScreen === 'true') {
           router.push({
             pathname: "AlarmScreen",
@@ -158,10 +127,9 @@ export default Sentry.wrap(function Layout() {
       }
     });
 
-    return () => sub.remove(); // limpia al desmontar
+    return () => sub.remove();
   }, []);
 
-  // Si la app se abrió tocando una notificación, esta llamada la devuelve
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
@@ -177,8 +145,6 @@ export default Sentry.wrap(function Layout() {
           origin: "initial",
         });
 
-        // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → Alert details
         if (data?.fullScreen === 'true') {
           router.push({
             pathname: "AlarmScreen",
@@ -200,7 +166,6 @@ export default Sentry.wrap(function Layout() {
     })();
   }, []);
 
-  // Registra la pantalla actual en Mixpanel
   const pathname = usePathname();
   useEffect(() => {
     if (pathname) {
@@ -238,50 +203,23 @@ export default Sentry.wrap(function Layout() {
                     end={{ x: 0, y: 1 }}
                     style={{ flex: 1 }}
                   >
-                  <Stack
-                    screenOptions={{
-                      headerTitleStyle: { fontWeight: "bold" },
-                      contentStyle: { backgroundColor: "transparent" },
-                    }}
-                  >
-                    <Stack.Screen
-                      name="(auth)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="onboarding"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="SettingsScreen"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="AlarmScreen"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="FeedbackScreen"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="alerts"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="educational"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="subscription"
-                      options={{ headerShown: false }}
-                    />
-                  </Stack>
-                  <Toast />
+                    <Stack
+                      screenOptions={{
+                        headerTitleStyle: { fontWeight: "bold" },
+                        contentStyle: { backgroundColor: "transparent" },
+                      }}
+                    >
+                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                      <Stack.Screen name="SettingsScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="AlarmScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="FeedbackScreen" options={{ headerShown: false }} />
+                      <Stack.Screen name="alerts" options={{ headerShown: false }} />
+                      <Stack.Screen name="educational" options={{ headerShown: false }} />
+                      <Stack.Screen name="subscription" options={{ headerShown: false }} />
+                    </Stack>
+                    <Toast />
                   </LinearGradient>
                 </ModelProvider>
               </AuthGate>
@@ -291,4 +229,4 @@ export default Sentry.wrap(function Layout() {
       </DaltonicModeProvider>
     </GestureHandlerRootView>
   );
-});
+}

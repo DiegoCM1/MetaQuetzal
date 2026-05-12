@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { track } from "../utils/analytics";
 import { useModel } from "./ai/_context/ModelContext";
-import { useAuth } from "./(auth)/_context/AuthContext";
+import { useAuth } from "../features/auth/AuthContext";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
 export default function SettingsScreen() {

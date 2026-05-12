@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router'
-import { useAuth } from './(auth)/_context/AuthContext'
+import { useAuth } from '../features/auth/AuthContext'
 
 export default function NotFound() {
   const { user } = useAuth()

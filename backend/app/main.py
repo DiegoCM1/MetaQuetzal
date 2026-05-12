@@ -7,7 +7,7 @@ from sqlalchemy import text
 from app.features.alerts.router import router as alerts_router
 from app.features.feedback.router import router as feedback_router
 from app.features.notifications.router import router as notifications_router
-from app.features.ai.router import router as ai_router
+from app.features.map_events.router import router as map_events_router
 from app.features.siat.router import router as siat_router
 from app.features.users.router import router as users_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
@@ -15,6 +15,11 @@ import app.core.firebase
 import asyncio
 import logging
 from datetime import datetime
+
+try:
+    from app.features.ai.router import router as ai_router
+except Exception:
+    ai_router = None
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +57,19 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
                 id          SERIAL PRIMARY KEY,
                 token       TEXT UNIQUE NOT NULL,
                 user_id     BIGINT REFERENCES users(id) ON DELETE CASCADE,
+                updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS map_events (
+                id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                type        VARCHAR(20) NOT NULL CHECK (type IN ('natural', 'vial', 'peligro', 'ayuda')),
+                description TEXT NOT NULL,
+                lat         DOUBLE PRECISION NOT NULL,
+                lon         DOUBLE PRECISION NOT NULL,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
@@ -114,6 +132,8 @@ async def get_db_health(db: AsyncSession = Depends(get_db)):
 app.include_router(alerts_router)
 app.include_router(feedback_router)
 app.include_router(notifications_router)
-app.include_router(ai_router)
+if ai_router is not None:
+    app.include_router(ai_router)
 app.include_router(siat_router)
+app.include_router(map_events_router)
 app.include_router(users_router)
