@@ -316,7 +316,7 @@ Diego revisa **toda PR** que toque:
 
 **GATE: No empezar hasta que todo P1 esté done y el build de iOS esté submitted.**
 
-Firebase Auth ya está configurado. Agregar Email/Password provider:
+Firebase Auth ya está configurado. Agregar Email/Password provider y apple provider:
 1. Firebase Console → Authentication → Email/Password → Enable
 2. Frontend: pantalla de login con email/password
 3. Frontend: pantalla de recuperación de contraseña (Firebase `sendPasswordResetEmail`)

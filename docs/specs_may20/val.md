@@ -250,10 +250,14 @@ Errores:
 - En el modal de detalle del evento, agregar botones de upvote/downvote
 - Mostrar conteo actual de votos
 - Deshabilitar botones si el usuario ya votó o es el owner del evento
+- Refrescar eventos cuando el usuario vuelve a la pantalla del mapa (`useFocusEffect`) — actualmente solo carga al montar
 
 ### Definition of Done P2
 
+- [ ] Eventos no deberian tener la opcion de ser eliminados si tu no los creaste: UI
+- [ ] Toast deberia desaparecer despues de unos segundos y despues desaparecer
 - [ ] Un usuario no puede votar su propio evento
 - [ ] Un usuario no puede votar dos veces el mismo evento
 - [ ] Evento con suficientes downvotes desaparece del mapa de otros usuarios
 - [ ] UI de votación visible en modal de detalle
+- [ ] Mapa refresca eventos al volver a la pantalla (useFocusEffect)
