@@ -26,3 +26,13 @@ class RunCycleResponse(BaseModel):
     users_evaluated: int
     notifications_sent: int
     assessments: list[AssessmentResult]
+
+
+class AffectedUser(BaseModel):
+    user_id: int
+    distance_km: float
+
+
+class AffectedUsersResponse(BaseModel):
+    total: int
+    users: list[AffectedUser]
