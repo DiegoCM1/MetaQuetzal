@@ -10,6 +10,7 @@ from app.features.notifications.router import router as notifications_router
 from app.features.map_events.router import router as map_events_router
 from app.features.siat.router import router as siat_router
 from app.features.users.router import router as users_router
+from app.features.notification_preferences.router import router as notification_preferences_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
 import app.core.firebase
 import asyncio
@@ -61,6 +62,15 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
             )
         """))
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS notification_preferences (
+                user_id            BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                siat_enabled       BOOLEAN NOT NULL DEFAULT TRUE,
+                min_siat_level     INT     NOT NULL DEFAULT 2,
+                map_events_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS map_events (
                 id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -137,3 +147,4 @@ if ai_router is not None:
 app.include_router(siat_router)
 app.include_router(map_events_router)
 app.include_router(users_router)
+app.include_router(notification_preferences_router)
