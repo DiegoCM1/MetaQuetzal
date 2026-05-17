@@ -177,3 +177,61 @@ def test_evaluate_user_distant_slow_cyclone_is_azul():
 
     assert result["out_of_range"] is False
     assert result["siat_level"] <= 2  # AZUL or VERDE
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/siat/affected-users
+# ---------------------------------------------------------------------------
+
+_FAKE_AFFECTED = [
+    {"user_id": 1, "distance_km": 120.5},
+    {"user_id": 4, "distance_km": 340.2},
+]
+
+
+def test_affected_users_happy_path():
+    with patch(f"{_ROUTER}.get_affected_users", new_callable=AsyncMock, return_value=_FAKE_AFFECTED):
+        r = client.get(
+            "/api/v1/siat/affected-users",
+            params={"lat": 20.5, "lon": -98.0},
+            headers=API_KEY_HEADERS,
+        )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 2
+    assert body["users"][0]["user_id"] == 1
+    assert body["users"][0]["distance_km"] == 120.5
+
+
+def test_affected_users_empty_radius():
+    with patch(f"{_ROUTER}.get_affected_users", new_callable=AsyncMock, return_value=[]):
+        r = client.get(
+            "/api/v1/siat/affected-users",
+            params={"lat": 20.5, "lon": -98.0, "radius_km": 10},
+            headers=API_KEY_HEADERS,
+        )
+    assert r.status_code == 200
+    assert r.json() == {"total": 0, "users": []}
+
+
+def test_affected_users_requires_api_key():
+    r = client.get("/api/v1/siat/affected-users", params={"lat": 20.5, "lon": -98.0})
+    assert r.status_code == 422
+
+
+def test_affected_users_wrong_api_key():
+    r = client.get(
+        "/api/v1/siat/affected-users",
+        params={"lat": 20.5, "lon": -98.0},
+        headers={"X-Api-Key": "wrong"},
+    )
+    assert r.status_code == 401
+
+
+def test_affected_users_invalid_radius():
+    r = client.get(
+        "/api/v1/siat/affected-users",
+        params={"lat": 20.5, "lon": -98.0, "radius_km": 0},
+        headers=API_KEY_HEADERS,
+    )
+    assert r.status_code == 422
