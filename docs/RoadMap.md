@@ -142,8 +142,12 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 ## Sprint 2
 
 - Native notification system (Like alarms, for both ios and android)
+- Npm to pnpm to avoid vulnerabilities
+- Fix existing package vulnerabilities spotted by dependabot in GH
 - Bluetooth mesh feature → v1.1 (anunciado como v1.1 en sprint philosophy)
 - Revenue Cat / pagos → post-launch
 - SOS
 - Limit for online AI
+- IOS launch
 - Toggle to use offline over online and viceversa, as user wishes
+- 
