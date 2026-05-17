@@ -23,7 +23,7 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
-from app.features.siat.evaluator import evaluate_user
+from app.features.siat.evaluator import evaluate_user, haversine_km
 from app.features.siat.providers.nhc import fetch_active_cyclones
 from app.features.notifications.service import get_tokens_for_users
 
@@ -154,6 +154,20 @@ async def _get_users_with_location(db: AsyncSession) -> list:
         text("SELECT id, lat, lon FROM users WHERE lat IS NOT NULL AND lon IS NOT NULL")
     )
     return result.mappings().all()
+
+
+async def get_affected_users(
+    db: AsyncSession, lat: float, lon: float, radius_km: float = 500.0
+) -> list[dict]:
+    """Return users within radius_km of (lat, lon), sorted by distance ascending."""
+    users = await _get_users_with_location(db)
+    within = []
+    for user in users:
+        dist = haversine_km(lat, lon, user["lat"], user["lon"])
+        if dist <= radius_km:
+            within.append({"user_id": user["id"], "distance_km": round(dist, 2)})
+    within.sort(key=lambda x: x["distance_km"])
+    return within
 
 
 async def _get_user_state(db: AsyncSession, user_id: int) -> dict | None:

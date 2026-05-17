@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.features.siat.schemas import RunCycleResponse, UserSiatStatus
-from app.features.siat.service import get_user_siat_status, run_cycle
+from app.features.siat.schemas import AffectedUsersResponse, RunCycleResponse, UserSiatStatus
+from app.features.siat.service import get_affected_users, get_user_siat_status, run_cycle
 from app.middleware.api_key_auth import verify_api_key
 
 router = APIRouter()
@@ -21,6 +21,22 @@ async def siat_run_cycle(db: AsyncSession = Depends(get_db)):
     Protected by X-API-Key header.
     """
     return await run_cycle(db)
+
+
+@router.get(
+    "/api/v1/siat/affected-users",
+    response_model=AffectedUsersResponse,
+    dependencies=[Depends(verify_api_key)],
+)
+async def siat_affected_users(
+    lat: float,
+    lon: float,
+    radius_km: float = Query(default=500.0, gt=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return users within radius_km of (lat, lon). Protected by X-API-Key header."""
+    users = await get_affected_users(db, lat, lon, radius_km)
+    return {"total": len(users), "users": users}
 
 
 @router.get(
