@@ -25,6 +25,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bluai.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
@@ -58,6 +59,7 @@
       "expo-router",
       "expo-notifications",
       "expo-audio",
+      "@react-native-firebase/app",
       [
         "@sentry/react-native/expo",
         {
@@ -65,6 +67,10 @@
           "project": "react-native",
           "organization": "bluai"
         }
+      ],
+      [
+        "expo-build-properties",
+        { "ios": { "useFrameworks": "static" } }
       ]
     ],
     "extra": {
