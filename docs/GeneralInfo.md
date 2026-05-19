@@ -19,6 +19,7 @@ Option A.1 - Cancel a build
 Option B — Emulator or local build trouhgt cable
 1. npx expo run:android
 2. npx expo run:android --variant release (For testing prod environment)
+3. npx expo run:ios 
 
 
 Option C — Actual Phone

@@ -6,22 +6,48 @@
 
 | # | Feature / Tarea | Mini-deadline | Standard |
 |---|---|---|---|
-| 1 | Sign in with Apple — Firebase Apple provider | May 6 | E2E + Test + Device |
-| 3 | iOS pipeline: certs, APNs, EAS build, App Store Connect | May 13 | Build corriendo en iPhone físico |
+| 1 | Sign in with Apple — Firebase Apple provider | 🔴 May 6 (vencido) | NO iniciado. Entorno iOS ya listo; falta: provider Apple en Firebase, Service ID, `usesAppleSignIn` en app.json, botón en login |
+| 3 | iOS pipeline: certs, APNs, EAS build, App Store Connect | 🟡 May 13 (vencido) | Entorno iOS ✅. EAS API key registrada ✅. `eas build` intentado → error: no team membership en Apple Developer Program. Héctor arregla hoy 21:00. APNs pospuesto hasta iPhone físico |
 | 4 | ~~Sentry en producción — telemetría de crashes~~ ✅ | May 14 | Evento visible en dashboard |
-| 5 | Frontend general fixes — pantallas y navegación | Continuo | Sin crashes en golden path |
+| 5 | Frontend general fixes — pantallas y navegación | 🟢 Continuo | En progreso — sin crashes en golden path |
 | 6 | ~~Keystore de producción asegurado y respaldado~~ ✅ | May 16 | Backup verificado fuera del equipo |
 | 7 | Store listings — Play Store + App Store (temporada huracanes) | ✅ | Revisado y publicado en PlayStore |
 | 8 | Closed testing → producción Android (Play Store) | 🟡 18 may | Acceso a producción SOLICITADO — en revisión por Google (3-7 días). Pendiente: subir AAB de producción |
 | 9 | Submission iOS a App Store Connect | 🔴 bloqueado | NO está submitted. Depende de #1 (Apple Sign-In) y #3 (pipeline iOS) |
-| 2 | iOS offline AI — Llama on-device confiable | May 11 | Funciona en device físico sin internet |
+| 2 | iOS offline AI — Llama on-device confiable | 🟡 May 11 (vencido) | Funciona en device (Android); verificación en iPhone físico pendiente del dispositivo |
 | 10 | PR reviewer — toda PR crítica del sprint | Continuo | Sin merge sin tu revisión |
+
+- APNS (App push notifications) Until iphone arrives, not possible before that.
 
 ### P2 — Extensión (solo si P1 completo)
 
 | # | Feature |
 |---|---|
 | 11 | Email/password login + password recovery |
+
+### Plan de ejecución por dependencias (19 may, 18:00)
+
+#### 🟢 Activo ahora — sin bloqueante externo
+- **Apple Sign-In frontend** (#1, parte Simulador): `npx expo install expo-apple-authentication`, agregar `"usesAppleSignIn": true` al bloque `ios` de `app.json`, habilitar provider Apple en Firebase Console, botón Apple en pantalla de login, wire del flujo credential → Firebase `signInWithCredential`. El Service ID (developer.apple.com) queda para después del fix de Héctor.
+- **AAB de producción Android** (para #8): `eas build --platform android --profile production` corre en background, queda listo para subir cuando Google apruebe acceso.
+- **#5 Frontend general fixes**: continuo.
+- **#10 PR review**: continuo.
+
+#### 🟡 Bloqueado en Héctor (ETA: hoy 21:00)
+- **#3 iOS pipeline**: membresía Apple Developer Program para `blueyehurricanealerts@gmail.com` + verificación del Issuer ID correcto. Después del fix → re-intento de `eas build --platform ios --profile production` con 2FA. Si pasa: EAS genera distribution cert + provisioning profile + registra App ID → build llega a TestFlight (objetivo May 20).
+- **#9 iOS submission**: gated en #3 funcionando.
+
+#### 🔴 Bloqueado en iPhone físico (ETA: días)
+- **#2 Offline AI** — verificación en device iOS.
+- **#1 Apple Sign-In** — test E2E en device real.
+- **APNs key**: verificación de environment + recibir `.p8` de Héctor + subir a Firebase Cloud Messaging + confirmar push delivery. Sin device físico no se puede verificar push.
+- **Golden path E2E** en device físico (DoD final).
+
+#### 🔴 Bloqueado en Google (ETA: 3-7 días desde 18 may)
+- **#8 Release de producción Android** — esperando aprobación de Google para acceso a producción. El AAB ya estará listo gracias al item activo de arriba.
+
+#### ✅ Completado (referencia)
+- #4 Sentry; #6 Keystore; #7 Play Store listing (App Store listing iOS: por confirmar); entorno iOS dev funcionando; Firebase iOS cableado; EAS App Store Connect API key registrada.
 
 ---
 
@@ -112,6 +138,17 @@ El AI offline usa Llama 3.2 1B/3B cuantizado corriendo en el dispositivo. El pro
 
 **Due: May 13 (build en device físico)**
 **Due: May 18 (submission)**
+
+### Estado actual (19 may, 18:00)
+- ✅ Entorno iOS regenerado limpio desde `app.json` (CNG — `ios/` en `.gitignore`)
+- ✅ Firebase iOS cableado: `GoogleService-Info.plist`, plugin `@react-native-firebase/app`, `useFrameworks: static` + `forceStaticLinking` (workaround bug SDK 54, expo#39607)
+- ✅ App compila (0 errores) y corre en el Simulador con Firebase inicializado
+- ✅ App Store Connect API key (`AuthKey_N3M5RJLBGQ.p8`) registrada en EAS para Submit
+- 🟡 `eas build --platform ios --profile production` intentado → falló en credentials con: *"You have no team associated with your Apple account, cannot proceed."* Diego es Admin en App Store Connect pero NO está en el Apple Developer Program team. Héctor arregla hoy 21:00.
+- 🟡 Issuer ID enviado por Héctor (`f2ad728e-…`) coincide con el Developer ID personal de Diego en App Store Connect — sospechoso, Héctor verifica
+- ⬜ App Store Connect app record (EAS lo puede crear vía submit una vez funcione el build)
+- ⬜ APNs key — pospuesto hasta llegada del iPhone (push no verificable sin device)
+- ⬜ Re-intento de `eas build` iOS — después del fix de Héctor
 
 ### Componentes
 
