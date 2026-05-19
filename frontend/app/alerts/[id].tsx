@@ -54,6 +54,8 @@ export default function AlertDetailsScreen() {
   const [alert, setAlert] = useState<AlertData | null>(null);
   const [loading, setLoad] = useState(true);
   const [error, setError] = useState<{ status?: number } | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const handleOpenBoletin = async () => {
     const url = "https://preparados.gob.mx/SIAT-CT/";
@@ -97,6 +99,35 @@ export default function AlertDetailsScreen() {
         level: Number(alert.level),
         score: Number(alert.score ?? 0),
       });
+    }
+  }, [alert]);
+
+  useEffect(() => {
+    if (!alert) return
+    setAiLoading(true)
+    let live = true
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    ;(async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/v1/ai/alert-summary`, {
+          method: 'POST',
+          body: JSON.stringify({ alert_id: alert.id }),
+          signal: controller.signal,
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        if (live) setAiSummary(data.summary)
+      } catch {
+        // falla silenciosamente — sección oculta
+      } finally {
+        clearTimeout(timeout)
+        if (live) setAiLoading(false)
+      }
+    })()
+    return () => {
+      live = false
+      controller.abort()
     }
   }, [alert]);
 
@@ -164,6 +195,24 @@ export default function AlertDetailsScreen() {
             <Text style={{ color: 'rgba(255,255,255,0.8)', fontFamily: fonts.poppins, fontSize: 15, lineHeight: 22 }}>
               {alert.short}
             </Text>
+          )}
+
+          {/* AI Summary */}
+          {(aiLoading || aiSummary) && (
+            <View>
+              <SectionPill title="RESUMEN IA:" color={baseColor} />
+              {aiLoading ? (
+                <View style={[styles.glassCard, { alignItems: 'center', paddingVertical: 20 }]}>
+                  <ActivityIndicator size="small" color={colors.brandCyan} />
+                </View>
+              ) : aiSummary ? (
+                <View style={styles.glassCard}>
+                  <Text style={{ color: 'rgba(255,255,255,0.9)', fontFamily: fonts.poppins, fontSize: 14, lineHeight: 22 }}>
+                    {aiSummary}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           )}
 
           {/* Recommendations */}
