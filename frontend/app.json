@@ -67,6 +67,15 @@
           "project": "react-native",
           "organization": "bluai"
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth"]
+          }
+        }
       ]
     ],
     "extra": {
