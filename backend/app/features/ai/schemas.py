@@ -12,3 +12,11 @@ class ChatRequest(BaseModel):
                                                                 
 class ChatResponse(BaseModel):
     reply: str
+
+
+class AlertSummaryRequest(BaseModel):
+    alert_id: str
+
+class AlertSummaryResponse(BaseModel):
+    alert_id: str
+    summary: str
