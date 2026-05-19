@@ -150,4 +150,4 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 - Limit for online AI
 - IOS launch
 - Toggle to use offline over online and viceversa, as user wishes
-- 
+- Fix mixpanel project token and make sure it is actually tracking stuff from this app.

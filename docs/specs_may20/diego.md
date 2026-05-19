@@ -7,14 +7,14 @@
 | # | Feature / Tarea | Mini-deadline | Standard |
 |---|---|---|---|
 | 1 | Sign in with Apple — Firebase Apple provider | May 6 | E2E + Test + Device |
-| 2 | iOS offline AI — Llama on-device confiable | May 11 | Funciona en device físico sin internet |
 | 3 | iOS pipeline: certs, APNs, EAS build, App Store Connect | May 13 | Build corriendo en iPhone físico |
 | 4 | ~~Sentry en producción — telemetría de crashes~~ ✅ | May 14 | Evento visible en dashboard |
 | 5 | Frontend general fixes — pantallas y navegación | Continuo | Sin crashes en golden path |
 | 6 | ~~Keystore de producción asegurado y respaldado~~ ✅ | May 16 | Backup verificado fuera del equipo |
-| 7 | Store listings — Play Store + App Store (temporada huracanes) | May 16 | Revisado y publicado |
-| 8 | Closed testing → producción Android (Play Store) | May 19 | Build en producción |
-| 9 | Submission iOS a App Store Connect | May 18 | Submitted, en revisión |
+| 7 | Store listings — Play Store + App Store (temporada huracanes) | ✅ | Revisado y publicado en PlayStore |
+| 8 | Closed testing → producción Android (Play Store) | 🟡 18 may | Acceso a producción SOLICITADO — en revisión por Google (3-7 días). Pendiente: subir AAB de producción |
+| 9 | Submission iOS a App Store Connect | 🔴 bloqueado | NO está submitted. Depende de #1 (Apple Sign-In) y #3 (pipeline iOS) |
+| 2 | iOS offline AI — Llama on-device confiable | May 11 | Funciona en device físico sin internet |
 | 10 | PR reviewer — toda PR crítica del sprint | Continuo | Sin merge sin tu revisión |
 
 ### P2 — Extensión (solo si P1 completo)
@@ -28,8 +28,6 @@
 ## Contexto
 
 Diego es el único full-time. Lleva el peso de lo que no perdona: Apple, Play Store, certificados, telemetría. Si falla, no hay app en la tienda. Además, es el revisor final — la calidad de `main` pasa por sus manos.
-
-**Posible iOS hire:** si se contrata al senior antes del día 13, puede tomar el pipeline de App Store Connect (certs, provisioning, submission). Diego mantiene supervisión pero delega la ejecución. Planear sin él. Si aparece, es upside.
 
 ---
 
