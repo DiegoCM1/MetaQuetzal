@@ -1,7 +1,6 @@
 import "../global.css";
 import { clearOnboardingData } from './onboarding/_services/onboardingService';
-import { useState } from "react";
-import { Alert, Switch, Text, ScrollView } from "react-native";
+import { Alert, Text, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -12,7 +11,6 @@ import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
 export default function SettingsScreen() {
   const router = useRouter();
-  const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
   const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel();
   const { signOut, deleteAccount } = useAuth();
 
@@ -103,15 +101,7 @@ export default function SettingsScreen() {
         <OptionCard
           icon="bell-outline"
           title="Notificaciones"
-          rightElement={
-            <Switch
-              value={isNotificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              thumbColor="#fff"
-              trackColor={{ false: "#9ca3af", true: "rgb(60,200,220)" }}
-              ios_backgroundColor="#9ca3af"
-            />
-          }
+          onPress={() => router.push('/NotificationPreferencesScreen')}
         />
 
         <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} />
