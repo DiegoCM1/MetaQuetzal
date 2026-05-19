@@ -9,7 +9,7 @@ import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { LinearGradient } from "expo-linear-gradient";
 import { gradients } from "../utils/theme";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
 import { AppState, Platform, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -53,12 +53,37 @@ const DEV_BYPASS_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH === 'true'
 
 interface NotificationData {
   alertId?: string
+  alert_id?: string
   alertLevel?: string
+  level?: string
+  siat_level?: string
+  siat_color?: string
   fullScreen?: string
   category?: string
   alertTitle?: string
   alertMessage?: string
   bulletinUrl?: string
+}
+
+function resolveNotifPayload(
+  data: NotificationData,
+  content?: { title?: string | null; body?: string | null }
+) {
+  const id = data.alertId || data.alert_id
+  const levelNum = Number(data.level ?? data.siat_level ?? data.alertLevel ?? 0)
+  const isFullScreen = data.fullScreen === 'true' || levelNum >= 4
+  return {
+    id,
+    levelNum,
+    isFullScreen,
+    params: {
+      alertId: id,
+      category: data.category ?? String(levelNum),
+      title: data.alertTitle ?? content?.title ?? "Alerta de emergencia",
+      message: data.alertMessage ?? content?.body ?? "Siga las indicaciones de las autoridades.",
+      bulletinUrl: data.bulletinUrl,
+    },
+  }
 }
 
 function AuthGate({ children }) {
@@ -105,6 +130,7 @@ function AuthGate({ children }) {
 /* ---------- Layout raíz ---------- */
 export default Sentry.wrap(function Layout() {
   const router = useRouter();
+  const alarmActiveRef = React.useRef(false);
 
   const [fontsLoaded] = useFonts({
     'Square721': require('../assets/fonts/square-721-bold-extended-bt.ttf'),
@@ -124,78 +150,68 @@ export default Sentry.wrap(function Layout() {
   useEffect(() => {
     setForegroundNotificationHandler();
 
-    // 👇 Cuando el usuario pulse la notificación (o llegue automáticamente si es critical)
-    const sub = addNotificationResponseListener(async (rawData) => {
+    // Tap en notificación (background → foreground, o foreground tap)
+    const tapSub = addNotificationResponseListener(async (rawData) => {
       const data = rawData as NotificationData
-      if (data?.alertId) {
-        await initAnalytics();
-        track("push_open", {
-          alertId: String(data.alertId),
-          alertLevel: data.alertLevel ? Number(data.alertLevel) : undefined,
-          fullScreen: data.fullScreen === 'true',
-          origin: "listener",
-        });
+      const { id, isFullScreen, params } = resolveNotifPayload(data)
+      if (!id && !isFullScreen) return
 
-        // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → Alert details
-        if (data.fullScreen === 'true') {
-          router.push({
-            pathname: "AlarmScreen",
-            params: {
-              alertId: data.alertId,
-              category: data.category || data.alertLevel,
-              title: data.alertTitle || "Alerta de huracán",
-              message: data.alertMessage || "Diríjase a un refugio seguro",
-              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
-            },
-          });
-        } else {
-          router.push({
-            pathname: "/alerts/[id]",
-            params: { id: data.alertId },
-          });
-        }
+      await initAnalytics();
+      track("push_open", {
+        alertId: id ? String(id) : undefined,
+        alertLevel: params.category ? Number(params.category) : undefined,
+        fullScreen: isFullScreen,
+        origin: "listener",
+      });
+
+      if (isFullScreen) {
+        router.push({ pathname: "AlarmScreen", params });
+      } else if (id) {
+        router.push({ pathname: "/alerts/[id]", params: { id } });
       }
     });
 
-    return () => sub.remove(); // limpia al desmontar
+    // Notificación recibida mientras la app está abierta → AlarmScreen si nivel >= 4
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      const rawData = notification.request.content.data as NotificationData
+      const content = notification.request.content
+      const { isFullScreen, params } = resolveNotifPayload(rawData, content)
+      if (isFullScreen && !alarmActiveRef.current) {
+        alarmActiveRef.current = true
+        router.push({ pathname: "AlarmScreen", params })
+        // Liberar el guard después de un debounce para cubrir multi-push
+        setTimeout(() => { alarmActiveRef.current = false }, 5000)
+      }
+    });
+
+    return () => {
+      tapSub.remove();
+      receivedSub.remove();
+    };
   }, []);
 
-  // Si la app se abrió tocando una notificación, esta llamada la devuelve
+  // App abierta tocando una notificación desde cold start
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
       const data = initial?.notification?.request?.content?.data as NotificationData | undefined
-      const alertId = data?.alertId;
+      if (!data) return
 
-      if (alertId) {
-        await initAnalytics();
-        track("push_open", {
-          alertId: String(alertId),
-          alertLevel: data?.alertLevel ? Number(data.alertLevel) : undefined,
-          fullScreen: data?.fullScreen === 'true',
-          origin: "initial",
-        });
+      const { id, isFullScreen, params } = resolveNotifPayload(data)
+      if (!id && !isFullScreen) return
 
-        // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → Alert details
-        if (data?.fullScreen === 'true') {
-          router.push({
-            pathname: "AlarmScreen",
-            params: {
-              alertId: data.alertId,
-              category: data.category || data.alertLevel,
-              title: data.alertTitle || "Alerta de huracán",
-              message: data.alertMessage || "Diríjase a un refugio seguro",
-              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
-            },
-          });
-        } else {
-          router.push({
-            pathname: "/alerts/[id]",
-            params: { id: alertId },
-          });
-        }
+      await initAnalytics();
+      track("push_open", {
+        alertId: id ? String(id) : undefined,
+        alertLevel: params.category ? Number(params.category) : undefined,
+        fullScreen: isFullScreen,
+        origin: "initial",
+      });
+
+      if (isFullScreen) {
+        router.push({ pathname: "AlarmScreen", params });
+      } else if (id) {
+        router.push({ pathname: "/alerts/[id]", params: { id } });
       }
     })();
   }, []);
