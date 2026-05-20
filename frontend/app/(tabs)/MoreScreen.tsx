@@ -14,7 +14,7 @@ export default function MoreScreen() {
   const items: MenuItem[] = [
     { label: "Ajustes", icon: "cog-outline", route: "/SettingsScreen" },
     { label: "Feedback", icon: "message-reply-outline", route: "/FeedbackScreen" },
-    { label: "Suscripción", icon: "account-group-outline", route: "/subscription" },
+    // { label: "Suscripción", icon: "account-group-outline", route: "/subscription" },
   ];
 
   return (
