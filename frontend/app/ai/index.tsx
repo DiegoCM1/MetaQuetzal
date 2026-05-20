@@ -23,11 +23,13 @@ import { useModel } from "./_context/ModelContext"
 
 
 export default function ChatAIScreen() {
-  const { messages, input, setInput, isLoading, restartConversation, handleSendMessage } = useChat()
+  const { messages, input, setInput, isLoading, isStreaming, restartConversation, handleSendMessage, stop } = useChat()
   const { modelMode } = useModel()
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
+  const canStop = isStreaming && modelMode === 'online'
+  const showThinking = isLoading && !isStreaming
   const markdownStyles = {
     body: {
       color: "white",
@@ -38,11 +40,11 @@ export default function ChatAIScreen() {
 
   const SendButton = () => (
     <TouchableOpacity
-      className={`h-10 w-10 rounded-full items-center justify-center ${isLoading ? "opacity-50" : ""}`}
-      onPress={handleSendMessage}
-      disabled={isLoading}
+      className={`h-10 w-10 rounded-full items-center justify-center ${!canStop && (isLoading || isStreaming) ? "opacity-50" : ""}`}
+      onPress={canStop ? stop : handleSendMessage}
+      disabled={!canStop && (isLoading || isStreaming)}
     >
-      <MaterialCommunityIcons name="send" size={20} color="white" />
+      <MaterialCommunityIcons name={canStop ? "stop" : "send"} size={20} color="white" />
     </TouchableOpacity>
   );
 
@@ -105,7 +107,7 @@ export default function ChatAIScreen() {
                 </Text>
               </View>
             )}
-            ListFooterComponent={isLoading ? <ThinkingBubble /> : null}
+            ListFooterComponent={showThinking ? <ThinkingBubble /> : null}
             renderItem={({ item }) => (
               <View
                 className={`mb-1 flex-row ${item.role === "user" ? "justify-end" : "justify-start"

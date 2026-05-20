@@ -10,14 +10,21 @@ import * as Location from 'expo-location'
 const online = new OnlineProvider()
 
 export function useChat() {
-    const { llm, modelReady, setModelMode } = useModel()
+    const { llm, modelReady, setModelMode, modelMode } = useModel()
 
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const [isStreaming, setIsStreaming] = useState(false)
     const [pendingMessage, setPendingMessage] = useState<string | null>(null)
     const locationRef = useRef<string | null>(null)
     const coordsRef = useRef<{ latitude: number, longitude: number } | null>(null)
+    const abortControllerRef = useRef<AbortController | null>(null)
+    const firstTokenRef = useRef(false)
+
+    const stop = () => {
+        abortControllerRef.current?.abort()
+    }
 
     // SEND PENDING MESSAGE ONCE MODEL IS READY
     useEffect(() => {
@@ -38,12 +45,12 @@ export function useChat() {
         }
     }, [llm.response])
 
-    // STOP LOADING WHEN OFFLINE INFERENCE FINISHES
+    // STOP LOADING WHEN OFFLINE INFERENCE FINISHES (offline path only)
     useEffect(() => {
-        if (!llm.isGenerating && isLoading) {
+        if (modelMode === 'offline' && !llm.isGenerating && isLoading) {
             setIsLoading(false)
         }
-    }, [llm.isGenerating, isLoading])
+    }, [llm.isGenerating, isLoading, modelMode])
 
     // LOAD MESSAGES
     const loadMessages = async () => {
@@ -123,13 +130,31 @@ export function useChat() {
                 console.log('[useChat] routing → online (Together AI)')
                 setModelMode('online')
                 const historyForAPI = [...messages, userMessage]
-                await online.sendMessage(historyForAPI, locationRef.current, coordsRef.current?.latitude ?? null, coordsRef.current?.longitude ?? null, (token) => {
-                    setMessages(prev => {
-                        const last = prev[prev.length - 1]
-                        return [...prev.slice(0, -1), { ...last, text: last.text + token }]
-                    })
-                })
+                abortControllerRef.current = new AbortController()
+                firstTokenRef.current = false
+                await online.sendMessage(
+                    historyForAPI,
+                    locationRef.current,
+                    coordsRef.current?.latitude ?? null,
+                    coordsRef.current?.longitude ?? null,
+                    (token) => {
+                        if (!firstTokenRef.current) {
+                            firstTokenRef.current = true
+                            setIsLoading(false)
+                            setIsStreaming(true)
+                        }
+                        setMessages(prev => {
+                            if (prev.length === 0) return prev
+                            const last = prev[prev.length - 1]
+                            if (last.role !== 'bot') return prev
+                            return [...prev.slice(0, -1), { ...last, text: last.text + token }]
+                        })
+                    },
+                    abortControllerRef.current.signal,
+                )
                 console.log('ai_response_received')
+                abortControllerRef.current = null
+                setIsStreaming(false)
                 setIsLoading(false)
             }
         } catch (error) {
@@ -142,12 +167,14 @@ export function useChat() {
                 error: true
             }])
             Alert.alert('Error', errorText)
+            setIsStreaming(false)
             setIsLoading(false)
+            abortControllerRef.current = null
         }
     }
 
     useEffect(() => { loadMessages() }, [])
     useEffect(() => { saveMessages(messages) }, [messages])
 
-    return { messages, input, setInput, isLoading, restartConversation, handleSendMessage }
+    return { messages, input, setInput, isLoading, isStreaming, restartConversation, handleSendMessage, stop }
 }
