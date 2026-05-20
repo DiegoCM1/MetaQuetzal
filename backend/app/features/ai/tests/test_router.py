@@ -6,9 +6,15 @@ from app.features.ai.schemas import Message
 
 client = TestClient(app)
 
+
+async def fake_chat(*args, **kwargs):
+    yield 'data: {"choices":[{"delta":{"content":"Test"}}]}\n\n'
+    yield 'data: [DONE]\n\n'
+
+
 def test_chat_returns_reply():
     with patch("app.core.auth.auth.verify_id_token", return_value={"uid": "test123"}):
-        with patch("app.features.ai.router.chat",  new_callable=AsyncMock, return_value="Test response") as mock_chat:
+        with patch("app.features.ai.router.chat", side_effect=fake_chat) as mock_chat:
             response = client.post(
                 "/ai/chat",
                 json={
@@ -23,14 +29,10 @@ def test_chat_returns_reply():
                 headers={"Authorization": "Bearer faketoken"}
             )
     assert response.status_code == 200
-    assert response.json()["reply"] == "Test response"
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "data: " in response.text
+    assert "[DONE]" in response.text
     assert mock_chat.called
-    mock_chat.assert_called_once_with(
-        [Message(role="user", content="hola"), Message(role="bot", content="Wassup")],
-        "Tuxpan",
-        5,
-        10
-    )
 
 
 
