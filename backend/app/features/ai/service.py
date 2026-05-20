@@ -54,17 +54,15 @@ async def fetch_weather(latitude: float, longitude: float) -> str:
         return weather_str  
 
 
-async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None) -> str:
+async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None):
     system_content = SYSTEM_PROMPT
-    
+
     print(f"[chat] Query from user: {messages[-1].content}")
 
-    # Location injection
     if location:
         system_content += f"\n\nUbicación actual del usuario: {location}."
     print(f"[chat:location] {location}")
 
-    #  Weather injection
     if latitude and longitude:
         try:
             weather = await fetch_weather(latitude, longitude)
@@ -73,12 +71,9 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
         except Exception as e:
             print(f"[chat:weather] weather fetch failed: {e}")
 
-    # RAG, Chunks injection
-    try: 
+    try:
         retrieved_chunks_list = retrieve(messages[-1].content)
-
         normalized_chunks = "\n\n".join(retrieved_chunks_list)
-
         message_for_ai = f"This is some additional context: {normalized_chunks}"
 
         if retrieved_chunks_list:
@@ -86,36 +81,63 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
             print(f"[chat:rag] RAG chunks injected: {len(retrieved_chunks_list)}")
         else:
             print(f"[chat:rag] no relevant chunks found")
-
     except Exception as e:
         print(f"[chat:rag] RAG failed: {e}")
-
-    
-
 
     print(f"[chat] system prompt tail: ...{system_content[-100:]}")
     print(f"[chat] messages count: {len(messages)}")
     full_messages = [{"role": "system", "content": system_content}] + [m.model_dump() for m in messages]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            url=f"{settings.LLM_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.LLM_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": settings.LLM_MODEL,
-                "messages": full_messages,
-            },
-            timeout=30.0,
-        )
-        data = response.json()
 
-        if "choices" not in data:
-            print(f"[chat:llm] unexpected response: {data}")
-            raise RuntimeError(f"[chat:llm] LLM returned no choices: {data}")
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            async with client.stream(
+                "POST",
+                f"{settings.LLM_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.LLM_MODEL,
+                    "messages": full_messages,
+                    "stream": True,
+                },
+            ) as response:
+                if response.status_code != 200:
+                    error_body = await response.aread()
+                    logger.error(
+                        "[chat:llm] upstream returned %s: %r",
+                        response.status_code,
+                        error_body,
+                    )
+                    raise RuntimeError(f"LLM upstream returned {response.status_code}")
 
-        return data["choices"][0]["message"]["content"]
+                try:
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            yield f"{line}\n\n"
+                            if line.strip() == "data: [DONE]":
+                                return
+                except httpx.HTTPError as exc:
+                    logger.error(
+                        "[chat:llm] stream interrupted mid-flight: %s",
+                        exc,
+                        exc_info=True,
+                    )
+                    yield 'data: {"error": "stream_interrupted"}\n\n'
+                    yield "data: [DONE]\n\n"
+                    return
+    except httpx.ConnectError as exc:
+        logger.error("[chat:llm] cannot connect to LLM: %s", exc, exc_info=True)
+        raise RuntimeError("LLM connection failed") from exc
+    except httpx.TimeoutException as exc:
+        logger.error("[chat:llm] LLM request timed out: %s", exc, exc_info=True)
+        raise RuntimeError("LLM timeout") from exc
+    except httpx.HTTPError as exc:
+        logger.error("[chat:llm] LLM HTTP error: %s", exc, exc_info=True)
+        raise RuntimeError("LLM request failed") from exc
 
 
 _SUMMARY_SYSTEM_PROMPT = (

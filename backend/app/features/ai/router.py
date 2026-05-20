@@ -1,8 +1,9 @@
 from fastapi import HTTPException, APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.features.ai.service import chat, alert_summary
-from app.features.ai.schemas import ChatRequest, ChatResponse, AlertSummaryRequest, AlertSummaryResponse
+from app.features.ai.schemas import ChatRequest, AlertSummaryRequest, AlertSummaryResponse
 from app.core.auth import get_current_user
 
 
@@ -10,8 +11,10 @@ router = APIRouter()
 
 @router.post("/ai/chat", status_code=200)
 async def send_message(body: ChatRequest, user=Depends(get_current_user)):
-    reply = await chat(body.messages, body.location, body.latitude, body.longitude)
-    return ChatResponse(reply=reply)
+    return StreamingResponse(
+        chat(body.messages, body.location, body.latitude, body.longitude),
+        media_type="text/event-stream",
+    )
 
 
 @router.post("/api/v1/ai/alert-summary", response_model=AlertSummaryResponse)
