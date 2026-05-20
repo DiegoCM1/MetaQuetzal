@@ -25,10 +25,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getAuth(), (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(getAuth(), async (firebaseUser) => {
       setUser(firebaseUser)
       setLoading(false)
       if (firebaseUser) {
+        // Remove before commiting
+        if (__DEV__) {
+          try {
+            const token = await firebaseUser.getIdToken()
+            console.log('[DEV] Firebase ID token:', token)
+          } catch (e) {
+            console.warn('[DEV] Failed to grab Firebase token:', e)
+          }
+        }
         Sentry.setUser({ id: firebaseUser.uid, email: firebaseUser.email ?? undefined })
         upsertUserProfile()
       } else {
