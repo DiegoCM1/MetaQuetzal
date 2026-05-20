@@ -139,38 +139,57 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 
 
 ---
+
+## Shipped (2026-05-20)
+
+- [x] Streaming online AI responses via SSE (FastAPI passthrough + react-native-sse)
+- [x] Stop button mid-stream with proper cancellation chain
+- [x] Branding: BluEye → Bluai in all user-facing AI system prompts
+- [x] Disk space check before offline AI download (2.5GB / 1GB threshold by model)
+- [x] Graceful no-model + offline fallback (red inline error, no silent foot-gun)
+- [x] retryDownload cleans executorch partial files before retrying (fixes "Already downloading this file")
+- [x] Offline AI confirmed working in production on low-tier Android (downloads + offline inference)
+- [x] Hide non-functional Subscription screen from production
+- [x] Hide demo AlarmScreen entry in Settings
+- [x] Keyboard handling for ChatAI (KeyboardProvider + keyboard-controller)
+
+---
+
 ## Sprint 2
-1. Staging railway/migrate to GCP + Staging?
-- Native notification system (Like alarms, for both ios and android)
-- Npm to pnpm to avoid vulnerabilities
-- Fix existing package vulnerabilities spotted by dependabot in GH
-- Bluetooth mesh feature → v1.1 (anunciado como v1.1 en sprint philosophy)
-- Migrate to ChatAI  1. inverted FlashList (most common in production) How WhatsApp, iMessage, Discord, ChatGPT all do it. Trick: reverse the data so the newest message is index 0,
-  render the list inverted (it draws bottom-up). New items appear naturally at the visual bottom — no manual
-  scrolling needed. User scrolls down (which is up in the data) to see history.
-- Revenue Cat / pagos → post-launch
-- SOS
-- Limit for online AI
-- IOS launch
-- Toggle to use offline over online and viceversa, as user wishes
-- Fix mixpanel project token and make sure it is actually tracking stuff from this app.
-- On ghstack / Graphite tooling for pr management?
 
+### Infra & tooling
+- [ ] Staging railway / migrate to GCP + Staging
+- [ ] npm → pnpm for vulnerability hygiene
+- [ ] Fix existing package vulnerabilities (dependabot)
+- [ ] Fix Mixpanel project token + verify tracking works
+- [ ] ghstack / Graphite tooling for PR management?
 
-Fixes:
-- MapMarker OOM error: Te saca de la app después de un tiempo de tenerla abierta (delegado a Val — fix con `tracksViewChanges={false}` en marcadores)
+### iOS launch chain
+- [ ] iOS launch (full pipeline E2E once Apple Dev access resolved)
 
-Offline AI (Feature 2) — gaps confirmados en pruebas de descarga:
-- **Descarga no resumible**: si se interrumpe la descarga (cierre de app, kill, network drop), al reabrir empieza desde 0% (repro'd en Pixel 7 dev). Spec original ya lo pedía. Fix: investigar opciones de `react-native-executorch` + `ExpoResourceFetcher` para resume, o fallback a `expo-file-system` `DownloadResumable` con checkpointing manual.
-- **Sin opción de cancelar/eliminar descarga en progreso**: usuario inicia descarga y no tiene forma de abortarla. Necesita botón Cancel + cleanup del archivo parcial. Bloqueado por: confirmar si la API del downloader expone cancel.
-- **Dev-mode WebSocket OOM durante descarga**: crash de `okhttp WebSocketReader` (no es el de mapas). Solo en dev — es Metro forwardeando logs por WebSocket bajo presión de memoria. No afecta producción (release builds no conectan a Metro). No requiere fix, sólo confirmar en build de preview que la descarga completa.
-- **"Software caused connection abort" en Pixel dev**: socket reset durante descarga tras la presión de memoria del WebSocket OOM. Mismo patrón que el de arriba — dev-only artifact, no es bug de producción.
-- **Memory profile en release pendiente**: EAS preview build en proceso para validar memoria real en device de prod sin Metro overhead.
+### Notifications
+- [ ] Native alarm-style notifications (iOS + Android)
 
-Offline AI — confirmado funcionando en producción (low-tier Android, build de playstore):
-- Descarga completa OK.
-- Inferencia en modo avión funciona — respuesta llega aunque toma varios segundos.
-- Latencia esperada en hardware bajo: documentar como característica, no bug. Considerar mostrar "Pensando..." prolongado y/o pre-cargar el modelo en background si UX se vuelve problemática.
+### AI screen polish
+- [ ] Migrate ChatAI to inverted FlashList (eliminates auto-scroll bug class; standard chat pattern — WhatsApp, iMessage, ChatGPT)
+- [ ] 3-dots "typing" animation in place of spinner while waiting for first token
+- [ ] Cancel/abort button for offline AI download in progress
+- [ ] Resumable offline AI downloads (investigate `react-native-executorch` resume API or migrate to `expo-file-system` `DownloadResumable`)
+- [ ] Move offline AI space check to app-startup recovery path (currently only fires on first opt-in, not on auto-restart after partial download)
+- [ ] Migrate `expo-file-system` calls from legacy import to new File/Directory API (SDK 54+)
+- [ ] Toggle for user to force offline vs online AI manually
+- [ ] Token/usage limit guardrail for online AI (cost protection)
 
-Polish ChatAI (post-launch nice-to-haves):
-- Animación "typing" de 3 puntos en lugar del spinner mientras llega el primer token
+### Features
+- [ ] SOS feature
+- [ ] Bluetooth mesh (v1.1, per sprint philosophy)
+- [ ] Revenue Cat / pagos (post-launch)
+
+---
+
+## Known gaps (documented limitations)
+
+- **MapMarker OOM**: app crashes after sustained map use due to `react-native-maps` re-rendering custom marker bitmaps. Delegated to Val — fix with `tracksViewChanges={false}` on `<Marker>` components.
+- **Offline AI download non-resumable**: any interruption restarts from 0%. Annoying but recoverable. Listed in AI screen polish.
+- **Offline AI inference latency on low-tier hardware**: several seconds per response. Inherent to running a 1B/3B model on phone hardware. Document as expected behavior; consider longer "Pensando..." messaging if UX complaints arise.
+- **`BasicLLM` type narrowing**: TS doesn't see `sendMessage`/`response`/`isGenerating` on the offline LLM because the type was hand-narrowed in `ModelContext.tsx`. Runtime works fine. Cleanup: extend the type to match real executorch shape.
