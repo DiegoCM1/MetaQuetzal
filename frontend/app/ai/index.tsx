@@ -6,9 +6,9 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { FlashList } from "@shopify/flash-list";
 import { colors, fonts } from "../../utils/theme";
 import { StatusBar } from "expo-status-bar";
@@ -57,7 +57,7 @@ export default function ChatAIScreen() {
   return (
     <SafeAreaView
       className="flex-1 bg-transparent"
-      edges={["top", "left", "right", "bottom"]}
+      edges={["top", "left", "right"]}
     >
       <StatusBar style="light" translucent={false} />
 

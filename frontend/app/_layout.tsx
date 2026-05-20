@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { LinearGradient } from "expo-linear-gradient";
 import { gradients } from "../utils/theme";
 import React, { useEffect } from "react";
@@ -242,6 +243,7 @@ export default Sentry.wrap(function Layout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" translucent={false} />
+      <KeyboardProvider>
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
@@ -309,6 +311,7 @@ export default Sentry.wrap(function Layout() {
           </SafeAreaProvider>
         </ThemeProvider>
       </DaltonicModeProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 });
