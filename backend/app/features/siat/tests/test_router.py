@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, patch
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 from starlette.testclient import TestClient
 from app.main import app
 from datetime import datetime, timezone
@@ -235,3 +236,107 @@ def test_affected_users_invalid_radius():
         headers=API_KEY_HEADERS,
     )
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# run_cycle() respects notification_preferences — service-level tests
+# ---------------------------------------------------------------------------
+
+_SVC = "app.features.siat.service"
+
+_FAKE_CYCLONE = {
+    "name": "ALBERTO",
+    "status": "HU",
+    "lat": 22.0,
+    "lon": -97.0,
+    "wind_kmh": 150.0,
+    "movement_speed_kmh": 20.0,
+}
+
+_FAKE_USER = {"id": 1, "lat": 20.5, "lon": -98.0}
+
+_ASSESSMENT_LEVEL_2 = {
+    "siat_level": 2,
+    "siat_color": "VERDE",
+    "distance_km": 200.0,
+    "eta_hours": 10.0,
+    "reason": "test",
+    "out_of_range": False,
+}
+
+_ASSESSMENT_LEVEL_3 = {
+    "siat_level": 3,
+    "siat_color": "AMARILLO",
+    "distance_km": 200.0,
+    "eta_hours": 5.0,
+    "reason": "test",
+    "out_of_range": False,
+}
+
+
+def _base_run_cycle_patches(assessment, prefs, push_return=0):
+    """Return a list of (target, kwargs) patch specs for run_cycle service tests."""
+    return [
+        patch(f"{_SVC}.fetch_active_cyclones", new_callable=AsyncMock, return_value=[_FAKE_CYCLONE]),
+        patch(f"{_SVC}._get_users_with_location", new_callable=AsyncMock, return_value=[_FAKE_USER]),
+        patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, return_value=99),
+        patch(f"{_SVC}.evaluate_user", return_value=assessment),
+        patch(f"{_SVC}._get_user_state", new_callable=AsyncMock, return_value={"current_level": 1}),
+        patch(f"{_SVC}._save_assessment", new_callable=AsyncMock, return_value=None),
+        patch(f"{_SVC}._upsert_user_state", new_callable=AsyncMock, return_value=None),
+        patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=prefs),
+        patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}),
+        patch(f"{_SVC}._push_per_user", new_callable=AsyncMock, return_value=push_return),
+        patch(f"{_SVC}._mark_notified", new_callable=AsyncMock, return_value=None),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_cycle_respects_siat_disabled():
+    """User with siat_enabled=False must not receive push even on valid escalation."""
+    from app.features.siat.service import run_cycle
+
+    prefs = {"siat_enabled": False, "min_siat_level": 2, "map_events_enabled": True}
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_3, prefs, push_return=0)
+    with patches[0], patches[1], patches[2], patches[3], patches[4], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10]:
+        result = await run_cycle(db)
+
+    assert result["notifications_sent"] == 0
+
+
+@pytest.mark.asyncio
+async def test_run_cycle_respects_min_siat_level():
+    """User with min_siat_level=3 must not receive push when new_level=2 (Verde)."""
+    from app.features.siat.service import run_cycle
+
+    prefs = {"siat_enabled": True, "min_siat_level": 3, "map_events_enabled": True}
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_2, prefs, push_return=0)
+    with patches[0], patches[1], patches[2], patches[3], patches[4], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10]:
+        result = await run_cycle(db)
+
+    assert result["notifications_sent"] == 0
+
+
+@pytest.mark.asyncio
+async def test_run_cycle_sends_push_when_prefs_allow():
+    """User with defaults (siat_enabled=True, min_siat_level=2) must receive push on level-2 escalation."""
+    from app.features.siat.service import run_cycle
+
+    prefs = {"siat_enabled": True, "min_siat_level": 2, "map_events_enabled": True}
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_2, prefs, push_return=1)
+    with patches[0], patches[1], patches[2], patches[3], patches[4], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10]:
+        result = await run_cycle(db)
+
+    assert result["notifications_sent"] == 1

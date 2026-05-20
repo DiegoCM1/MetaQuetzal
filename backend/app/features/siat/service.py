@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from app.features.siat.evaluator import evaluate_user, haversine_km
 from app.features.siat.providers.nhc import fetch_active_cyclones
 from app.features.notifications.service import get_tokens_for_users
+from app.features.notification_preferences.service import get_preferences
 
 logger = logging.getLogger(__name__)
 
@@ -354,12 +355,19 @@ async def run_cycle(db: AsyncSession) -> dict:
                 await _upsert_user_state(db, user["id"], new_level, assessment["siat_color"], cyclone_id)
 
                 if new_level >= _NOTIFY_MIN_LEVEL and (old_level is None or new_level > old_level):
-                    prev = escalations.get(user["id"])
-                    if prev is None or new_level > prev["siat_level"]:
-                        escalations[user["id"]] = assessment
-                        logger.info(
-                            "Escalation queued: user_id=%d %s→%s (%s)",
-                            user["id"], old_level, new_level, assessment["siat_color"],
+                    prefs = await get_preferences(db, user["id"])
+                    if prefs["siat_enabled"] and new_level >= prefs["min_siat_level"]:
+                        prev = escalations.get(user["id"])
+                        if prev is None or new_level > prev["siat_level"]:
+                            escalations[user["id"]] = assessment
+                            logger.info(
+                                "Escalation queued: user_id=%d %s→%s (%s)",
+                                user["id"], old_level, new_level, assessment["siat_color"],
+                            )
+                    else:
+                        logger.debug(
+                            "user_id=%d: push filtered by prefs (siat_enabled=%s, min_siat_level=%d, got=%d)",
+                            user["id"], prefs["siat_enabled"], prefs["min_siat_level"], new_level,
                         )
 
                 all_assessments.append({**assessment, "user_id": user["id"]})
