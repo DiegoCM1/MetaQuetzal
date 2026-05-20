@@ -1,6 +1,11 @@
 import httpx
+import json
+import logging
 from app.core.config import settings
 from app.features.ai.rag import retrieve
+from app.features.alerts.service import get_alert_by_id
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are BluEye, an AI assistant specialized in hurricane preparedness, response, and recovery for residents of Mexico.
 
@@ -111,3 +116,54 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
             raise RuntimeError(f"[chat:llm] LLM returned no choices: {data}")
 
         return data["choices"][0]["message"]["content"]
+
+
+_SUMMARY_SYSTEM_PROMPT = (
+    "Eres un asistente de alertas de emergencia para México. "
+    "Dado los datos de una alerta, genera un resumen conciso y útil para el ciudadano afectado. "
+    "Reglas estrictas: máximo 3 oraciones; español claro y directo; sin jerga técnica; "
+    "sin emojis; no repitas el título textualmente; no inventes datos que no estén en los datos proporcionados."
+)
+
+_SUMMARY_MAX_CHARS = 600
+
+
+async def alert_summary(db, alert_id: str) -> str:
+    alert = await get_alert_by_id(db, alert_id)
+    if alert is None:
+        raise ValueError("alert_not_found")
+
+    payload = json.dumps({
+        "titulo": alert["title"],
+        "descripcion": alert.get("short", ""),
+        "nivel": alert["level"],
+        "factores": alert.get("factors", []),
+        "recomendaciones": alert.get("recommendations", []),
+    }, ensure_ascii=False)
+
+    messages = [
+        {"role": "system", "content": _SUMMARY_SYSTEM_PROMPT},
+        {"role": "user",   "content": f"Genera un resumen de esta alerta:\n{payload}"},
+    ]
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url=f"{settings.LLM_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": settings.LLM_MODEL, "messages": messages},
+                timeout=30.0,
+            )
+            data = response.json()
+            if "choices" not in data:
+                raise RuntimeError(f"LLM returned no choices: {data}")
+            summary = data["choices"][0]["message"]["content"]
+            return summary[:_SUMMARY_MAX_CHARS]
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        logger.error("alert_summary LLM call failed: %s", exc, exc_info=True)
+        raise RuntimeError("llm_unavailable")
