@@ -145,6 +145,9 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 - Npm to pnpm to avoid vulnerabilities
 - Fix existing package vulnerabilities spotted by dependabot in GH
 - Bluetooth mesh feature → v1.1 (anunciado como v1.1 en sprint philosophy)
+- Migrate to ChatAI  1. inverted FlashList (most common in production) How WhatsApp, iMessage, Discord, ChatGPT all do it. Trick: reverse the data so the newest message is index 0,
+  render the list inverted (it draws bottom-up). New items appear naturally at the visual bottom — no manual
+  scrolling needed. User scrolls down (which is up in the data) to see history.
 - Revenue Cat / pagos → post-launch
 - SOS
 - Limit for online AI
@@ -152,3 +155,7 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 - Toggle to use offline over online and viceversa, as user wishes
 - Fix mixpanel project token and make sure it is actually tracking stuff from this app.
 - On ghstack / Graphite tooling for pr management?
+
+
+Fixes:
+- MapMarker OOM error: Te saca de la app después de un tiempo de tenerla abierta
