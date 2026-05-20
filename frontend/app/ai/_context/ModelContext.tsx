@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as Network from 'expo-network'
 import * as Device from 'expo-device'
+import * as FileSystem from 'expo-file-system'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Platform } from 'react-native'
+import { Alert, Platform } from 'react-native'
 
 export const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 
@@ -17,12 +18,14 @@ export const MODEL = totalRAM >= 6 * GB
       modelSource: `${R2}/llama32_3b_instruct_spinquant.pte`,
       tokenizerSource: `${R2}/tokenizer.json`,
       tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+      minFreeBytes: 2.5 * GB,
     }
   : {
       modelName: 'llama-3.2-1b-spinquant' as const,
       modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
       tokenizerSource: `${R2}/tokenizer.json`,
       tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+      minFreeBytes: 1 * GB,
     }
 
 type ModelMode = 'online' | 'offline' | null
@@ -123,15 +126,50 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   }, [llm.error])
 
   const optIn = async () => {
+    try {
+      const freeBytes = await FileSystem.getFreeDiskStorageAsync()
+      if (freeBytes < MODEL.minFreeBytes) {
+        const freeGB = (freeBytes / GB).toFixed(2)
+        const requiredGB = (MODEL.minFreeBytes / GB).toFixed(1)
+        console.log(`[Model] opt_in blocked: ${freeGB} GB free, need ${requiredGB} GB`)
+        Alert.alert(
+          'Espacio insuficiente',
+          `Para descargar el modelo IA necesitas al menos ${requiredGB} GB libres. Tienes ${freeGB} GB disponibles. Libera espacio en tu dispositivo e intenta de nuevo.`,
+          [{ text: 'OK' }]
+        )
+        return
+      }
+    } catch (e) {
+      console.warn('[Model] could not check free disk space, proceeding anyway:', e)
+    }
+
     await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'true')
     setModelOptedIn(true)
     console.log('[Model] opt_in -> true')
   }
 
-  const retryDownload = () => {
+  const retryDownload = async () => {
+    console.log('[Model] retrying download — cleaning partial files first')
     setModelOptedIn(false)
-    setTimeout(() => setModelOptedIn(true), 100)
-    console.log('[Model] retrying download')
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    if (Platform.OS !== 'web') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { ExpoResourceFetcher } = require('react-native-executorch-expo-resource-fetcher')
+        await ExpoResourceFetcher.deleteResources(
+          MODEL.modelSource,
+          MODEL.tokenizerSource,
+          MODEL.tokenizerConfigSource,
+        )
+        console.log('[Model] retry: cleaned partial files')
+      } catch (e) {
+        console.warn('[Model] retry: delete error (files may not exist):', e)
+      }
+    }
+
+    setModelOptedIn(true)
+    console.log('[Model] retry: restarted download')
   }
 
   const optOut = async () => {
