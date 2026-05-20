@@ -219,7 +219,7 @@ export default function Layout() {
                       <Stack.Screen name="educational" options={{ headerShown: false }} />
                       <Stack.Screen name="subscription" options={{ headerShown: false }} />
                     </Stack>
-                    <Toast />
+                    <Toast visibilityTime={3000} autoHide />
                   </LinearGradient>
                 </ModelProvider>
               </AuthGate>

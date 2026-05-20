@@ -19,6 +19,10 @@ class MapEventUpdate(BaseModel):
     description: str = Field(min_length=1, max_length=2000)
 
 
+class MapEventVoteCreate(BaseModel):
+    value: Literal[1, -1]
+
+
 class MapEventResponse(BaseModel):
     id: UUID
     user_id: int | None
@@ -28,3 +32,7 @@ class MapEventResponse(BaseModel):
     lon: float
     created_at: datetime
     updated_at: datetime
+    upvotes: int = 0
+    downvotes: int = 0
+    user_vote: int | None = None
+    is_owner: bool = False

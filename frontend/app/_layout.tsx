@@ -261,7 +261,7 @@ export default function Layout() {
                       options={{ headerShown: false }}
                     />
                   </Stack>
-                  <Toast />
+                  <Toast visibilityTime={3000} autoHide />
                   </LinearGradient>
                 </ModelProvider>
               </AuthGate>

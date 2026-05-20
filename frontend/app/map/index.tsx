@@ -14,6 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
@@ -26,6 +27,7 @@ import {
   REPORTING_DISTANCE_METERS,
   syncCachedZones,
   updateZone,
+  voteZone,
 } from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, ZONE_TYPES } from "./config";
@@ -34,9 +36,15 @@ import type { Zone, ZoneType } from "./types";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
-type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
+type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
-const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
+const ZoneMarker = React.memo(function ZoneMarker({
+  zone,
+  onPress,
+}: {
+  zone: Zone;
+  onPress: () => void;
+}) {
   return (
     <Marker
       coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
@@ -45,7 +53,10 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
     >
       <Image
         source={ZONE_TYPES[zone.type].image}
-        style={{ width: zone.type === 'ayuda' ? 44 : 38, height: zone.type === 'ayuda' ? 44 : 38 }}
+        style={{
+          width: zone.type === "ayuda" ? 44 : 38,
+          height: zone.type === "ayuda" ? 44 : 38,
+        }}
         resizeMode="contain"
       />
     </Marker>
@@ -60,11 +71,17 @@ export default function WeatherMapNativewind() {
   const [showEvents, setShowEvents] = useState(true);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
   const mapRef = useRef(null);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   const [zones, setZones] = useState<Zone[]>([]);
   const [isAddingMode, setIsAddingMode] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [pendingLocation, setPendingLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [selectedType, setSelectedType] = useState<ZoneType | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -73,6 +90,26 @@ export default function WeatherMapNativewind() {
   const [editDescription, setEditDescription] = useState("");
   const [zoneDescription, setZoneDescription] = useState("");
   const [descriptionError, setDescriptionError] = useState(false);
+
+  const refreshZones = React.useCallback(
+    async (location?: { latitude: number; longitude: number } | null) => {
+      const targetLocation = location ?? userLocation;
+      if (!targetLocation) return;
+
+      try {
+        const loaded = await loadZones({
+          latitude: targetLocation.latitude,
+          longitude: targetLocation.longitude,
+          radiusKm: 100,
+        });
+        const valid = loaded.filter((z: Zone) => z.type && ZONE_TYPES[z.type]);
+        setZones(valid);
+      } catch (error) {
+        console.error("[Map] Failed to load zones:", error);
+      }
+    },
+    [userLocation],
+  );
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -86,11 +123,16 @@ export default function WeatherMapNativewind() {
         }
 
         const timeoutPromise = new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('Location timeout')), 15000);
+          timeoutId = setTimeout(
+            () => reject(new Error("Location timeout")),
+            15000,
+          );
         });
 
         const { coords } = await Promise.race([
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          }),
           timeoutPromise,
         ]);
 
@@ -104,56 +146,56 @@ export default function WeatherMapNativewind() {
         };
 
         setRegion(userRegion);
-        setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
+        setUserLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
         mapRef.current?.animateToRegion(userRegion, 1000);
+        await refreshZones({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
       } catch (error) {
-        console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
+        console.warn(
+          "⚠️ Could not get location (timeout or error), using default region:",
+          error.message,
+        );
       }
     })();
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, []);
+  }, [refreshZones]);
 
-  useEffect(() => {
-    if (!userLocation) return;
-
-    (async () => {
-      try {
-        const loaded = await loadZones({
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          radiusKm: 100,
-        });
-        const valid = loaded.filter((z: Zone) => z.type && ZONE_TYPES[z.type]);
-        setZones(valid);
-      } catch (error) {
-        console.error('[Map] Failed to load zones:', error);
-      }
-    })();
-  }, [userLocation]);
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshZones();
+    }, [refreshZones]),
+  );
 
   const handleToggleAddingMode = () => {
-    setIsAddingMode(prev => !prev);
+    setIsAddingMode((prev) => !prev);
   };
 
-  const handleMapPress = (e: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
+  const handleMapPress = (e: {
+    nativeEvent: { coordinate: { latitude: number; longitude: number } };
+  }) => {
     if (isAddingMode) {
       const { latitude, longitude } = e.nativeEvent.coordinate;
       if (!userLocation) {
         Toast.show({
-          type: 'error',
-          text1: 'Ubicacion requerida',
-          text2: 'Activa tu ubicacion para reportar una zona',
+          type: "error",
+          text1: "Ubicacion requerida",
+          text2: "Activa tu ubicacion para reportar una zona",
         });
         setIsAddingMode(false);
         return;
       }
       if (!canReportFromLocation({ latitude, longitude }, userLocation)) {
         Toast.show({
-          type: 'error',
-          text1: 'Reporte demasiado lejos',
+          type: "error",
+          text1: "Reporte demasiado lejos",
           text2: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
         });
         setIsAddingMode(false);
@@ -168,60 +210,111 @@ export default function WeatherMapNativewind() {
   const handleCirclePress = (zone: Zone) => {
     setSelectedZone(zone);
     setEditDescription(zone.description);
+    setIsEditing(false);
     setShowDetailModal(true);
   };
 
   const handleSaveEdit = () => {
     if (!selectedZone || !editDescription.trim()) return;
-    const updated: Zone = { ...selectedZone, description: editDescription.trim() };
-    setZones(prev => prev.map(z => z.id === updated.id ? updated : z));
+    const updated: Zone = {
+      ...selectedZone,
+      description: editDescription.trim(),
+    };
+    setZones((prev) => prev.map((z) => (z.id === updated.id ? updated : z)));
     setSelectedZone(updated);
     setIsEditing(false);
-    updateZone(updated).then((savedZone) => {
-      setZones(prev => {
-        const next = prev.map(z => z.id === savedZone.id ? savedZone : z);
-        syncCachedZones(next);
-        return next;
+    updateZone(updated)
+      .then((savedZone) => {
+        setZones((prev) => {
+          const next = prev.map((z) => (z.id === savedZone.id ? savedZone : z));
+          syncCachedZones(next);
+          return next;
+        });
+        setSelectedZone(savedZone);
+      })
+      .catch((error) => {
+        console.error("[Map] Failed to update zone:", error);
+        setZones((prev) =>
+          prev.map((z) => (z.id === selectedZone.id ? selectedZone : z)),
+        );
+        setSelectedZone(selectedZone);
+        Toast.show({
+          type: "error",
+          text1: "Error al editar",
+          text2: "No se pudo guardar el cambio",
+        });
       });
-      setSelectedZone(savedZone);
-    }).catch((error) => {
-      console.error('[Map] Failed to update zone:', error);
-      setZones(prev => prev.map(z => z.id === selectedZone.id ? selectedZone : z));
-      setSelectedZone(selectedZone);
-      Toast.show({ type: 'error', text1: 'Error al editar', text2: 'No se pudo guardar el cambio' });
-    });
   };
 
   const handleDeleteZone = () => {
-    if (!selectedZone) return;
-    Alert.alert(
-      'Eliminar zona',
-      '¿Seguro que quieres eliminar este reporte?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            const deleted = selectedZone;
-            setZones(prev => prev.filter(z => z.id !== deleted.id));
-            setShowDetailModal(false);
-            setIsEditing(false);
-            deleteZone(deleted.id).then(() => {
-              setZones(prev => {
-                const next = prev.filter(z => z.id !== deleted.id);
+    if (!selectedZone?.isOwner) return;
+    Alert.alert("Eliminar zona", "¿Seguro que quieres eliminar este reporte?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: () => {
+          const deleted = selectedZone;
+          setZones((prev) => prev.filter((z) => z.id !== deleted.id));
+          setShowDetailModal(false);
+          setIsEditing(false);
+          deleteZone(deleted.id)
+            .then(() => {
+              setZones((prev) => {
+                const next = prev.filter((z) => z.id !== deleted.id);
                 syncCachedZones(next);
                 return next;
               });
-            }).catch((error) => {
-              console.error('[Map] Failed to delete zone:', error);
-              setZones(prev => [...prev, deleted]);
-              Toast.show({ type: 'error', text1: 'Error al eliminar', text2: 'No se pudo eliminar la zona' });
+            })
+            .catch((error) => {
+              console.error("[Map] Failed to delete zone:", error);
+              setZones((prev) => [...prev, deleted]);
+              Toast.show({
+                type: "error",
+                text1: "Error al eliminar",
+                text2: "No se pudo eliminar la zona",
+              });
             });
-          },
         },
-      ]
+      },
+    ]);
+  };
+
+  const handleVoteZone = (value: 1 | -1) => {
+    if (!selectedZone) return;
+    if (selectedZone.isOwner || selectedZone.userVote) return;
+
+    const previousZone = selectedZone;
+    const updatedZone: Zone = {
+      ...selectedZone,
+      userVote: value,
+      upvotes: selectedZone.upvotes + (value === 1 ? 1 : 0),
+      downvotes: selectedZone.downvotes + (value === -1 ? 1 : 0),
+    };
+
+    setSelectedZone(updatedZone);
+    setZones((prev) =>
+      prev.map((zone) => (zone.id === updatedZone.id ? updatedZone : zone)),
     );
+
+    voteZone(updatedZone.id, value)
+      .then(() => refreshZones())
+      .catch((error) => {
+        console.error("[Map] Failed to vote zone:", error);
+        setSelectedZone(previousZone);
+        setZones((prev) =>
+          prev.map((zone) =>
+            zone.id === previousZone.id ? previousZone : zone,
+          ),
+        );
+        Toast.show({
+          type: "error",
+          text1: "Error al votar",
+          text2: "No se pudo registrar tu voto",
+          visibilityTime: 3000,
+          autoHide: true,
+        });
+      });
   };
 
   const handleSaveZone = () => {
@@ -231,13 +324,17 @@ export default function WeatherMapNativewind() {
       return;
     }
     if (!pendingLocation || !userLocation) {
-      Toast.show({ type: 'error', text1: 'Ubicacion requerida', text2: 'Necesitamos tu ubicacion para validar el reporte' });
+      Toast.show({
+        type: "error",
+        text1: "Ubicacion requerida",
+        text2: "Necesitamos tu ubicacion para validar el reporte",
+      });
       return;
     }
     if (!canReportFromLocation(pendingLocation, userLocation)) {
       Toast.show({
-        type: 'error',
-        text1: 'Reporte demasiado lejos',
+        type: "error",
+        text1: "Reporte demasiado lejos",
         text2: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
       });
       return;
@@ -251,43 +348,83 @@ export default function WeatherMapNativewind() {
       timestamp: new Date().toISOString(),
       radius: 500,
       type: selectedType,
+      userId: null,
+      upvotes: 0,
+      downvotes: 0,
+      userVote: null,
+      isOwner: true,
     };
 
-    setZones(prev => [...prev, newZone]);
+    setZones((prev) => [...prev, newZone]);
     setShowAddModal(false);
     setPendingLocation(null);
-    setZoneDescription('');
+    setZoneDescription("");
     setSelectedType(null);
     setDescriptionError(false);
-    Toast.show({ type: 'success', text1: 'Zona reportada', text2: 'Gracias por tu reporte' });
-
-    createZone(newZone).then((savedZone) => {
-      setZones(prev => {
-        const next = prev.map(z => z.id === newZone.id ? savedZone : z);
-        syncCachedZones(next);
-        return next;
-      });
-    }).catch((error) => {
-      console.error('[Map] Failed to save zone:', error);
-      setZones(prev => prev.filter(z => z.id !== newZone.id));
-      Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
+    Toast.show({
+      type: "success",
+      text1: "Zona reportada",
+      text2: "Gracias por tu reporte",
     });
+
+    createZone(newZone)
+      .then((savedZone) => {
+        setZones((prev) => {
+          const next = prev.map((z) => (z.id === newZone.id ? savedZone : z));
+          syncCachedZones(next);
+          return next;
+        });
+      })
+      .catch((error) => {
+        console.error("[Map] Failed to save zone:", error);
+        setZones((prev) => prev.filter((z) => z.id !== newZone.id));
+        Toast.show({
+          type: "error",
+          text1: "Error al guardar",
+          text2: "No se pudo guardar la zona",
+        });
+      });
   };
 
   const handleCancelAdd = () => {
     setShowAddModal(false);
     setPendingLocation(null);
-    setZoneDescription('');
+    setZoneDescription("");
     setSelectedType(null);
     setDescriptionError(false);
   };
 
-  const layers: Array<{ label: string; state: boolean; setter: (v: boolean) => void; icon: MCIName }> = [
-    { label: "Viento", state: showWind, setter: setShowWind, icon: "weather-windy" },
-    { label: "Precipitación", state: showPrecip, setter: setShowPrecip, icon: "weather-rainy" },
-    { label: "Nubes", state: showClouds, setter: setShowClouds, icon: "weather-cloudy" },
-    { label: "Eventos", state: showEvents, setter: setShowEvents, icon: "map-marker-multiple-outline" },
-  ]
+  const layers: {
+    label: string;
+    state: boolean;
+    setter: (v: boolean) => void;
+    icon: MCIName;
+  }[] = [
+    {
+      label: "Viento",
+      state: showWind,
+      setter: setShowWind,
+      icon: "weather-windy",
+    },
+    {
+      label: "Precipitación",
+      state: showPrecip,
+      setter: setShowPrecip,
+      icon: "weather-rainy",
+    },
+    {
+      label: "Nubes",
+      state: showClouds,
+      setter: setShowClouds,
+      icon: "weather-cloudy",
+    },
+    {
+      label: "Eventos",
+      state: showEvents,
+      setter: setShowEvents,
+      icon: "map-marker-multiple-outline",
+    },
+  ];
 
   return (
     <View className="flex-1">
@@ -333,16 +470,21 @@ export default function WeatherMapNativewind() {
           />
         )}
 
-        {showEvents && zones.map((zone) => (
-          <ZoneMarker key={zone.id} zone={zone} onPress={() => handleCirclePress(zone)} />
-        ))}
+        {showEvents &&
+          zones.map((zone) => (
+            <ZoneMarker
+              key={zone.id}
+              zone={zone}
+              onPress={() => handleCirclePress(zone)}
+            />
+          ))}
       </MapView>
 
       {/* Layer selector */}
       <Pressable
         onPress={() => setLayerModalVisible(true)}
         className="absolute top-12 right-4 p-3 rounded-full"
-        style={{ backgroundColor: 'rgba(8, 15, 30, 0.85)' }}
+        style={{ backgroundColor: "rgba(8, 15, 30, 0.85)" }}
       >
         <MaterialCommunityIcons name="layers-outline" size={24} color="white" />
       </Pressable>
@@ -355,7 +497,10 @@ export default function WeatherMapNativewind() {
         onRequestClose={() => setLayerModalVisible(false)}
       >
         <View className="flex-1 justify-end bg-black/40">
-          <View className="p-6 rounded-t-2xl" style={{ backgroundColor: colors.brandBlack }}>
+          <View
+            className="p-6 rounded-t-2xl"
+            style={{ backgroundColor: colors.brandBlack }}
+          >
             <Text className="text-lg font-poppins-semibold mb-4 text-center text-white">
               Capas del mapa
             </Text>
@@ -366,12 +511,17 @@ export default function WeatherMapNativewind() {
               >
                 <View className="flex-row items-center">
                   <MaterialCommunityIcons name={icon} size={20} color="white" />
-                  <Text className="ml-2 text-base font-poppins text-white">{label}</Text>
+                  <Text className="ml-2 text-base font-poppins text-white">
+                    {label}
+                  </Text>
                 </View>
                 <Switch
                   value={state}
                   onValueChange={setter}
-                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: colors.brandBlue }}
+                  trackColor={{
+                    false: "rgba(255,255,255,0.15)",
+                    true: colors.brandBlue,
+                  }}
                   thumbColor="white"
                 />
               </View>
@@ -391,15 +541,17 @@ export default function WeatherMapNativewind() {
       <TouchableOpacity
         onPress={handleToggleAddingMode}
         style={{
-          position: 'absolute',
+          position: "absolute",
           bottom: 112,
           right: 16,
           width: 48,
           height: 48,
           borderRadius: 14,
-          backgroundColor: isAddingMode ? colors.brandBlue : 'rgba(8, 15, 30, 0.85)',
-          alignItems: 'center',
-          justifyContent: 'center',
+          backgroundColor: isAddingMode
+            ? colors.brandBlue
+            : "rgba(8, 15, 30, 0.85)",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <MaterialCommunityIcons
@@ -413,18 +565,22 @@ export default function WeatherMapNativewind() {
       <Pressable
         onPress={() => mapRef.current?.animateToRegion(region, 1000)}
         style={{
-          position: 'absolute',
+          position: "absolute",
           bottom: 56,
           right: 16,
           width: 48,
           height: 48,
           borderRadius: 14,
-          backgroundColor: 'rgba(8, 15, 30, 0.85)',
-          alignItems: 'center',
-          justifyContent: 'center',
+          backgroundColor: "rgba(8, 15, 30, 0.85)",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <MaterialCommunityIcons name="navigation-variant" size={24} color="#FFFFFF" />
+        <MaterialCommunityIcons
+          name="navigation-variant"
+          size={24}
+          color="#FFFFFF"
+        />
       </Pressable>
 
       {/* Modal: Report Zone */}
@@ -435,88 +591,148 @@ export default function WeatherMapNativewind() {
         onRequestClose={handleCancelAdd}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
         >
-        <View className="flex-1 justify-end bg-black/40">
-          <View className="rounded-t-2xl p-6" style={{ backgroundColor: colors.brandBlack }}>
-            {selectedType === null ? (
-              <>
-                <Text className="text-xl font-poppins-semibold mb-2 text-center text-white">¿Qué tipo de evento?</Text>
-                <Text className="text-sm font-poppins text-white/50 mb-5 text-center">Selecciona la categoría del reporte</Text>
-                <View className="flex-row flex-wrap gap-3 mb-4">
-                  {(Object.entries(ZONE_TYPES) as [ZoneType, typeof ZONE_TYPES[ZoneType]][]).map(([key, cfg]) => (
-                    <TouchableOpacity
-                      key={key}
-                      onPress={() => setSelectedType(key)}
-                      className="flex-1 items-center py-4 rounded-2xl"
-                      style={{ backgroundColor: cfg.color, minWidth: '40%' }}
-                    >
-                      <Image source={cfg.image} style={{ width: 28, height: 28 }} resizeMode="contain" />
-                      <Text className="text-white font-poppins-semibold mt-2">{cfg.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity onPress={handleCancelAdd} className="py-3 items-center">
-                  <Text className="font-poppins text-white/50">Cancelar</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <TouchableOpacity onPress={() => setSelectedType(null)} className="flex-row items-center mb-4">
-                  <MaterialCommunityIcons name="arrow-left" size={20} color="rgba(255,255,255,0.6)" />
-                  <Text className="font-poppins text-white/60 ml-1">Cambiar tipo</Text>
-                </TouchableOpacity>
-
-                <View className="flex-row items-center mb-4 p-3 rounded-xl" style={{ backgroundColor: ZONE_TYPES[selectedType].color + '22' }}>
-                  <Image source={ZONE_TYPES[selectedType].image} style={{ width: 24, height: 24 }} resizeMode="contain" />
-                  <Text className="ml-2 font-poppins-semibold" style={{ color: ZONE_TYPES[selectedType].color }}>
-                    {ZONE_TYPES[selectedType].label}
+          <View className="flex-1 justify-end bg-black/40">
+            <View
+              className="rounded-t-2xl p-6"
+              style={{ backgroundColor: colors.brandBlack }}
+            >
+              {selectedType === null ? (
+                <>
+                  <Text className="text-xl font-poppins-semibold mb-2 text-center text-white">
+                    ¿Qué tipo de evento?
                   </Text>
-                </View>
-
-                <Text className="text-sm font-poppins text-white/60 mb-2">Describe qué está sucediendo:</Text>
-                <TextInput
-                  className="rounded-lg p-3 mb-1 font-poppins"
-                  style={{
-                    minHeight: 100,
-                    color: 'white',
-                    borderWidth: 2,
-                    borderColor: descriptionError ? colors.brandRed : 'rgba(255,255,255,0.2)',
-                    fontFamily: fonts.poppins,
-                  }}
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  placeholder="Ej: Inundación severa, árboles caídos, camino bloqueado..."
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  value={zoneDescription}
-                  onChangeText={(t) => { setZoneDescription(t); if (descriptionError) setDescriptionError(false); }}
-                />
-                {descriptionError && (
-                  <Text className="text-brand-red font-poppins text-xs mb-3">Por favor describe qué sucede en esta zona</Text>
-                )}
-
-                <View className="flex-row gap-3">
+                  <Text className="text-sm font-poppins text-white/50 mb-5 text-center">
+                    Selecciona la categoría del reporte
+                  </Text>
+                  <View className="flex-row flex-wrap gap-3 mb-4">
+                    {(
+                      Object.entries(ZONE_TYPES) as [
+                        ZoneType,
+                        (typeof ZONE_TYPES)[ZoneType],
+                      ][]
+                    ).map(([key, cfg]) => (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => setSelectedType(key)}
+                        className="flex-1 items-center py-4 rounded-2xl"
+                        style={{ backgroundColor: cfg.color, minWidth: "40%" }}
+                      >
+                        <Image
+                          source={cfg.image}
+                          style={{ width: 28, height: 28 }}
+                          resizeMode="contain"
+                        />
+                        <Text className="text-white font-poppins-semibold mt-2">
+                          {cfg.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                   <TouchableOpacity
                     onPress={handleCancelAdd}
-                    className="flex-1 py-3 rounded-lg items-center"
-                    style={{ borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' }}
+                    className="py-3 items-center"
                   >
-                    <Text className="font-poppins-semibold text-white/60">Cancelar</Text>
+                    <Text className="font-poppins text-white/50">Cancelar</Text>
                   </TouchableOpacity>
+                </>
+              ) : (
+                <>
                   <TouchableOpacity
-                    onPress={handleSaveZone}
-                    className="flex-1 py-3 rounded-lg items-center"
-                    style={{ backgroundColor: ZONE_TYPES[selectedType].color }}
+                    onPress={() => setSelectedType(null)}
+                    className="flex-row items-center mb-4"
                   >
-                    <Text className="font-poppins-semibold text-white">Reportar</Text>
+                    <MaterialCommunityIcons
+                      name="arrow-left"
+                      size={20}
+                      color="rgba(255,255,255,0.6)"
+                    />
+                    <Text className="font-poppins text-white/60 ml-1">
+                      Cambiar tipo
+                    </Text>
                   </TouchableOpacity>
-                </View>
-              </>
-            )}
+
+                  <View
+                    className="flex-row items-center mb-4 p-3 rounded-xl"
+                    style={{
+                      backgroundColor: ZONE_TYPES[selectedType].color + "22",
+                    }}
+                  >
+                    <Image
+                      source={ZONE_TYPES[selectedType].image}
+                      style={{ width: 24, height: 24 }}
+                      resizeMode="contain"
+                    />
+                    <Text
+                      className="ml-2 font-poppins-semibold"
+                      style={{ color: ZONE_TYPES[selectedType].color }}
+                    >
+                      {ZONE_TYPES[selectedType].label}
+                    </Text>
+                  </View>
+
+                  <Text className="text-sm font-poppins text-white/60 mb-2">
+                    Describe qué está sucediendo:
+                  </Text>
+                  <TextInput
+                    className="rounded-lg p-3 mb-1 font-poppins"
+                    style={{
+                      minHeight: 100,
+                      color: "white",
+                      borderWidth: 2,
+                      borderColor: descriptionError
+                        ? colors.brandRed
+                        : "rgba(255,255,255,0.2)",
+                      fontFamily: fonts.poppins,
+                    }}
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    placeholder="Ej: Inundación severa, árboles caídos, camino bloqueado..."
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    value={zoneDescription}
+                    onChangeText={(t) => {
+                      setZoneDescription(t);
+                      if (descriptionError) setDescriptionError(false);
+                    }}
+                  />
+                  {descriptionError && (
+                    <Text className="text-brand-red font-poppins text-xs mb-3">
+                      Por favor describe qué sucede en esta zona
+                    </Text>
+                  )}
+
+                  <View className="flex-row gap-3">
+                    <TouchableOpacity
+                      onPress={handleCancelAdd}
+                      className="flex-1 py-3 rounded-lg items-center"
+                      style={{
+                        borderWidth: 2,
+                        borderColor: "rgba(255,255,255,0.2)",
+                      }}
+                    >
+                      <Text className="font-poppins-semibold text-white/60">
+                        Cancelar
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleSaveZone}
+                      className="flex-1 py-3 rounded-lg items-center"
+                      style={{
+                        backgroundColor: ZONE_TYPES[selectedType].color,
+                      }}
+                    >
+                      <Text className="font-poppins-semibold text-white">
+                        Reportar
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
-        </View>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -525,108 +741,347 @@ export default function WeatherMapNativewind() {
         animationType="fade"
         transparent
         visible={showDetailModal}
-        onRequestClose={() => { setShowDetailModal(false); setIsEditing(false); }}
+        onRequestClose={() => {
+          setShowDetailModal(false);
+          setIsEditing(false);
+        }}
       >
-        <View className="flex-1 justify-center bg-black/60" style={{ padding: 24 }}>
-          {selectedZone && (() => {
-            const cfg = ZONE_TYPES[selectedZone.type];
-            return (
-              <View style={{ borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, overflow: 'hidden' }}>
-                {/* Header */}
-                <View style={{ backgroundColor: cfg.color, padding: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <Image source={cfg.image} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                  <View>
-                    <Text style={{ color: '#fff', fontSize: 24, fontFamily: fonts.poppinsSemiBold, letterSpacing: 2 }}>
-                      {cfg.label.toUpperCase()}
-                    </Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: fonts.poppins, letterSpacing: 3 }}>
-                      REPORTADA
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Body */}
-                <View style={{ backgroundColor: '#0d1f3c', padding: 24, paddingBottom: 24 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Descripción:</Text>
-                  {isEditing ? (
-                    <TextInput
-                      value={editDescription}
-                      onChangeText={setEditDescription}
-                      multiline
-                      style={{
-                        color: '#fff',
-                        fontSize: 15,
-                        fontFamily: fonts.poppins,
-                        borderWidth: 1,
-                        borderColor: 'rgba(255,255,255,0.3)',
-                        borderRadius: 8,
-                        padding: 8,
-                        marginTop: 4,
-                        marginBottom: 12,
-                        minHeight: 80,
-                        textAlignVertical: 'top',
-                      }}
+        <View
+          className="flex-1 justify-center bg-black/60"
+          style={{ padding: 24 }}
+        >
+          {selectedZone &&
+            (() => {
+              const cfg = ZONE_TYPES[selectedZone.type];
+              return (
+                <View
+                  style={{
+                    borderTopRightRadius: 20,
+                    borderBottomRightRadius: 20,
+                    borderBottomLeftRadius: 20,
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Header */}
+                  <View
+                    style={{
+                      backgroundColor: cfg.color,
+                      padding: 24,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                  >
+                    <Image
+                      source={cfg.image}
+                      style={{ width: 32, height: 32 }}
+                      resizeMode="contain"
                     />
-                  ) : (
-                    <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 12 }}>
-                      {selectedZone.description}
+                    <View>
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 24,
+                          fontFamily: fonts.poppinsSemiBold,
+                          letterSpacing: 2,
+                        }}
+                      >
+                        {cfg.label.toUpperCase()}
+                      </Text>
+                      <Text
+                        style={{
+                          color: "rgba(255,255,255,0.7)",
+                          fontSize: 12,
+                          fontFamily: fonts.poppins,
+                          letterSpacing: 3,
+                        }}
+                      >
+                        REPORTADA
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Body */}
+                  <View
+                    style={{
+                      backgroundColor: "#0d1f3c",
+                      padding: 24,
+                      paddingBottom: 24,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "rgba(255,255,255,0.6)",
+                        fontSize: 13,
+                        fontFamily: fonts.poppins,
+                      }}
+                    >
+                      Descripción:
                     </Text>
-                  )}
-
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Ubicación:</Text>
-                  <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 12 }}>
-                    {selectedZone.latitude.toFixed(5)}, {selectedZone.longitude.toFixed(5)}
-                  </Text>
-
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Reportado:</Text>
-                  <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 20 }}>
-                    {new Date(selectedZone.timestamp).toLocaleString('es-MX')}
-                  </Text>
-
-                  {/* Actions */}
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
                     {isEditing ? (
-                      <>
-                        <TouchableOpacity
-                          onPress={() => setIsEditing(false)}
-                          style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
-                        >
-                          <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Cancelar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={handleSaveEdit}
-                          style={{ flex: 1, padding: 10, borderRadius: 10, backgroundColor: cfg.color, alignItems: 'center' }}
-                        >
-                          <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold }}>Guardar</Text>
-                        </TouchableOpacity>
-                      </>
+                      <TextInput
+                        value={editDescription}
+                        onChangeText={setEditDescription}
+                        multiline
+                        style={{
+                          color: "#fff",
+                          fontSize: 15,
+                          fontFamily: fonts.poppins,
+                          borderWidth: 1,
+                          borderColor: "rgba(255,255,255,0.3)",
+                          borderRadius: 8,
+                          padding: 8,
+                          marginTop: 4,
+                          marginBottom: 12,
+                          minHeight: 80,
+                          textAlignVertical: "top",
+                        }}
+                      />
                     ) : (
-                      <>
-                        <TouchableOpacity
-                          onPress={handleDeleteZone}
-                          style={{ padding: 10, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => setIsEditing(true)}
-                          style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
-                        >
-                          <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Editar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => setShowDetailModal(false)}
-                          style={{ padding: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <MaterialCommunityIcons name="close" size={20} color="#fff" />
-                        </TouchableOpacity>
-                      </>
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontFamily: fonts.poppinsSemiBold,
+                          fontSize: 15,
+                          marginBottom: 12,
+                        }}
+                      >
+                        {selectedZone.description}
+                      </Text>
                     )}
+
+                    <Text
+                      style={{
+                        color: "rgba(255,255,255,0.6)",
+                        fontSize: 13,
+                        fontFamily: fonts.poppins,
+                      }}
+                    >
+                      Ubicación:
+                    </Text>
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontFamily: fonts.poppinsSemiBold,
+                        fontSize: 15,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {selectedZone.latitude.toFixed(5)},{" "}
+                      {selectedZone.longitude.toFixed(5)}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "rgba(255,255,255,0.6)",
+                        fontSize: 13,
+                        fontFamily: fonts.poppins,
+                      }}
+                    >
+                      Reportado:
+                    </Text>
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontFamily: fonts.poppinsSemiBold,
+                        fontSize: 15,
+                        marginBottom: 20,
+                      }}
+                    >
+                      {new Date(selectedZone.timestamp).toLocaleString("es-MX")}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "rgba(255,255,255,0.6)",
+                        fontSize: 13,
+                        fontFamily: fonts.poppins,
+                      }}
+                    >
+                      VotaciÃ³n:
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 10,
+                        marginTop: 6,
+                        marginBottom: 20,
+                      }}
+                    >
+                      <TouchableOpacity
+                        onPress={() => handleVoteZone(1)}
+                        disabled={
+                          selectedZone.isOwner || Boolean(selectedZone.userVote)
+                        }
+                        style={{
+                          flex: 1,
+                          padding: 10,
+                          borderRadius: 10,
+                          backgroundColor:
+                            selectedZone.userVote === 1
+                              ? "#1f8f5f"
+                              : "rgba(255,255,255,0.08)",
+                          borderWidth: 1,
+                          borderColor: "rgba(255,255,255,0.18)",
+                          opacity:
+                            selectedZone.isOwner || selectedZone.userVote
+                              ? 0.6
+                              : 1,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontFamily: fonts.poppinsSemiBold,
+                          }}
+                        >
+                          ▲ {selectedZone.upvotes}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleVoteZone(-1)}
+                        disabled={
+                          selectedZone.isOwner || Boolean(selectedZone.userVote)
+                        }
+                        style={{
+                          flex: 1,
+                          padding: 10,
+                          borderRadius: 10,
+                          backgroundColor:
+                            selectedZone.userVote === -1
+                              ? colors.brandRed
+                              : "rgba(255,255,255,0.08)",
+                          borderWidth: 1,
+                          borderColor: "rgba(255,255,255,0.18)",
+                          opacity:
+                            selectedZone.isOwner || selectedZone.userVote
+                              ? 0.6
+                              : 1,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontFamily: fonts.poppinsSemiBold,
+                          }}
+                        >
+                          ▼ {selectedZone.downvotes}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Actions */}
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      {isEditing ? (
+                        <>
+                          <TouchableOpacity
+                            onPress={() => setIsEditing(false)}
+                            style={{
+                              flex: 1,
+                              padding: 10,
+                              borderRadius: 10,
+                              borderWidth: 1,
+                              borderColor: "rgba(255,255,255,0.3)",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontFamily: fonts.poppins,
+                              }}
+                            >
+                              Cancelar
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleSaveEdit}
+                            style={{
+                              flex: 1,
+                              padding: 10,
+                              borderRadius: 10,
+                              backgroundColor: cfg.color,
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontFamily: fonts.poppinsSemiBold,
+                              }}
+                            >
+                              Guardar
+                            </Text>
+                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <>
+                          {selectedZone.isOwner && (
+                            <>
+                              <TouchableOpacity
+                                onPress={handleDeleteZone}
+                                style={{
+                                  padding: 10,
+                                  borderRadius: 10,
+                                  backgroundColor: colors.brandRed,
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <MaterialCommunityIcons
+                                  name="trash-can-outline"
+                                  size={20}
+                                  color="#fff"
+                                />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => setIsEditing(true)}
+                                style={{
+                                  flex: 1,
+                                  padding: 10,
+                                  borderRadius: 10,
+                                  borderWidth: 1,
+                                  borderColor: "rgba(255,255,255,0.3)",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    color: "#fff",
+                                    fontFamily: fonts.poppins,
+                                  }}
+                                >
+                                  Editar
+                                </Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                          <TouchableOpacity
+                            onPress={() => setShowDetailModal(false)}
+                            style={{
+                              flex: selectedZone.isOwner ? undefined : 1,
+                              padding: 10,
+                              borderRadius: 10,
+                              backgroundColor: "rgba(255,255,255,0.15)",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <MaterialCommunityIcons
+                              name="close"
+                              size={20}
+                              color="#fff"
+                            />
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
                   </View>
                 </View>
-              </View>
-            );
-          })()}
+              );
+            })()}
         </View>
       </Modal>
     </View>
