@@ -104,7 +104,7 @@ export default function SettingsScreen() {
           onPress={() => router.push('/NotificationPreferencesScreen')}
         />
 
-        <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} />
+        {/* <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} /> */}
 
         <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
 
