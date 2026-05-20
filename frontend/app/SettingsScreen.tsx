@@ -108,14 +108,14 @@ export default function SettingsScreen() {
 
         <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
 
-        <OptionCard
+        {/* <OptionCard
           icon="alert-outline"
           title="Ver Alerta de Emergencia"
           onPress={() => {
             track('demo_alarm_view');
             router.push('/AlarmScreen');
           }}
-        />
+        /> */}
 
         {modelOptedIn && !modelReady && !modelError && (
           <OptionCard
