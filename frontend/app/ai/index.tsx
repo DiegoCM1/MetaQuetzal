@@ -30,6 +30,7 @@ export default function ChatAIScreen() {
   const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
   const canStop = isStreaming && modelMode === 'online'
   const showThinking = isLoading && !isStreaming
+
   const markdownStyles = {
     body: {
       color: "white",
