@@ -140,7 +140,7 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 
 ---
 ## Sprint 2
-
+1. Staging railway/migrate to GCP + Staging?
 - Native notification system (Like alarms, for both ios and android)
 - Npm to pnpm to avoid vulnerabilities
 - Fix existing package vulnerabilities spotted by dependabot in GH
