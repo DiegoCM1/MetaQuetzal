@@ -158,4 +158,19 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 
 
 Fixes:
-- MapMarker OOM error: Te saca de la app después de un tiempo de tenerla abierta
+- MapMarker OOM error: Te saca de la app después de un tiempo de tenerla abierta (delegado a Val — fix con `tracksViewChanges={false}` en marcadores)
+
+Offline AI (Feature 2) — gaps confirmados en pruebas de descarga:
+- **Descarga no resumible**: si se interrumpe la descarga (cierre de app, kill, network drop), al reabrir empieza desde 0% (repro'd en Pixel 7 dev). Spec original ya lo pedía. Fix: investigar opciones de `react-native-executorch` + `ExpoResourceFetcher` para resume, o fallback a `expo-file-system` `DownloadResumable` con checkpointing manual.
+- **Sin opción de cancelar/eliminar descarga en progreso**: usuario inicia descarga y no tiene forma de abortarla. Necesita botón Cancel + cleanup del archivo parcial. Bloqueado por: confirmar si la API del downloader expone cancel.
+- **Dev-mode WebSocket OOM durante descarga**: crash de `okhttp WebSocketReader` (no es el de mapas). Solo en dev — es Metro forwardeando logs por WebSocket bajo presión de memoria. No afecta producción (release builds no conectan a Metro). No requiere fix, sólo confirmar en build de preview que la descarga completa.
+- **"Software caused connection abort" en Pixel dev**: socket reset durante descarga tras la presión de memoria del WebSocket OOM. Mismo patrón que el de arriba — dev-only artifact, no es bug de producción.
+- **Memory profile en release pendiente**: EAS preview build en proceso para validar memoria real en device de prod sin Metro overhead.
+
+Offline AI — confirmado funcionando en producción (low-tier Android, build de playstore):
+- Descarga completa OK.
+- Inferencia en modo avión funciona — respuesta llega aunque toma varios segundos.
+- Latencia esperada en hardware bajo: documentar como característica, no bug. Considerar mostrar "Pensando..." prolongado y/o pre-cargar el modelo en background si UX se vuelve problemática.
+
+Polish ChatAI (post-launch nice-to-haves):
+- Animación "typing" de 3 puntos en lugar del spinner mientras llega el primer token
