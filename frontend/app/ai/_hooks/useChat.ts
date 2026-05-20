@@ -16,7 +16,6 @@ export function useChat() {
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isStreaming, setIsStreaming] = useState(false)
-    const [pendingMessage, setPendingMessage] = useState<string | null>(null)
     const locationRef = useRef<string | null>(null)
     const coordsRef = useRef<{ latitude: number, longitude: number } | null>(null)
     const abortControllerRef = useRef<AbortController | null>(null)
@@ -25,15 +24,6 @@ export function useChat() {
     const stop = () => {
         abortControllerRef.current?.abort()
     }
-
-    // SEND PENDING MESSAGE ONCE MODEL IS READY
-    useEffect(() => {
-        if (modelReady && pendingMessage) {
-            console.log('[useChat] model ready — sending pending message')
-            llm.sendMessage(pendingMessage)
-            setPendingMessage(null)
-        }
-    }, [modelReady, pendingMessage])
 
     // STREAM OFFLINE TOKENS
     useEffect(() => {
@@ -119,8 +109,15 @@ export function useChat() {
             if (!hasInternet) {
                 setModelMode('offline')
                 if (!modelReady) {
-                    console.log('[useChat] model not ready — queuing message')
-                    setPendingMessage(input)
+                    console.log('[useChat] offline + model not ready — showing error fallback')
+                    const errorText = 'Sin conexión y modelo IA no descargado. Conéctate a internet o descarga el modelo IA desde Ajustes.'
+                    setMessages(prev => {
+                        if (prev.length === 0) return prev
+                        const last = prev[prev.length - 1]
+                        if (last.role !== 'bot') return prev
+                        return [...prev.slice(0, -1), { ...last, text: errorText, error: true }]
+                    })
+                    setIsLoading(false)
                     return
                 }
                 console.log('[useChat] routing → offline')
