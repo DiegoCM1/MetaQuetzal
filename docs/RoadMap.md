@@ -163,6 +163,7 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 - [ ] Fix existing package vulnerabilities (dependabot)
 - [ ] Fix Mixpanel project token + verify tracking works
 - [ ] ghstack / Graphite tooling for PR management?
+- [ ] AI Skills, context and setup so everyone's claude is in sync with the way of developing shit.
 
 ### iOS launch chain
 - [ ] iOS launch (full pipeline E2E once Apple Dev access resolved)

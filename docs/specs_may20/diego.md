@@ -36,17 +36,19 @@
 - **#3 iOS pipeline**: membresía Apple Developer Program para `blueyehurricanealerts@gmail.com` + verificación del Issuer ID correcto. Después del fix → re-intento de `eas build --platform ios --profile production` con 2FA. Si pasa: EAS genera distribution cert + provisioning profile + registra App ID → build llega a TestFlight (objetivo May 20).
 - **#9 iOS submission**: gated en #3 funcionando.
 
-#### 🔴 Bloqueado en iPhone físico (ETA: días)
-- **#2 Offline AI** — verificación en device iOS.
-- **#1 Apple Sign-In** — test E2E en device real.
-- **APNs key**: verificación de environment + recibir `.p8` de Héctor + subir a Firebase Cloud Messaging + confirmar push delivery. Sin device físico no se puede verificar push.
-- **Golden path E2E** en device físico (DoD final).
+#### 🔴 Bloqueado en build iOS firmado (ETA: post-Héctor 21:00 o Personal Team workaround)
+- iPhone físico recibido 20 may ✅ — pero no se puede instalar build sin code signing (Personal Team free workaround disponible si Héctor se atrasa: ~15 min Xcode setup, cert 7-day expiry).
+- **#2 Offline AI** — verificación en device iOS pendiente.
+- **#1 Apple Sign-In** — test E2E en device real (también gated en Service ID + Firebase Apple provider enable).
+- **APNs key**: verificación de environment + recibir `.p8` de Héctor + subir a Firebase Cloud Messaging + confirmar push delivery.
+- **Golden path E2E** en device físico iOS (DoD final). Android golden path: pendiente esta noche.
 
 #### 🔴 Bloqueado en Google (ETA: 3-7 días desde 18 may)
 - **#8 Release de producción Android** — esperando aprobación de Google para acceso a producción. El AAB ya estará listo gracias al item activo de arriba.
 
 #### ✅ Completado (referencia)
 - #4 Sentry; #6 Keystore; #7 Play Store listing (App Store listing iOS: por confirmar); entorno iOS dev funcionando; Firebase iOS cableado; EAS App Store Connect API key registrada.
+- **20 may**: iPhone físico recibido; Apple Sign-In frontend committed (rama `feat/ios-finish-setup`); Streaming online AI via SSE shipped a dev; Offline AI hardening (disk space check, graceful fallback, retryDownload cleanup) shipped a dev; AI tests actualizados para el nuevo contrato streaming.
 
 ---
 
@@ -138,16 +140,20 @@ El AI offline usa Llama 3.2 1B/3B cuantizado corriendo en el dispositivo. El pro
 **Due: May 13 (build en device físico)**
 **Due: May 18 (submission)**
 
-### Estado actual (19 may, 18:00)
+### Estado actual (20 may, 20:00)
 - ✅ Entorno iOS regenerado limpio desde `app.json` (CNG — `ios/` en `.gitignore`)
 - ✅ Firebase iOS cableado: `GoogleService-Info.plist`, plugin `@react-native-firebase/app`, `useFrameworks: static` + `forceStaticLinking` (workaround bug SDK 54, expo#39607)
 - ✅ App compila (0 errores) y corre en el Simulador con Firebase inicializado
 - ✅ App Store Connect API key (`AuthKey_N3M5RJLBGQ.p8`) registrada en EAS para Submit
-- 🟡 `eas build --platform ios --profile production` intentado → falló en credentials con: *"You have no team associated with your Apple account, cannot proceed."* Diego es Admin en App Store Connect pero NO está en el Apple Developer Program team. Héctor arregla hoy 21:00.
+- ✅ iPhone físico recibido 20 may
+- ✅ Apple Sign-In frontend wiring committed 20 may (`feat/ios-finish-setup`)
+- 🟡 `eas build --platform ios --profile production` intentado → falló en credentials con: *"You have no team associated with your Apple account, cannot proceed."* Diego es Admin en App Store Connect pero NO está en el Apple Developer Program team. Héctor arregla hoy 20 may 21:00.
 - 🟡 Issuer ID enviado por Héctor (`f2ad728e-…`) coincide con el Developer ID personal de Diego en App Store Connect — sospechoso, Héctor verifica
+- 🟡 Install en device físico bloqueado en code signing (mismo root cause Héctor); Personal Team workaround disponible si urge
 - ⬜ App Store Connect app record (EAS lo puede crear vía submit una vez funcione el build)
-- ⬜ APNs key — pospuesto hasta llegada del iPhone (push no verificable sin device)
+- ⬜ APNs key — pendiente recibir `.p8` de Héctor + upload a Firebase Cloud Messaging (iPhone ya disponible para verificación)
 - ⬜ Re-intento de `eas build` iOS — después del fix de Héctor
+- ⬜ Rebuild iOS para incluir entitlement `usesAppleSignIn` (post Apple Sign-In merge)
 
 ### Componentes
 
