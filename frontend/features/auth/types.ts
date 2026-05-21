@@ -6,6 +6,7 @@ export interface AuthContextValue {
   signingIn: boolean
   error: string | null
   signInWithGoogle: () => Promise<void>
+  signInWithApple: () => Promise<void>
   signOut: () => Promise<void>
   deleteAccount: () => Promise<void>
 }

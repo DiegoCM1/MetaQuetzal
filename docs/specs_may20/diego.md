@@ -6,7 +6,7 @@
 
 | # | Feature / Tarea | Mini-deadline | Standard |
 |---|---|---|---|
-| 1 | Sign in with Apple — Firebase Apple provider | 🔴 May 6 (vencido) | NO iniciado. Entorno iOS ya listo; falta: provider Apple en Firebase, Service ID, `usesAppleSignIn` en app.json, botón en login |
+| 1 | Sign in with Apple — Firebase Apple provider | 🟡 May 6 (vencido) | **Frontend committed (20 may)**: `expo-apple-authentication` + `expo-crypto`, `usesAppleSignIn: true` en `app.json`, botón Apple HIG-compliant en login (iOS-only), `signInWithApple` con nonce SHA-256 + `OAuthProvider('apple.com')` + `signInWithCredential`. Pendiente: Service ID en Apple Dev portal (gated #3 Héctor), enable Apple provider en Firebase Console (gated Service ID), rebuild iOS con nuevo entitlement, test E2E en device físico |
 | 3 | iOS pipeline: certs, APNs, EAS build, App Store Connect | 🟡 May 13 (vencido) | Entorno iOS ✅. EAS API key registrada ✅. `eas build` intentado → error: no team membership en Apple Developer Program. Héctor arregla hoy 21:00. APNs pospuesto hasta iPhone físico |
 | 4 | ~~Sentry en producción — telemetría de crashes~~ ✅ | May 14 | Evento visible en dashboard |
 | 5 | Frontend general fixes — pantallas y navegación | 🟢 Continuo | En progreso — sin crashes en golden path |
@@ -14,7 +14,7 @@
 | 7 | Store listings — Play Store + App Store (temporada huracanes) | ✅ | Revisado y publicado en PlayStore |
 | 8 | Closed testing → producción Android (Play Store) | 🟡 18 may | Acceso a producción SOLICITADO — en revisión por Google (3-7 días). Pendiente: subir AAB de producción |
 | 9 | Submission iOS a App Store Connect | 🔴 bloqueado | NO está submitted. Depende de #1 (Apple Sign-In) y #3 (pipeline iOS) |
-| 2 | iOS offline AI — Llama on-device confiable | 🟡 May 11 (vencido) | Funciona en device (Android); verificación en iPhone físico pendiente del dispositivo |
+| 2 | iOS offline AI — Llama on-device confiable | 🟡 May 11 (vencido) | Funciona en device (Android producción confirmado). iPhone físico recibido 20 may. Verificación iOS pendiente de build firmado (gated #3 Héctor). Hardening shipped 20 may: disk space check, graceful fallback, retryDownload cleanup. Conocido: phonemis arch warning en sim iOS sugiere posible problema en iOS — Sprint 2 |
 | 10 | PR reviewer — toda PR crítica del sprint | Continuo | Sin merge sin tu revisión |
 
 - APNS (App push notifications) Until iphone arrives, not possible before that.
@@ -25,13 +25,12 @@
 |---|---|
 | 11 | Email/password login + password recovery |
 
-### Plan de ejecución por dependencias (19 may, 18:00)
+### Plan de ejecución por dependencias (20 may, 20:00)
 
 #### 🟢 Activo ahora — sin bloqueante externo
-- **Apple Sign-In frontend** (#1, parte Simulador): `npx expo install expo-apple-authentication`, agregar `"usesAppleSignIn": true` al bloque `ios` de `app.json`, habilitar provider Apple en Firebase Console, botón Apple en pantalla de login, wire del flujo credential → Firebase `signInWithCredential`. El Service ID (developer.apple.com) queda para después del fix de Héctor.
-- **AAB de producción Android** (para #8): `eas build --platform android --profile production` corre en background, queda listo para subir cuando Google apruebe acceso.
-- **#5 Frontend general fixes**: continuo.
-- **#10 PR review**: continuo.
+- **AAB de producción Android** (para #8): `eas build --platform android --profile production` corriendo en background 20 may, queda listo para subir cuando Google apruebe acceso.
+- **#5 Frontend general fixes**: continuo. Tonight: iOS smoke en sim iOS 26 reveló bug de beta sim (touch dispatch en bottom-bar no funciona — onboarding Continuar y tab bar). No afecta dispositivos reales. Documentado en RoadMap known gaps.
+- **#10 PR review**: PR #118 de Val revisada — branch severamente atrasado de dev (3 archivos que está "agregando" ya existen en dev por PR #104), bloqueada hasta rebase. Comentario draft listo para postear.
 
 #### 🟡 Bloqueado en Héctor (ETA: hoy 21:00)
 - **#3 iOS pipeline**: membresía Apple Developer Program para `blueyehurricanealerts@gmail.com` + verificación del Issuer ID correcto. Después del fix → re-intento de `eas build --platform ios --profile production` con 2FA. Si pasa: EAS genera distribution cert + provisioning profile + registra App ID → build llega a TestFlight (objetivo May 20).

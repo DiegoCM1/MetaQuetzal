@@ -1,13 +1,17 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { Platform } from 'react-native'
 import {
   getAuth,
   onAuthStateChanged,
   signInWithCredential,
   signOut as firebaseSignOut,
   GoogleAuthProvider,
+  OAuthProvider,
   FirebaseAuthTypes,
 } from '@react-native-firebase/auth'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import * as AppleAuthentication from 'expo-apple-authentication'
+import * as Crypto from 'expo-crypto'
 import * as Sentry from '@sentry/react-native'
 import { authFetch } from '../../utils/api'
 import type { AuthContextValue } from './types'
@@ -109,6 +113,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function signInWithApple() {
+    if (signingIn) return
+    if (Platform.OS !== 'ios') {
+      setError('Sign in with Apple solo está disponible en iOS.')
+      return
+    }
+    setSigningIn(true)
+    setError(null)
+    try {
+      const available = await AppleAuthentication.isAvailableAsync()
+      if (!available) {
+        setError('Sign in with Apple no está disponible en este dispositivo.')
+        return
+      }
+
+      const rawNonceBytes = await Crypto.getRandomBytesAsync(32)
+      const rawNonce = Array.from(rawNonceBytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce,
+      )
+
+      const appleCredential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      })
+
+      if (!appleCredential.identityToken) {
+        console.error('[Bluai] Apple Sign-In returned no identity token')
+        throw new Error('Apple Sign-In returned no identity token')
+      }
+
+      const provider = new OAuthProvider('apple.com')
+      const credential = provider.credential({
+        idToken: appleCredential.identityToken,
+        rawNonce,
+      })
+      await signInWithCredential(getAuth(), credential)
+      await upsertUserProfile()
+    } catch (e: any) {
+      if (e?.code === 'ERR_REQUEST_CANCELED') return
+      console.error('[Bluai] Apple Sign-In failed', {
+        code: e?.code,
+        message: e?.message,
+      })
+      setError('No se pudo iniciar sesión con Apple. Intenta de nuevo.')
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
   async function signOut() {
     try {
       await GoogleSignin.signOut()
@@ -151,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signingIn, error, signInWithGoogle, signOut, deleteAccount }}>
+    <AuthContext.Provider value={{ user, loading, signingIn, error, signInWithGoogle, signInWithApple, signOut, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   )
