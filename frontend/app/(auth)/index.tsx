@@ -1,11 +1,21 @@
-import { View, Text, ImageBackground } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Platform, View, Text, ImageBackground } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { GoogleSigninButton } from '@react-native-google-signin/google-signin'
+import * as AppleAuthentication from 'expo-apple-authentication'
 import { useAuth } from '../../features/auth/AuthContext'
 import BluaiLogo from '../../assets/images/BLUAI_LOGO_BLANCO.svg'
 
 export default function LoginScreen() {
-  const { signInWithGoogle, loading, signingIn, error } = useAuth()
+  const { signInWithGoogle, signInWithApple, loading, signingIn, error } = useAuth()
+  const [appleAvailable, setAppleAvailable] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleAvailable)
+      .catch(() => setAppleAvailable(false))
+  }, [])
 
   if (loading) {
     return (
@@ -39,6 +49,17 @@ export default function LoginScreen() {
               disabled={signingIn}
             />
           </View>
+          {Platform.OS === 'ios' && appleAvailable && (
+            <View style={{ opacity: signingIn ? 0.5 : 1, width: 312 }}>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                cornerRadius={4}
+                style={{ width: 312, height: 48 }}
+                onPress={signingIn ? undefined : signInWithApple}
+              />
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </ImageBackground>
