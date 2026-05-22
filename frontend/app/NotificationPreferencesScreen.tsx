@@ -1,7 +1,8 @@
 import "../global.css";
 import { useState, useEffect } from "react";
-import { View, Text, Switch, ScrollView, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, Switch, ScrollView, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
 import { authFetch } from "../utils/api";
@@ -12,12 +13,18 @@ interface Prefs {
   siat_enabled: boolean;
   min_siat_level: number;
   map_events_enabled: boolean;
+  quiet_hours_enabled: boolean;
+  quiet_start: string | null;
+  quiet_end: string | null;
 }
 
 const DEFAULTS: Prefs = {
   siat_enabled: true,
   min_siat_level: 2,
   map_events_enabled: true,
+  quiet_hours_enabled: false,
+  quiet_start: null,
+  quiet_end: null,
 };
 
 const LEVEL_OPTIONS = [
@@ -29,17 +36,33 @@ const LEVEL_OPTIONS = [
 
 function normalizePrefs(data: Partial<Prefs>): Prefs {
   return {
-    siat_enabled:       typeof data.siat_enabled === "boolean"   ? data.siat_enabled       : DEFAULTS.siat_enabled,
-    min_siat_level:     typeof data.min_siat_level === "number"  ? data.min_siat_level      : DEFAULTS.min_siat_level,
-    map_events_enabled: typeof data.map_events_enabled === "boolean" ? data.map_events_enabled : DEFAULTS.map_events_enabled,
+    siat_enabled:        typeof data.siat_enabled === "boolean"        ? data.siat_enabled        : DEFAULTS.siat_enabled,
+    min_siat_level:      typeof data.min_siat_level === "number"       ? data.min_siat_level       : DEFAULTS.min_siat_level,
+    map_events_enabled:  typeof data.map_events_enabled === "boolean"  ? data.map_events_enabled   : DEFAULTS.map_events_enabled,
+    quiet_hours_enabled: typeof data.quiet_hours_enabled === "boolean" ? data.quiet_hours_enabled  : DEFAULTS.quiet_hours_enabled,
+    quiet_start: typeof data.quiet_start === "string" ? data.quiet_start : DEFAULTS.quiet_start,
+    quiet_end:   typeof data.quiet_end   === "string" ? data.quiet_end   : DEFAULTS.quiet_end,
   };
 }
 
+function timeStrToDate(s: string | null): Date {
+  const [h, m] = (s ?? "22:00").split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function dateToTimeStr(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export default function NotificationPreferencesScreen() {
-  const [prefs, setPrefs]   = useState<Prefs>(DEFAULTS);
-  const [loading, setLoading] = useState(true);
+  const [prefs, setPrefs]       = useState<Prefs>(DEFAULTS);
+  const [loading, setLoading]   = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker]     = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -74,6 +97,25 @@ export default function NotificationPreferencesScreen() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleQuietToggle(enabled: boolean) {
+    if (enabled && (!prefs.quiet_start || !prefs.quiet_end)) {
+      // backend requires times when enabling; inject defaults so it doesn't reject with 422
+      patchPrefs({ quiet_hours_enabled: true, quiet_start: "22:00", quiet_end: "07:00" });
+    } else {
+      patchPrefs({ quiet_hours_enabled: enabled });
+    }
+  }
+
+  function handleStartChange(_event: DateTimePickerEvent, date?: Date) {
+    if (Platform.OS === "android") setShowStartPicker(false);
+    if (date) patchPrefs({ quiet_start: dateToTimeStr(date) });
+  }
+
+  function handleEndChange(_event: DateTimePickerEvent, date?: Date) {
+    if (Platform.OS === "android") setShowEndPicker(false);
+    if (date) patchPrefs({ quiet_end: dateToTimeStr(date) });
   }
 
   const switchProps = {
@@ -174,6 +216,72 @@ export default function NotificationPreferencesScreen() {
           }
         />
 
+        {/* Toggle: No molestar */}
+        <OptionCard
+          icon="moon-waning-crescent"
+          title="No molestar"
+          rightElement={
+            <Switch
+              value={prefs.quiet_hours_enabled}
+              onValueChange={handleQuietToggle}
+              {...switchProps}
+            />
+          }
+        />
+
+        {/* Selector de horario — visible solo cuando quiet hours está activo */}
+        {prefs.quiet_hours_enabled && (
+          <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 8 }}>
+            <Text style={styles.sectionLabel}>Horario sin alertas (UTC)</Text>
+            <Text style={styles.utcNote}>Las alertas nivel 5 / Rojo siempre se envían.</Text>
+
+            <View style={styles.timeRow}>
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeLabel}>Inicio</Text>
+                <TouchableOpacity
+                  style={[styles.timeButton, saving && { opacity: 0.6 }]}
+                  disabled={saving}
+                  onPress={() => setShowStartPicker(true)}
+                >
+                  <Text style={styles.timeValue}>{prefs.quiet_start ?? "22:00"}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.timeSeparator}>→</Text>
+
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeLabel}>Fin</Text>
+                <TouchableOpacity
+                  style={[styles.timeButton, saving && { opacity: 0.6 }]}
+                  disabled={saving}
+                  onPress={() => setShowEndPicker(true)}
+                >
+                  <Text style={styles.timeValue}>{prefs.quiet_end ?? "07:00"}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {showStartPicker && (
+              <DateTimePicker
+                mode="time"
+                value={timeStrToDate(prefs.quiet_start)}
+                is24Hour
+                onChange={handleStartChange}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+              />
+            )}
+            {showEndPicker && (
+              <DateTimePicker
+                mode="time"
+                value={timeStrToDate(prefs.quiet_end)}
+                is24Hour
+                onChange={handleEndChange}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+              />
+            )}
+          </View>
+        )}
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -201,7 +309,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1,
     textTransform: "uppercase",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   chip: {
     flex: 1,
@@ -214,5 +322,50 @@ const styles = StyleSheet.create({
   chipLabel: {
     fontFamily: fonts.poppinsSemiBold,
     fontSize: 12,
+  },
+  utcNote: {
+    color: "rgba(255,255,255,0.4)",
+    fontFamily: fonts.poppins,
+    fontSize: 11,
+    marginBottom: 12,
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  timeBlock: {
+    flex: 1,
+    alignItems: "center",
+  },
+  timeLabel: {
+    color: "rgba(255,255,255,0.5)",
+    fontFamily: fonts.poppins,
+    fontSize: 11,
+    marginBottom: 6,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  timeButton: {
+    backgroundColor: "rgba(10, 28, 50, 0.7)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    width: "100%",
+  },
+  timeValue: {
+    color: colors.brandCyan,
+    fontFamily: fonts.poppinsSemiBold,
+    fontSize: 20,
+    letterSpacing: 1,
+  },
+  timeSeparator: {
+    color: "rgba(255,255,255,0.3)",
+    fontFamily: fonts.poppinsSemiBold,
+    fontSize: 18,
+    paddingTop: 20,
   },
 });

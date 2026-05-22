@@ -21,12 +21,18 @@ DEFAULT_PREFS = {
     "siat_enabled": True,
     "min_siat_level": 2,
     "map_events_enabled": True,
+    "quiet_hours_enabled": False,
+    "quiet_start": None,
+    "quiet_end": None,
 }
 
 CUSTOM_PREFS = {
     "siat_enabled": False,
     "min_siat_level": 3,
     "map_events_enabled": True,
+    "quiet_hours_enabled": False,
+    "quiet_start": None,
+    "quiet_end": None,
 }
 
 
@@ -152,4 +158,62 @@ def test_patch_preferences_404_when_user_not_found():
 
 def test_patch_preferences_requires_auth():
     r = client.patch("/api/v1/notification-preferences", json={"siat_enabled": False})
+    assert r.status_code == 422
+
+
+# ── Quiet hours ────────────────────────────────────────────────────────────────
+
+def test_get_preferences_includes_quiet_fields():
+    prefs_with_quiet = {**DEFAULT_PREFS, "quiet_hours_enabled": True, "quiet_start": "22:00", "quiet_end": "07:00"}
+    with _mock_auth():
+        with patch(
+            "app.features.notification_preferences.router.get_user_by_firebase_uid",
+            new_callable=AsyncMock,
+            return_value=FAKE_DB_USER,
+        ):
+            with patch(
+                "app.features.notification_preferences.router.get_preferences",
+                new_callable=AsyncMock,
+                return_value=prefs_with_quiet,
+            ):
+                r = client.get("/api/v1/notification-preferences", headers=AUTH_HEADERS)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["quiet_hours_enabled"] is True
+    assert body["quiet_start"] == "22:00"
+    assert body["quiet_end"] == "07:00"
+
+
+def test_patch_quiet_hours_full_payload():
+    updated = {**DEFAULT_PREFS, "quiet_hours_enabled": True, "quiet_start": "22:00", "quiet_end": "07:00"}
+    with _mock_auth():
+        with patch(
+            "app.features.notification_preferences.router.get_user_by_firebase_uid",
+            new_callable=AsyncMock,
+            return_value=FAKE_DB_USER,
+        ):
+            with patch(
+                "app.features.notification_preferences.router.upsert_preferences",
+                new_callable=AsyncMock,
+                return_value=updated,
+            ):
+                r = client.patch(
+                    "/api/v1/notification-preferences",
+                    json={"quiet_hours_enabled": True, "quiet_start": "22:00", "quiet_end": "07:00"},
+                    headers=AUTH_HEADERS,
+                )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["quiet_hours_enabled"] is True
+    assert body["quiet_start"] == "22:00"
+    assert body["quiet_end"] == "07:00"
+
+
+def test_patch_quiet_hours_invalid_time_format():
+    with _mock_auth():
+        r = client.patch(
+            "/api/v1/notification-preferences",
+            json={"quiet_start": "25:99"},
+            headers=AUTH_HEADERS,
+        )
     assert r.status_code == 422
