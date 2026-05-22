@@ -32,4 +32,12 @@ async def patch_notification_preferences(
     if db_user is None:
         raise HTTPException(status_code=404, detail="User profile not found. Call POST /api/v1/users/me first.")
     updates = body.model_dump(exclude_none=True)
-    return await upsert_preferences(db, db_user["id"], updates)
+    try:
+        return await upsert_preferences(db, db_user["id"], updates)
+    except ValueError as exc:
+        if "quiet_hours_require_times" in str(exc):
+            raise HTTPException(
+                status_code=422,
+                detail="quiet_start and quiet_end are required when quiet_hours_enabled is true",
+            )
+        raise
