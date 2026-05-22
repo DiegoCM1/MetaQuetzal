@@ -80,3 +80,29 @@ Reproduced consistently across `eas build --platform ios --profile production` a
 - The `.p8` App Store Connect API key + Issuer ID we already have are **fine** — that part of the credentials puzzle is resolved. The remaining gap is Apple Developer Program team membership, which the API key doesn't substitute for.
 - This is a non-coding blocker. No amount of frontend work or backend work resolves it. It is gated entirely on Héctor's portal action.
 - While blocked: Apple Sign-In frontend implementation can proceed (code can be written and structurally tested on Simulator), but full end-to-end verification awaits this access fix.
+
+---
+  Step 0 — Check the key you already have. Before borrowing anyone's login: ❌ NOT ABLE TO SEE INTEGRATIONS, ERROR IS BEING SHOWED
+  - App Store Connect → Users and Access → Integrations → App Store Connect API.
+  - Find EAS Build Key (Key ID N3M5RJLBGQ). Look at its role.
+  - If it's Admin or Developer → it may already be enough. The earlier failure was the interactive path firing, not
+  the key. You'd just need to force EAS to use the key (Step 2).
+  - If it's App Manager or weaker → it can submit but not manage certs. You need a stronger key.
+
+
+  Step 1 — Mint an Admin-role key if needed. Here's the thing: API keys are created in App Store Connect, where
+  you're already a confirmed Admin. Try generating a new Team Key with the Admin role yourself — you may unblock
+  entirely without Iván. If Apple restricts Team Key creation to the Account Holder, that is the single moment you
+  use Iván's session — incognito, generate the key, done. Download the .p8 (you only get it once).
+
+  Step 2 — Wire EAS to authenticate with the key, not interactively. Run eas credentials, pick iOS, and register the
+   App Store Connect API key as the auth method (EAS also reads EXPO_ASC_* env vars for this). Go read the EAS docs
+  section on "App Store Connect API Key" before you do it — I want you to understand which operations it covers, not
+   just paste.
+
+  Step 3 — Build. eas build --platform ios --profile production. EAS now generates the distribution cert +
+  provisioning profile + App ID through the API. No "no team associated" error.
+
+  Step 4 — Get it on your iPhone. Don't mess with UDID registration. eas submit already works → push the build to
+  TestFlight internal testing. You're already an internal user; install the TestFlight app, get the build,
+  smoke-test. Bonus: that production build is your App Store submission artifact (Feature 9). One build, two jobs.
