@@ -26,6 +26,19 @@ Option C — Actual Phone
 1. npx expo start (For only starting the server)
 2. Connect scanning the qr with your phone
 
+----
+IOS
+
+CREATE AND .ipa FILE FOR PROD
+eas build --platform ios --profile production
+
+SUBMIT TO TESTFLIGHT
+eas submit --platform ios --profile production
+
+CREATE NEW DEV CLIENT
+eas build --profile development --platform ios
+
+
 
 # Backend
 
