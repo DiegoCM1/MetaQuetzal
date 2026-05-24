@@ -196,3 +196,10 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 - **retryDownload "Already downloading this file" residual**: tonight's retry cleanup deletes partial files via `deleteResources`, but executorch's in-memory download lock can survive that, causing the next retry to fail with code 181. 100ms preventLoad wait isn't always enough. User recovery path: Settings → Eliminar modelo IA (full optOut path) → re-opt-in. Possible Sprint 2 fix: longer wait, or explicit executorch cancel API if one exists.
 - **Offline AI inference latency on low-tier hardware**: several seconds per response. Inherent to running a 1B/3B model on phone hardware. Document as expected behavior; consider longer "Pensando..." messaging if UX complaints arise.
 - **`BasicLLM` type narrowing**: TS doesn't see `sendMessage`/`response`/`isGenerating` on the offline LLM because the type was hand-narrowed in `ModelContext.tsx`. Runtime works fine. Cleanup: extend the type to match real executorch shape.
+
+
+
+Sprint 3
+- Messages on BT persisted on db when internet connection, sync, like WA would do it.
+- Retrain AI on newest data.
+- Payments setup
