@@ -474,3 +474,123 @@ async def test_smn_min_siat_level_filters_alert():
 
     assert total == 0
     mock_mark.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Quiet hours — SIAT run_cycle and SMN service-level tests
+# ---------------------------------------------------------------------------
+
+_ASSESSMENT_LEVEL_5 = {
+    "siat_level": 5,
+    "siat_color": "ROJO",
+    "distance_km": 50.0,
+    "eta_hours": 2.0,
+    "reason": "test",
+    "out_of_range": False,
+}
+
+_QUIET_PREFS = {
+    "siat_enabled": True, "min_siat_level": 2, "map_events_enabled": True,
+    "quiet_hours_enabled": True, "quiet_start": "22:00", "quiet_end": "07:00",
+}
+
+
+@pytest.mark.asyncio
+async def test_siat_quiet_hours_suppresses_push():
+    """User inside quiet hours + level=3 → push suppressed (not added to escalations)."""
+    from app.features.siat.service import run_cycle
+
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_3, _QUIET_PREFS, push_return=0)
+    with patches[0], patches[1], patches[2], patches[3], patches[4], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], \
+         patch(f"{_SVC}.is_within_quiet_hours", return_value=True):
+        result = await run_cycle(db)
+
+    assert result["notifications_sent"] == 0
+
+
+@pytest.mark.asyncio
+async def test_siat_quiet_hours_allows_push_outside_range():
+    """User outside quiet hours → push proceeds normally."""
+    from app.features.siat.service import run_cycle
+
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_3, _QUIET_PREFS, push_return=1)
+    with patches[0], patches[1], patches[2], patches[3], patches[4], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], \
+         patch(f"{_SVC}.is_within_quiet_hours", return_value=False):
+        result = await run_cycle(db)
+
+    assert result["notifications_sent"] == 1
+
+
+@pytest.mark.asyncio
+async def test_siat_level5_overrides_quiet_hours():
+    """Level 5 / ROJO is always sent even when inside quiet hours."""
+    from app.features.siat.service import run_cycle
+
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_5, _QUIET_PREFS, push_return=1)
+    with patches[0], patches[1], patches[2], patches[3], patches[4], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], \
+         patch(f"{_SVC}.is_within_quiet_hours", return_value=True):
+        result = await run_cycle(db)
+
+    assert result["notifications_sent"] == 1
+
+
+@pytest.mark.asyncio
+async def test_smn_quiet_hours_suppresses_push():
+    """SMN alert level=3 + user in quiet hours → not added to affected_user_ids."""
+    from app.features.siat.service import _notify_smn_alerts
+
+    db = MagicMock()
+
+    with patch(f"{_SVC}._get_pending_smn_alerts", new_callable=AsyncMock, return_value=[_FAKE_SMN_ALERT]), \
+         patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=_QUIET_PREFS), \
+         patch(f"{_SVC}.is_within_quiet_hours", return_value=True), \
+         patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={}) as mock_tokens, \
+         patch(f"{_SVC}._mark_alert_notified", new_callable=AsyncMock) as mock_mark:
+
+        total = await _notify_smn_alerts(db, [_FAKE_USER_NEARBY])
+
+    assert total == 0
+    mock_mark.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_smn_level5_overrides_quiet_hours():
+    """SMN alert level=5 inside quiet hours → push still sent (ROJO exception)."""
+    from app.features.siat.service import _notify_smn_alerts
+
+    db = MagicMock()
+    alert_level5 = {**_FAKE_SMN_ALERT, "level": 5}
+
+    with patch(f"{_SVC}._get_pending_smn_alerts", new_callable=AsyncMock, return_value=[alert_level5]), \
+         patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=_QUIET_PREFS), \
+         patch(f"{_SVC}.is_within_quiet_hours", return_value=True), \
+         patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
+         patch(f"{_SVC}._mark_alert_notified", new_callable=AsyncMock) as mock_mark, \
+         patch(f"{_SVC}.messaging") as mock_messaging:
+
+        fake_response = MagicMock()
+        fake_response.success_count = 1
+        fake_response.failure_count = 0
+        fake_response.responses = [MagicMock(success=True)]
+        mock_messaging.send_each_for_multicast.return_value = fake_response
+        mock_messaging.MulticastMessage = MagicMock()
+        mock_messaging.Notification = MagicMock()
+        mock_messaging.AndroidConfig = MagicMock()
+        mock_messaging.APNSConfig = MagicMock()
+
+        total = await _notify_smn_alerts(db, [_FAKE_USER_NEARBY])
+
+    assert total == 1
+    mock_mark.assert_called_once()

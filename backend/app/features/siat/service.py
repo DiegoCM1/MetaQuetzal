@@ -26,11 +26,12 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from app.features.siat.evaluator import evaluate_user, haversine_km
 from app.features.siat.providers.nhc import fetch_active_cyclones
 from app.features.notifications.service import get_tokens_for_users
-from app.features.notification_preferences.service import get_preferences
+from app.features.notification_preferences.service import get_preferences, is_within_quiet_hours
 
 logger = logging.getLogger(__name__)
 
-_NOTIFY_MIN_LEVEL = 2  # VERDE and above trigger push
+_NOTIFY_MIN_LEVEL = 2          # VERDE and above trigger push
+_QUIET_HOURS_OVERRIDE_LEVEL = 4  # NARANJA and ROJO always fire even in quiet hours
 
 _COLOR_LABELS = {
     "AZUL": "Azul",
@@ -328,6 +329,8 @@ async def _push_smn_for_alert(
             continue
         prefs = await get_preferences(db, user["id"])
         if prefs["siat_enabled"] and alert["level"] >= prefs["min_siat_level"]:
+            if is_within_quiet_hours(prefs) and alert["level"] < _QUIET_HOURS_OVERRIDE_LEVEL:
+                continue
             affected_user_ids.append(user["id"])
 
     if not affected_user_ids:
@@ -444,13 +447,19 @@ async def run_cycle(db: AsyncSession) -> dict:
                 if new_level >= _NOTIFY_MIN_LEVEL and (old_level is None or new_level > old_level):
                     prefs = await get_preferences(db, user["id"])
                     if prefs["siat_enabled"] and new_level >= prefs["min_siat_level"]:
-                        prev = escalations.get(user["id"])
-                        if prev is None or new_level > prev["siat_level"]:
-                            escalations[user["id"]] = assessment
-                            logger.info(
-                                "Escalation queued: user_id=%d %s→%s (%s)",
-                                user["id"], old_level, new_level, assessment["siat_color"],
+                        if is_within_quiet_hours(prefs) and new_level < _QUIET_HOURS_OVERRIDE_LEVEL:
+                            logger.debug(
+                                "user_id=%d: push suppressed by quiet hours (level=%d)",
+                                user["id"], new_level,
                             )
+                        else:
+                            prev = escalations.get(user["id"])
+                            if prev is None or new_level > prev["siat_level"]:
+                                escalations[user["id"]] = assessment
+                                logger.info(
+                                    "Escalation queued: user_id=%d %s→%s (%s)",
+                                    user["id"], old_level, new_level, assessment["siat_color"],
+                                )
                     else:
                         logger.debug(
                             "user_id=%d: push filtered by prefs (siat_enabled=%s, min_siat_level=%d, got=%d)",

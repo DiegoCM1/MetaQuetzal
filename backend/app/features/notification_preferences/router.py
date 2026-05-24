@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.features.users.service import get_user_by_firebase_uid
-from app.features.notification_preferences.service import get_preferences, upsert_preferences
+from app.features.notification_preferences.service import get_preferences, upsert_preferences, QuietHoursValidationError
 from app.features.notification_preferences.schemas import NotificationPreferences, NotificationPreferencesPatch
 
 router = APIRouter()
@@ -32,4 +32,7 @@ async def patch_notification_preferences(
     if db_user is None:
         raise HTTPException(status_code=404, detail="User profile not found. Call POST /api/v1/users/me first.")
     updates = body.model_dump(exclude_none=True)
-    return await upsert_preferences(db, db_user["id"], updates)
+    try:
+        return await upsert_preferences(db, db_user["id"], updates)
+    except QuietHoursValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))

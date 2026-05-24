@@ -71,6 +71,15 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
                 updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
+        await conn.execute(text(
+            "ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS quiet_hours_enabled BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS quiet_start TIME"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS quiet_end TIME"
+        ))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS map_events (
                 id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
