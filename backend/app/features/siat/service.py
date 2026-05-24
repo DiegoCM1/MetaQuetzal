@@ -31,7 +31,7 @@ from app.features.notification_preferences.service import get_preferences, is_wi
 logger = logging.getLogger(__name__)
 
 _NOTIFY_MIN_LEVEL = 2          # VERDE and above trigger push
-_QUIET_HOURS_OVERRIDE_LEVEL = 5  # ROJO always fires even in quiet hours
+_QUIET_HOURS_OVERRIDE_LEVEL = 4  # NARANJA and ROJO always fire even in quiet hours
 
 _COLOR_LABELS = {
     "AZUL": "Azul",
