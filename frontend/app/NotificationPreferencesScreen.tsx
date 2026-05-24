@@ -45,15 +45,33 @@ function normalizePrefs(data: Partial<Prefs>): Prefs {
   };
 }
 
+function localTimeToUTC(localStr: string): string {
+  const [h, m] = localStr.split(":").map(Number);
+  const offset = new Date().getTimezoneOffset(); // (UTC - local) in minutes
+  const utcMin = (h * 60 + m + offset + 1440) % 1440;
+  return `${String(Math.floor(utcMin / 60)).padStart(2, "0")}:${String(utcMin % 60).padStart(2, "0")}`;
+}
+
+function utcTimeToLocal(utcStr: string): string {
+  const [h, m] = utcStr.split(":").map(Number);
+  const offset = new Date().getTimezoneOffset();
+  const locMin = (h * 60 + m - offset + 1440) % 1440;
+  return `${String(Math.floor(locMin / 60)).padStart(2, "0")}:${String(locMin % 60).padStart(2, "0")}`;
+}
+
 function timeStrToDate(s: string | null): Date {
-  const [h, m] = (s ?? "22:00").split(":").map(Number);
+  // s is stored in UTC; convert to local for the picker
+  const local = utcTimeToLocal(s ?? "22:00");
+  const [h, m] = local.split(":").map(Number);
   const d = new Date();
   d.setHours(h, m, 0, 0);
   return d;
 }
 
 function dateToTimeStr(d: Date): string {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  // picker returns local time; convert to UTC before storing/sending
+  const local = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return localTimeToUTC(local);
 }
 
 export default function NotificationPreferencesScreen() {
@@ -101,8 +119,11 @@ export default function NotificationPreferencesScreen() {
 
   function handleQuietToggle(enabled: boolean) {
     if (enabled && (!prefs.quiet_start || !prefs.quiet_end)) {
-      // backend requires times when enabling; inject defaults so it doesn't reject with 422
-      patchPrefs({ quiet_hours_enabled: true, quiet_start: "22:00", quiet_end: "07:00" });
+      patchPrefs({
+        quiet_hours_enabled: true,
+        quiet_start: localTimeToUTC("22:00"),
+        quiet_end: localTimeToUTC("07:00"),
+      });
     } else {
       patchPrefs({ quiet_hours_enabled: enabled });
     }
@@ -232,8 +253,8 @@ export default function NotificationPreferencesScreen() {
         {/* Selector de horario — visible solo cuando quiet hours está activo */}
         {prefs.quiet_hours_enabled && (
           <View style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 8 }}>
-            <Text style={styles.sectionLabel}>Horario sin alertas (UTC)</Text>
-            <Text style={styles.utcNote}>Las alertas nivel 5 / Rojo siempre se envían.</Text>
+            <Text style={styles.sectionLabel}>Horario sin alertas</Text>
+            <Text style={styles.utcNote}>Las alertas nivel 4-5 / Naranja-Rojo siempre se envían.</Text>
 
             <View style={styles.timeRow}>
               <View style={styles.timeBlock}>
@@ -243,7 +264,7 @@ export default function NotificationPreferencesScreen() {
                   disabled={saving}
                   onPress={() => setShowStartPicker(true)}
                 >
-                  <Text style={styles.timeValue}>{prefs.quiet_start ?? "22:00"}</Text>
+                  <Text style={styles.timeValue}>{utcTimeToLocal(prefs.quiet_start ?? "22:00")}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -256,7 +277,7 @@ export default function NotificationPreferencesScreen() {
                   disabled={saving}
                   onPress={() => setShowEndPicker(true)}
                 >
-                  <Text style={styles.timeValue}>{prefs.quiet_end ?? "07:00"}</Text>
+                  <Text style={styles.timeValue}>{utcTimeToLocal(prefs.quiet_end ?? "07:00")}</Text>
                 </TouchableOpacity>
               </View>
             </View>

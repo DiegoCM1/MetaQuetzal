@@ -2,6 +2,11 @@ from datetime import datetime, time, timezone
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
+class QuietHoursValidationError(ValueError):
+    """Raised when quiet_hours_enabled=True but quiet_start/end are missing."""
+
+
 _DEFAULTS: dict = {
     "siat_enabled": True,
     "min_siat_level": 2,
@@ -64,7 +69,9 @@ async def upsert_preferences(db: AsyncSession, user_id: int, updates: dict) -> d
     current = await get_preferences(db, user_id)
     merged = {**current, **updates}
     if merged.get("quiet_hours_enabled") and (not merged.get("quiet_start") or not merged.get("quiet_end")):
-        raise ValueError("quiet_hours_require_times")
+        raise QuietHoursValidationError(
+            "quiet_start and quiet_end are required when quiet_hours_enabled is true"
+        )
     await db.execute(
         text("""
             INSERT INTO notification_preferences
