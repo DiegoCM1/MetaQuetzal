@@ -5,7 +5,7 @@ This file supplements the root `CLAUDE.md` with frontend-specific guidance. Read
 ## Platform — mobile only
 
 - **Targets: iOS + Android. Web is NOT supported.** Do not add `.web.tsx` / `.web.jsx` files or web-only dependencies. Legacy web files and deps (`leaflet`, `react-native-web`, the `web` script) still exist but are being removed — don't extend them.
-- **iOS is first-class.** Every change must work on iOS, not just Android. Test on a physical iPhone (`npx expo run:ios`), not only the Android device.
+- **Write iOS-safe code.** Every change must work on iOS, not just Android — don't ship Android-only assumptions (platform-specific APIs, permission flows, styling quirks). iOS parity is required even though most of the team develops on Android.
 
 ## Routing — expo-router (file-based)
 
@@ -20,7 +20,8 @@ This file supplements the root `CLAUDE.md` with frontend-specific guidance. Read
 ## Data & state
 
 - **Backend base URL has one source of truth:** `utils/config.ts` exports `API_BASE_URL = process.env.EXPO_PUBLIC_API_URL`. Import `API_BASE_URL` — do **not** read `process.env.EXPO_PUBLIC_API_URL` directly elsewhere.
-- Server data: **SWR** + **axios**.
+- **HTTP goes through `authFetch` (`utils/api.ts`)** — plain `fetch` with a Firebase ID token attached as `Authorization: Bearer`. Use it for authenticated calls; don't hand-roll `fetch` + token elsewhere. (`axios` is in `package.json` but legacy — don't reach for it.)
+- **SWR** is used for client-side caching/revalidation where a hook needs it (e.g. `app/alerts/_hooks/useAlerts.ts`) — not a blanket requirement on every call.
 - Auth state: `features/auth/AuthContext.tsx` (Firebase via `@react-native-firebase`). App-wide contexts (theme, daltonic mode) live in `context/`.
 
 ## AI chat
