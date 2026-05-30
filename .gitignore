@@ -64,3 +64,6 @@ frontend/.env
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Personal, per-developer Claude Code context (not shared)
+CLAUDE.local.md
