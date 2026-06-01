@@ -203,3 +203,9 @@ Sprint 3
 - Messages on BT persisted on db when internet connection, sync, like WA would do it.
 - Retrain AI on newest data.
 - Payments setup
+
+### Dev tooling to evaluate
+- [ ] **codegraph** (semantic code-graph MCP — https://github.com/colbymchenry/codegraph) — claims fewer tool calls / faster code exploration for AI agents. Parked: marketing numbers are measured on large monorepos; our repo is small enough that built-in ripgrep/glob is already fast. Re-evaluate if the codebase grows materially. Trust/maintenance cost of a third-party MCP wired into everyone's editor is the real gate.
+- [ ] **autoskills** (`npx autoskills`) — auto-generates Claude skills. Parked: auto-generated skills tend to be generic; cheap to try but unproven value.
+- [ ] **mattpocock/skills** (https://github.com/mattpocock/skills) — curated skill collection (token reduction, bug diagnosis, architecture review). Parked: low-risk (skills are just markdown), worth a browse, but not sprint-gating.
+- [ ] Prettier file for enforcing types
