@@ -204,6 +204,10 @@ Sprint 3
 - Messages on BT persisted on db when internet connection, sync, like WA would do it.
 - Retrain AI on newest data.
 - Payments setup
+- Migrate to GCP/Amazon 
+  - [ ]  Reconcile dev into main (Merge)
+  - [ ]  Make dev branch match staging environment in prod (Imperative)
+  - [ ]  Set rule for autodeploying production environment in railway when a push to main is done. (Declarative)
 
 ### Minor changes
 - Cosmetic Change: Migrate from NOTIF_API_KEY to INTERNAL_API_KEY make the code accept both names during the transition (pydantic AliasChoices("INTERNAL_API_KEY", "NOTIF_API_KEY")), ship, migrate each environment, then drop the old — a zero-downtime rename

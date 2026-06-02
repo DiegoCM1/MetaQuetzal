@@ -10,14 +10,10 @@
   Everything else (Firebase key, LLM/notif keys) is shared — leave the forked copies as-is. Only DATABASE_URL
   and API_KEY get overridden.
 
-  ---
-  Phase 2 — Wire the DB (blocked on the Neon string)
-  
-  Step 2.1 — When the staging branch string arrives (DM), set DATABASE_URL on the staging env only.
-  Step 2.2 — Deploy backend to staging. ensure_core_tables() runs at boot — harmless no-op since the branch
-  already has prod's schema.
-  Step 2.3 — Smoke test: hit one staging endpoint, confirm it's talking to the branch, not prod. (Create a
-  throwaway row, check it's not in prod.)
+  ---  
+  Step 2.1 — When the staging branch string arrives (DM), set DATABASE_URL on the staging env only. ✅
+  Step 2.2 — Deploy backend to staging. ensure_core_tables() runs at boot — harmless no-op since the branch already has prod's schema.
+  Step 2.3 — Smoke test: hit one staging endpoint, confirm it's talking to the branch, not prod. (Create a throwaway row, check it's not in prod.)
 
   ---
   Phase 3 — Point the client at staging (needs only the URL from 1.3, not the DB)
