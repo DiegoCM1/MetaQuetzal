@@ -200,12 +200,19 @@ If it doesn't meet all five, it's **WIP** — regardless of what the board says.
 
 
 Sprint 3
+### New features / Important Improvements
 - Messages on BT persisted on db when internet connection, sync, like WA would do it.
 - Retrain AI on newest data.
 - Payments setup
+
+### Minor changes
+- Cosmetic Change: Migrate from NOTIF_API_KEY to INTERNAL_API_KEY make the code accept both names during the transition (pydantic AliasChoices("INTERNAL_API_KEY", "NOTIF_API_KEY")), ship, migrate each environment, then drop the old — a zero-downtime rename
 
 ### Dev tooling to evaluate
 - [ ] **codegraph** (semantic code-graph MCP — https://github.com/colbymchenry/codegraph) — claims fewer tool calls / faster code exploration for AI agents. Parked: marketing numbers are measured on large monorepos; our repo is small enough that built-in ripgrep/glob is already fast. Re-evaluate if the codebase grows materially. Trust/maintenance cost of a third-party MCP wired into everyone's editor is the real gate.
 - [ ] **autoskills** (`npx autoskills`) — auto-generates Claude skills. Parked: auto-generated skills tend to be generic; cheap to try but unproven value.
 - [ ] **mattpocock/skills** (https://github.com/mattpocock/skills) — curated skill collection (token reduction, bug diagnosis, architecture review). Parked: low-risk (skills are just markdown), worth a browse, but not sprint-gating.
 - [ ] Prettier file for enforcing types
+
+### Possible things to evaluate
+- [ ] 3 step db (one per-dev + staging + prod) ? Right now we've got 2 step db only (staging + prod)
