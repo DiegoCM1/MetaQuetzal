@@ -52,7 +52,7 @@ The client picks its backend via `EXPO_PUBLIC_API_URL`, set per EAS profile in `
 
 ## Environments & CI
 
-- **Backend** runs on Railway; **prod DB** is Postgres on Neon. A separate **staging** environment is being stood up — when it exists, env URLs and how to point a build at it are documented in `docs/specs_june05/staging.md`.
+- **Backend** runs on Railway; **prod DB** is Postgres on Neon. A separate **staging** environment is live (`https://backend-blueye-staging.up.railway.app`) — env URLs, teammate setup, the deploy flow, and the prod-DB SACRED RULE are documented in `docs/STAGING.md`.
 - **Client → backend** target is build-time per EAS profile (see the build-time note above). It is not a runtime switch.
 - **CI:** GitHub Actions runs **backend `pytest` on every PR** (`.github/workflows/backend-tests.yml`, with a Postgres service). **There is no frontend CI** — frontend changes are not gated by automated tests; verify on a physical device. Dependabot is enabled (`.github/dependabot.yml`).
 

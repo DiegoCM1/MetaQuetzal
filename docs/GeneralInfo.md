@@ -6,7 +6,7 @@ PRODUCTION BUILD
 2. cd android && ./gradlew clean && cd ..                                                                          
 3. eas build --profile production --platform android --local     
 
-Option A — Physical phone (EAS cloud build)
+Option A — Physical phone + (Creating builds EAS Cloud)
 1. npm install -g eas-cli                                                                                                    
 2. eas build --profile development --platform android (Add --local flag to compile the code in your hardware)
   2.1 eas build --profile preview --platform android (Add --local flag to compile the code in your hardware)
