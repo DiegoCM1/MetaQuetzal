@@ -17,38 +17,21 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   const loadTheme = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem(THEME_KEY);
-      if (savedTheme && (savedTheme === "light" || savedTheme === "dark")) {
-        console.log("🎨 Loading saved theme:", savedTheme);
-        setColorScheme(savedTheme);
-      } else {
-        // Default to light mode if no preference saved
-        console.log("🎨 No saved theme, using default: light");
-        setColorScheme("light");
-      }
-    } catch (error) {
-      console.error("Error loading theme:", error);
-      // On error, default to light
-      setColorScheme("light");
-    }
+    // v1: single light theme — brand palette is always active
+    setColorScheme("light");
   };
 
-  const toggleColorScheme = async () => {
-    const newTheme = colorScheme === "dark" ? "light" : "dark";
-    console.log("🎨 Toggling theme to:", newTheme);
-
-    try {
-      // Guardar en AsyncStorage
-      await AsyncStorage.setItem(THEME_KEY, newTheme);
-      console.log("✅ Theme saved to AsyncStorage");
-
-      // Aplicar el cambio
-      setColorScheme(newTheme);
-    } catch (error) {
-      console.error("Error saving theme:", error);
-    }
-  };
+  // v2: uncomment to restore dark mode toggle
+  // const toggleColorScheme = async () => {
+  //   const newTheme = colorScheme === "dark" ? "light" : "dark";
+  //   try {
+  //     await AsyncStorage.setItem(THEME_KEY, newTheme);
+  //     setColorScheme(newTheme);
+  //   } catch (error) {
+  //     console.error("Error saving theme:", error);
+  //   }
+  // };
+  const toggleColorScheme = () => {};
 
   return (
     <ThemeContext.Provider value={{ colorScheme, toggleColorScheme }}>

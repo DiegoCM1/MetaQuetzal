@@ -27,7 +27,7 @@ export default function ContentCarousel({ title, items }: ContentCarouselProps) 
   return (
     <View className="mb-6">
       {/* Title */}
-      <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark px-6 mb-4">
+      <Text className="text-xl font-bold text-phase2Titles px-6 mb-4">
         {title}
       </Text>
 

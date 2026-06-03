@@ -122,10 +122,6 @@ RAG
   8. Switching models later — one script re-run, 30 minutes, no other code changes
   9. Chunk format: JSON
 
-
-  Not decided yet:
-  - How to handle offline query embedding on Android (paraphrase-multilingual-MiniLM-L12-v2 CONVERSION)
-
 ---
 
 ## Pending Tasks
@@ -155,21 +151,84 @@ RAG
     - Restart conversation works for both online and offline ✅
     - set streaming for online model (deferred — 80 word responses make this low priority)
 
-  Phase 4 (AI enrichment):
+  Phase 4 (AI enrichment): ✅
     - Inject user location into system prompt ✅
     - Inject live weather + alerts from OpenWeather One Call 3.0 into system prompt (Frontend sends lat/lng → backend fetches weather → injects into system prompt → calls LLM) ✅
-        1. Embedding script: Script that loads 8 JSON files, embeds each chunk's text field with paraphrase-multilingual-MiniLM-L12-v2, inserts into pgvector, exports FAISS index ✅                                             
-        2. Backend retrieval — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  
-        3. R2 upload — upload FAISS index file alongside the model (offline step, later)     
-    - RAG with CONAGUA/Protección Civil docs (pgvector online / faiss offline)
-    - Maps tool calling (agentic backend — LLM decides when to fetch map data)
+        1. Embedding script: loads 8 JSON files, embeds each chunk's text field with paraphrase-multilingual-MiniLM-L12-v2, inserts into pgvector, exports FAISS index ✅                                             
+        2. RAG Online — before the LLM call in service.py, embed the user query, query pgvector, inject top-k chunks into system prompt  ✅
+    
+  Deadline: April 25, 2026 — Play Store submission. iOS after.
+  Nota: cada feature debe tener al menos un test de integración que pruebe el happy path del endpoint antes de hacer push.
 
-  Production (trained model):
-    - Offline inference test in snapdragon androids.
-    - Finish dataset
-    - Train v2 BluEye 1B and 3B Instruct models (Behaviour and how the AI responds)
-    - Quantize + convert to .pte
-    - Upload to R2, swap URL
+  Phase 5 (Must ship — blocking store submission)
+    0. Remove tamagui ✅
+    1. Fix OOM crash (tracksViewChanges on map markers) ✅
+    2. Clean app logs, fix mixpanel token, fix vulnerabilities ✅
+    2.1 Review Edgar's branch — manually extracted siat/ + alerts additions, stripped auth (DEV-DIEGO) ✅
+    2.2 Assign tasks to team with dates based on April 25 deadline (DEV-DIEGO) ✅
+    2.3 Register Google Play developer account — 48h verification (DEV-DIEGO) — Apr 17 ✅
+    3. Login system — backend: core/.authpy Firebase JWT + get_current_user. Frontend: pantalla de login, persistencia de sesión, token en cada request, rutas protegidas (DEV-DIEGO) — Apr 17–18 ✅
+      3.1 - Button for logging out (DEV-DIEGO) ✅
+      3.2 - Token centralizado en utils/config.ts + authFetch en todos los call sites (DEV-DIEGO) ✅
+      3.3 - Eliminación de cuenta — DELETE /users/me endpoint + botón en Settings. Depende del login (DEV-VAL) — Apr 20–21
+    4. Google Play Billing — integración de pagos in-app + features premium detrás de paywall. Stripe NO permitido para bienes digitales en Android (DEV-VAL) — Apr 18–21
+    5. Finalizar y probar el sistema de alertas (DEV-EDGAR) — Apr 17–20
+       - Asegurarse de que el backend de alertas esté funcionando end-to-end
+       - Confirmar endpoints vía Postman antes de hacer handoff a Diego
+       - Una vez que el login esté listo, agregar GET /api/v1/alerts/active — Apr 21
+       - Integración en frontend la hace Diego en tarea 7
+    6. Materiales Play Store (IVAN) — Apr 17–23
+       - Texto del listing — nombre, descripción corta, descripción completa (español)
+       - Screenshots — mínimo 5, tomados en dispositivo real
+       - Feature graphic — banner 1024x500px
+       - Categoría de la app + cuestionario de clasificación de contenido
+       - Política de privacidad — URL real y pública (puede ser página simple)
+       - Formulario de seguridad de datos — declarar qué datos recopila la app y por qué (obligatorio, bloquea el envío si falta)
+    6.5 Integration tests — backend endpoints owned by Diego (DEV-DIEGO-EXTRA) — Apr 21 ✅
+       - POST /ai/chat — happy path + auth failure ✅
+       - POST /feedback — happy path + auth failure ✅
+       - POST /push-token — happy path + auth failure ✅
+    7. Pulir frontend — UX, edge cases, limpieza visual (DEV-DIEGO) — Apr 22–23
+      7.1 Frotend config: Design system, logos, images, constants, gradients, classes. ✅
+      7.2 Login screen ✅
+      7.3 NAVBAR ✅ 
+      7.4 Build the 3 shared components: bottom tab bar, section header Option Card, default blue screen with official gradient ✅ 
+      7.5 Settings ✅ 
+      7.6 Onboarding ✅ / Map ✅ / Alerts ✅ (Fix fetching error) /
+    8. Package + submit Play Store (DEV-DIEGO) — Apr 24–25
+       - Generar y respaldar keystore (si se pierde, la app nunca se puede actualizar)
+       - Configurar perfil de producción en eas.json
+       - Build, firmar y subir APK
+       - Enviar — Apr 25
 
-  Future hardware:
-    - Export Qualcomm HTP variants for Snapdragon devices
+    9. Possible next requirements
+      9.1 Google changed the rules for personal accounts: You need 20 testers for 14 days before you can even hit "Publish" to the real store.
+
+  iOS (after Play Store submitted):
+    - Register Apple Developer account ($99/year) (DEV-DIEGO)
+    - First iOS build setup (Xcode, provisioning profiles, certificates) (DEV-DIEGO)
+    - Apple In-App Purchase (separate integration from Google Play Billing) (DEV-DIEGO)
+    - Submit via App Store Connect (DEV-DIEGO)
+
+    ---
+
+    Phase 6 (Ship if time allows before sending to playstore)
+
+    1. Improve telemetry — replace print() with structured logging — backend gets loguru or Python logging,
+    frontend gets Sentry
+    2. Improve telemetry to use login — once login exists, tie events to real users
+    3. E2E testing
+
+    ---
+
+    Phase 7 (Post launch)
+
+    0. Backend migration from Railway to Cloud Run
+    1. Frotend Architectural cleanup — move feature code out of app/ into src/features/
+      1.1 Use useSafeAreaInsets on ScreenHeader.tsx so it handles everything (non-blocking, best practices: DRY)
+    2. Define tool schemas and usage
+    3. Add tool examples to dataset
+    4. Create dataset v2 multiturn and tool examples
+    5. Train 1b, 3b, Llama Model (If permitted by provider) V2
+    6. Build a custom button for login — Pressable + Google icon + your own text. Full control, but you're rolling your own Google-branded UI
+    ---

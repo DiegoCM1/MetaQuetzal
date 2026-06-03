@@ -42,7 +42,7 @@ export default function NoteListItem({ note }: NoteListItemProps) {
   return (
     <TouchableOpacity
       onPress={handlePress}
-      className="flex-row items-center justify-between mb-3 px-4 py-4 bg-gray-50 dark:bg-neutral-800 rounded-lg"
+      className="flex-row items-center justify-between mb-3 px-4 py-4 bg-gray-50 rounded-lg"
       activeOpacity={0.7}
     >
       <View className="flex-row items-center flex-1">
@@ -53,16 +53,16 @@ export default function NoteListItem({ note }: NoteListItemProps) {
           <Ionicons name={icon} size={24} color={color} />
         </View>
         <View className="ml-4 flex-1">
-          <Text className="text-base font-semibold text-phase2Titles dark:text-phase2TitlesDark">
+          <Text className="text-base font-semibold text-phase2Titles">
             {note.title}
           </Text>
           <Text
-            className="text-sm text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mt-1"
+            className="text-sm text-phase2SecondaryTxt mt-1"
             numberOfLines={1}
           >
             {note.description}
           </Text>
-          <Text className="text-xs text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark mt-1">
+          <Text className="text-xs text-phase2SecondaryTxt mt-1">
             {note.readTime} min de lectura
           </Text>
         </View>

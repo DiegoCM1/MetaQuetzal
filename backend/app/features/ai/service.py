@@ -1,8 +1,13 @@
 import httpx
+import json
+import logging
 from app.core.config import settings
 from app.features.ai.rag import retrieve
+from app.features.alerts.service import get_alert_by_id
 
-SYSTEM_PROMPT = """You are BluEye, an AI assistant specialized in hurricane preparedness, response, and recovery for residents of Mexico.
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = """You are Bluai, an AI assistant specialized in hurricane preparedness, response, and recovery for residents of Mexico.
 
   ROLE: You help users before, during, and after hurricanes. Adapt your tone to the
   situation — calm and educational for preparation, clear and direct during active storms,
@@ -49,17 +54,15 @@ async def fetch_weather(latitude: float, longitude: float) -> str:
         return weather_str  
 
 
-async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None) -> str:
+async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None):
     system_content = SYSTEM_PROMPT
-    
+
     print(f"[chat] Query from user: {messages[-1].content}")
 
-    # Location injection
     if location:
         system_content += f"\n\nUbicación actual del usuario: {location}."
     print(f"[chat:location] {location}")
 
-    #  Weather injection
     if latitude and longitude:
         try:
             weather = await fetch_weather(latitude, longitude)
@@ -68,12 +71,9 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
         except Exception as e:
             print(f"[chat:weather] weather fetch failed: {e}")
 
-    # RAG, Chunks injection
-    try: 
+    try:
         retrieved_chunks_list = retrieve(messages[-1].content)
-
         normalized_chunks = "\n\n".join(retrieved_chunks_list)
-
         message_for_ai = f"This is some additional context: {normalized_chunks}"
 
         if retrieved_chunks_list:
@@ -81,33 +81,111 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
             print(f"[chat:rag] RAG chunks injected: {len(retrieved_chunks_list)}")
         else:
             print(f"[chat:rag] no relevant chunks found")
-
     except Exception as e:
         print(f"[chat:rag] RAG failed: {e}")
-
-    
-
 
     print(f"[chat] system prompt tail: ...{system_content[-100:]}")
     print(f"[chat] messages count: {len(messages)}")
     full_messages = [{"role": "system", "content": system_content}] + [m.model_dump() for m in messages]
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            url=f"{settings.LLM_BASE_URL}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {settings.LLM_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": settings.LLM_MODEL,
-                "messages": full_messages,
-            },
-            timeout=30.0,
-        )
-        data = response.json()
 
-        if "choices" not in data:
-            print(f"[chat:llm] unexpected response: {data}")
-            raise RuntimeError(f"[chat:llm] LLM returned no choices: {data}")
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            async with client.stream(
+                "POST",
+                f"{settings.LLM_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.LLM_MODEL,
+                    "messages": full_messages,
+                    "stream": True,
+                },
+            ) as response:
+                if response.status_code != 200:
+                    error_body = await response.aread()
+                    logger.error(
+                        "[chat:llm] upstream returned %s: %r",
+                        response.status_code,
+                        error_body,
+                    )
+                    raise RuntimeError(f"LLM upstream returned {response.status_code}")
 
-        return data["choices"][0]["message"]["content"]
+                try:
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            yield f"{line}\n\n"
+                            if line.strip() == "data: [DONE]":
+                                return
+                except httpx.HTTPError as exc:
+                    logger.error(
+                        "[chat:llm] stream interrupted mid-flight: %s",
+                        exc,
+                        exc_info=True,
+                    )
+                    yield 'data: {"error": "stream_interrupted"}\n\n'
+                    yield "data: [DONE]\n\n"
+                    return
+    except httpx.ConnectError as exc:
+        logger.error("[chat:llm] cannot connect to LLM: %s", exc, exc_info=True)
+        raise RuntimeError("LLM connection failed") from exc
+    except httpx.TimeoutException as exc:
+        logger.error("[chat:llm] LLM request timed out: %s", exc, exc_info=True)
+        raise RuntimeError("LLM timeout") from exc
+    except httpx.HTTPError as exc:
+        logger.error("[chat:llm] LLM HTTP error: %s", exc, exc_info=True)
+        raise RuntimeError("LLM request failed") from exc
+
+
+_SUMMARY_SYSTEM_PROMPT = (
+    "Eres un asistente de alertas de emergencia para México. "
+    "Dado los datos de una alerta, genera un resumen conciso y útil para el ciudadano afectado. "
+    "Reglas estrictas: máximo 3 oraciones; español claro y directo; sin jerga técnica; "
+    "sin emojis; no repitas el título textualmente; no inventes datos que no estén en los datos proporcionados."
+)
+
+_SUMMARY_MAX_CHARS = 600
+
+
+async def alert_summary(db, alert_id: str) -> str:
+    alert = await get_alert_by_id(db, alert_id)
+    if alert is None:
+        raise ValueError("alert_not_found")
+
+    payload = json.dumps({
+        "titulo": alert["title"],
+        "descripcion": alert.get("short", ""),
+        "nivel": alert["level"],
+        "factores": alert.get("factors", []),
+        "recomendaciones": alert.get("recommendations", []),
+    }, ensure_ascii=False)
+
+    messages = [
+        {"role": "system", "content": _SUMMARY_SYSTEM_PROMPT},
+        {"role": "user",   "content": f"Genera un resumen de esta alerta:\n{payload}"},
+    ]
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url=f"{settings.LLM_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": settings.LLM_MODEL, "messages": messages},
+                timeout=30.0,
+            )
+            data = response.json()
+            if "choices" not in data:
+                raise RuntimeError(f"LLM returned no choices: {data}")
+            summary = data["choices"][0]["message"]["content"]
+            return summary[:_SUMMARY_MAX_CHARS]
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        logger.error("alert_summary LLM call failed: %s", exc, exc_info=True)
+        raise RuntimeError("llm_unavailable")

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>648833411163-vlbuhb48ohqm8lkca3unem5tbo8mvsc7.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.648833411163-vlbuhb48ohqm8lkca3unem5tbo8mvsc7</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>648833411163-0kvokh6fln4tq6drrc3gk3hprqgmj5og.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDfCeYw9swj2X8v1Qcau-H2dGboiOJ_9TI</string>
+	<key>GCM_SENDER_ID</key>
+	<string>648833411163</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.bluai.app</string>
+	<key>PROJECT_ID</key>
+	<string>blue-eye-4dbfc</string>
+	<key>STORAGE_BUCKET</key>
+	<string>blue-eye-4dbfc.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:648833411163:ios:fe370d4a8a4d51b3c2f77e</string>
+</dict>
+</plist>

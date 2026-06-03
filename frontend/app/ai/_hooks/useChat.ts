@@ -10,23 +10,20 @@ import * as Location from 'expo-location'
 const online = new OnlineProvider()
 
 export function useChat() {
-    const { llm, modelReady, setModelMode } = useModel()
+    const { llm, modelReady, setModelMode, modelMode } = useModel()
 
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+    const [isStreaming, setIsStreaming] = useState(false)
     const locationRef = useRef<string | null>(null)
     const coordsRef = useRef<{ latitude: number, longitude: number } | null>(null)
+    const abortControllerRef = useRef<AbortController | null>(null)
+    const firstTokenRef = useRef(false)
 
-    // SEND PENDING MESSAGE ONCE MODEL IS READY
-    useEffect(() => {
-        if (modelReady && pendingMessage) {
-            console.log('[useChat] model ready — sending pending message')
-            llm.sendMessage(pendingMessage)
-            setPendingMessage(null)
-        }
-    }, [modelReady, pendingMessage])
+    const stop = () => {
+        abortControllerRef.current?.abort()
+    }
 
     // STREAM OFFLINE TOKENS
     useEffect(() => {
@@ -38,12 +35,12 @@ export function useChat() {
         }
     }, [llm.response])
 
-    // STOP LOADING WHEN OFFLINE INFERENCE FINISHES
+    // STOP LOADING WHEN OFFLINE INFERENCE FINISHES (offline path only)
     useEffect(() => {
-        if (!llm.isGenerating && isLoading) {
+        if (modelMode === 'offline' && !llm.isGenerating && isLoading) {
             setIsLoading(false)
         }
-    }, [llm.isGenerating, isLoading])
+    }, [llm.isGenerating, isLoading, modelMode])
 
     // LOAD MESSAGES
     const loadMessages = async () => {
@@ -69,7 +66,7 @@ export function useChat() {
         if (modelReady) {
             llm.configure({
                 chatConfig: {
-                    systemPrompt: 'You are BluEye, an offline hurricane survival assistant serving residents of Mexico. FORMAT: Maximum 80 words. Short sentences. Bullet points for steps. RULES: 1. Always respond in simple Spanish. No English. 2. Be calm and reassuring but never minimize real danger. 3. You are fully offline. Do not reference websites, phone numbers or live data. Never assume outcomes about people, locations, or safety status. If asked for real-time information, tell the user to check local radio or authorities. 4. Prioritize immediate safety first, then practical next steps.'
+                    systemPrompt: 'You are Bluai, an offline hurricane survival assistant serving residents of Mexico. FORMAT: Maximum 80 words. Short sentences. Bullet points for steps. RULES: 1. Always respond in simple Spanish. No English. 2. Be calm and reassuring but never minimize real danger. 3. You are fully offline. Do not reference websites, phone numbers or live data. Never assume outcomes about people, locations, or safety status. If asked for real-time information, tell the user to check local radio or authorities. 4. Prioritize immediate safety first, then practical next steps.'
                 }
             })
         }
@@ -112,8 +109,15 @@ export function useChat() {
             if (!hasInternet) {
                 setModelMode('offline')
                 if (!modelReady) {
-                    console.log('[useChat] model not ready — queuing message')
-                    setPendingMessage(input)
+                    console.log('[useChat] offline + model not ready — showing error fallback')
+                    const errorText = 'Sin conexión y modelo IA no descargado. Conéctate a internet o descarga el modelo IA desde Ajustes.'
+                    setMessages(prev => {
+                        if (prev.length === 0) return prev
+                        const last = prev[prev.length - 1]
+                        if (last.role !== 'bot') return prev
+                        return [...prev.slice(0, -1), { ...last, text: errorText, error: true }]
+                    })
+                    setIsLoading(false)
                     return
                 }
                 console.log('[useChat] routing → offline')
@@ -123,13 +127,31 @@ export function useChat() {
                 console.log('[useChat] routing → online (Together AI)')
                 setModelMode('online')
                 const historyForAPI = [...messages, userMessage]
-                await online.sendMessage(historyForAPI, locationRef.current, coordsRef.current?.latitude ?? null, coordsRef.current?.longitude ?? null, (token) => {
-                    setMessages(prev => {
-                        const last = prev[prev.length - 1]
-                        return [...prev.slice(0, -1), { ...last, text: last.text + token }]
-                    })
-                })
+                abortControllerRef.current = new AbortController()
+                firstTokenRef.current = false
+                await online.sendMessage(
+                    historyForAPI,
+                    locationRef.current,
+                    coordsRef.current?.latitude ?? null,
+                    coordsRef.current?.longitude ?? null,
+                    (token) => {
+                        if (!firstTokenRef.current) {
+                            firstTokenRef.current = true
+                            setIsLoading(false)
+                            setIsStreaming(true)
+                        }
+                        setMessages(prev => {
+                            if (prev.length === 0) return prev
+                            const last = prev[prev.length - 1]
+                            if (last.role !== 'bot') return prev
+                            return [...prev.slice(0, -1), { ...last, text: last.text + token }]
+                        })
+                    },
+                    abortControllerRef.current.signal,
+                )
                 console.log('ai_response_received')
+                abortControllerRef.current = null
+                setIsStreaming(false)
                 setIsLoading(false)
             }
         } catch (error) {
@@ -142,12 +164,14 @@ export function useChat() {
                 error: true
             }])
             Alert.alert('Error', errorText)
+            setIsStreaming(false)
             setIsLoading(false)
+            abortControllerRef.current = null
         }
     }
 
     useEffect(() => { loadMessages() }, [])
     useEffect(() => { saveMessages(messages) }, [messages])
 
-    return { messages, input, setInput, isLoading, restartConversation, handleSendMessage }
+    return { messages, input, setInput, isLoading, isStreaming, restartConversation, handleSendMessage, stop }
 }

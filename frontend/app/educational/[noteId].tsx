@@ -74,7 +74,7 @@ export default function NoteDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900 items-center justify-center">
+      <SafeAreaView className="flex-1 bg-transparent items-center justify-center">
         <ActivityIndicator size="large" color={iconColor} />
       </SafeAreaView>
     );
@@ -82,16 +82,16 @@ export default function NoteDetailScreen() {
 
   if (error || !note) {
     return (
-      <SafeAreaView className="flex-1 bg-white dark:bg-neutral-900 items-center justify-center px-6">
+      <SafeAreaView className="flex-1 bg-transparent items-center justify-center px-6">
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text className="text-xl font-bold text-phase2Titles dark:text-phase2TitlesDark mt-4">
+        <Text className="text-xl font-bold text-phase2Titles mt-4">
           {error || 'Nota no encontrada'}
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
-          className="mt-6 bg-phase2Buttons dark:bg-phase2CardsDark px-6 py-3 rounded-xl"
+          className="mt-6 bg-phase2Buttons px-6 py-3 rounded-xl"
         >
-          <Text className="text-white dark:text-phase2TitlesDark font-semibold">
+          <Text className="text-white font-semibold">
             Volver
           </Text>
         </TouchableOpacity>
@@ -103,11 +103,11 @@ export default function NoteDetailScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white dark:bg-neutral-900"
+      className="flex-1 bg-transparent"
       edges={['bottom']}
     >
       {/* Header */}
-      <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-neutral-700">
+      <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
         <TouchableOpacity
           onPress={() => router.back()}
           className="w-10 h-10 items-center justify-center"
@@ -120,7 +120,7 @@ export default function NoteDetailScreen() {
         </TouchableOpacity>
 
         <Text
-          className="flex-1 text-lg font-bold text-center text-phase2Titles dark:text-phase2TitlesDark mx-4"
+          className="flex-1 text-lg font-bold text-center text-phase2Titles mx-4"
           numberOfLines={1}
         >
           {note.title}
@@ -145,20 +145,20 @@ export default function NoteDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Meta info */}
-        <View className="flex-row items-center mb-6 pb-4 border-b border-gray-200 dark:border-neutral-700">
+        <View className="flex-row items-center mb-6 pb-4 border-b border-gray-200">
           <View className="flex-row items-center mr-6">
             <Ionicons
               name="time-outline"
               size={20}
               color={colorScheme === 'dark' ? '#9CA3AF' : '#6B7280'}
             />
-            <Text className="text-sm text-phase2SecondaryTxt dark:text-phase2SecondaryTxtDark ml-2">
+            <Text className="text-sm text-phase2SecondaryTxt ml-2">
               {note.readTime} min de lectura
             </Text>
           </View>
 
-          <View className="bg-phase2Buttons/10 dark:bg-phase2CardsDark px-3 py-1 rounded-full">
-            <Text className="text-sm text-phase2Buttons dark:text-phase2TitlesDark capitalize">
+          <View className="bg-phase2Buttons/10 px-3 py-1 rounded-full">
+            <Text className="text-sm text-phase2Buttons capitalize">
               {note.category.replace('-', ' ')}
             </Text>
           </View>

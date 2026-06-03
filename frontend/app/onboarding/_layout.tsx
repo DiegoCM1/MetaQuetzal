@@ -18,7 +18,8 @@ export default function OnboardingLayout() {
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          gestureEnabled: false, // Prevent swipe back to force using buttons
+          gestureEnabled: false,
+          contentStyle: { backgroundColor: 'transparent' },
         }}
       >
         <Stack.Screen name="step1" />

@@ -37,3 +37,10 @@ yarn-error.*
 
 # Wrangler local state
 .wrangler/
+
+# Android
+android/
+
+# IOS
+ios/
+.env.local

@@ -1,14 +1,19 @@
-const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
-const { withTamagui } = require("@tamagui/metro-plugin");
+const {
+  getSentryExpoConfig
+} = require("@sentry/react-native/metro");
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
-module.exports = withTamagui(
-  withNativeWind(config, { input: "./global.css" }), // Configuración de NativeWind
-  {
-    config: "./tamagui.config.js", // Ruta a tu archivo de configuración Tamagui
-    components: ["@tamagui/core"], // Componentes Tamagui a incluir
-    logTimings: true, // Opcional: para depuración
-  }
-);
+const { transformer, resolver } = config;
+config.transformer = {
+  ...transformer,
+  babelTransformerPath: require.resolve("react-native-svg-transformer"),
+};
+config.resolver = {
+  ...resolver,
+  assetExts: resolver.assetExts.filter((ext) => ext !== "svg"),
+  sourceExts: [...resolver.sourceExts, "svg"],
+};
+
+module.exports = withNativeWind(config, { input: "./global.css" });

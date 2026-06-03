@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     #Database
@@ -15,12 +15,14 @@ class Settings(BaseSettings):
     #OpenWeather
     OPENWEATHER_API_KEY:str
 
-    # AI 
-    LLM_API_KEY: str                                                  
-    LLM_BASE_URL: str                                                 
-    LLM_MODEL: str      
+    # AI (optional - only needed for ai/chat feature)
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = ""
+    LLM_MODEL: str = ""
 
-    class Config:
-        env_file = ".env"
+    # Dev-only bypasses
+    DEV_BYPASS_MAP_EVENTS_AUTH: bool = False
+
+    model_config = SettingsConfigDict(env_file=(".env", ".env.local"))
 
 settings = Settings()
