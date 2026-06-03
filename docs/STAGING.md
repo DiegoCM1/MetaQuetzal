@@ -19,6 +19,22 @@ To work against staging locally, set up **both** env files from their examples �
 
 **Deploying to staging:** only the Railway workspace owner (Diego) can `railway up` — Hobby = single-developer workspace. Teammates reach staging *through the deployed app* + the shared staging DB, not by deploying.
 
+### Running a local backend (testing on a physical device)
+
+We test on physical devices, so the phone must reach your laptop over Wi-Fi — `localhost` will NOT work (on the phone, `127.0.0.1` means the *phone*).
+
+1. Start the backend on all network interfaces (this is the **default command** to use):
+   ```
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+   `--host 0.0.0.0` is required. The bare `--reload` default binds `127.0.0.1` (laptop-only) and a phone can't reach it. Confirm it prints `Uvicorn running on http://0.0.0.0:8000`.
+2. Find **your** laptop's Wi-Fi LAN IP (yours differs from everyone else's):
+   ```
+   ipconfig getifaddr en0      # macOS Wi-Fi (try en1 if blank)
+   ```
+3. Point `frontend/.env` at it: `EXPO_PUBLIC_API_URL="http://<your-LAN-IP>:8000"` — **not** `127.0.0.1`.
+4. Phone + laptop must be on the **same Wi-Fi**. After editing `.env`, restart Metro with `npx expo start -c` (env vars are inlined at bundle time).
+
 ## Verify you're actually on staging
 
 **Owner (Diego) — has Railway + DB access:**

@@ -57,7 +57,7 @@ Segundo entorno Railway para que el equipo testee sus features sin tocar producc
    - Verificar que un build EAS preview llega correctamente a staging
 
 6. **Doc 1-pager para el equipo**
-   - `docs/specs_june05/staging.md`
+   - `docs/STAGING.md`
    - Cubrir: cuál URL es cuál, cómo cambiar entre envs en el cliente, qué hacer si staging se cae, contacto si tienen problemas
 
 ### DoD

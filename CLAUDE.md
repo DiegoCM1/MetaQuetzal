@@ -13,7 +13,7 @@ Bluai — hurricane early-warning platform. React Native (Expo) **mobile** app +
 ## Commands
 
 ### Backend (`cd backend`, venv activated)
-- Run dev server: `uvicorn app.main:app --reload`
+- Run dev server: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload` — `--host 0.0.0.0` lets a physical device on the same Wi-Fi reach it (bare `--reload` binds localhost only, unreachable from a phone). Pointing the app at a local backend: see `docs/STAGING.md`.
 - Run all tests: `pytest`
 - Run one test file: `pytest app/features/ai/tests/test_x.py`
 - Run one test: `pytest path::test_name` (pytest-asyncio is configured; `pythonpath=.`)
@@ -47,8 +47,12 @@ All live features verify Firebase tokens via `app.core.firebase`. Use the same d
 ### Frontend routing is file-based (expo-router)
 Routes live in `frontend/app/`. Route groups: `(auth)`, `(tabs)`. **Underscore-prefixed dirs are NOT routes** — `_components`, `_hooks`, `_services`, `_utils`, `_types.ts` are colocated private code for a route. Maps use `react-native-maps`.
 
-### Backend URL is baked at build time
-The client picks its backend via `EXPO_PUBLIC_API_URL`, set per EAS profile in `frontend/eas.json` (`development` / `preview` / `production`). It is NOT a runtime toggle — changing env target means a different build profile.
+### Backend URL is per-build, never a runtime toggle
+The client picks its backend via `EXPO_PUBLIC_API_URL`, **inlined at bundle time** (never a runtime switch). Two sources depending on artifact:
+- **Standalone builds** (`preview` / `production`): baked from `frontend/eas.json` — changing target means a new build.
+- **Dev client** (`expo start` / `run:android`): read from local `frontend/.env` via Metro — change target by editing `.env` and restarting Metro with `-c`.
+
+Full env setup (staging vs local backend, LAN IP) is in `docs/STAGING.md`.
 
 ## Environments & CI
 
