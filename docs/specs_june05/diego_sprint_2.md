@@ -33,23 +33,21 @@ Segundo entorno Railway para que el equipo testee sus features sin tocar producc
 ### Steps
 
 1. **Crear segundo servicio en Railway**
-   - Nombre claro: `bluai-backend-staging`
-   - Postgres separado (NO compartir DB con prod)
-   - Misma config básica que prod, env vars distintas
+   - Nombre claro: `bluai-backend-staging` ✅
+   - Postgres separado (NO compartir DB con prod) ✅ 
+   - Misma config básica que prod, env vars distintas ✅
 
 2. **Env vars separadas**
-   - `STAGING_` prefix donde aplique, o variables completamente separadas
-   - `DATABASE_URL` apunta al Postgres de staging
-   - `EXPO_ACCESS_TOKEN`, Firebase keys, etc. — decidir si compartir prod o duplicar
+   - `STAGING_` prefix donde aplique, o variables completamente separadas ✅
+   - `DATABASE_URL` apunta al Postgres de staging ✅ 
+   - `EXPO_ACCESS_TOKEN`, Firebase keys, etc. — decidir si compartir prod o duplicar ✅
 
-3. **Decisión Firebase: dedicated staging project vs shared**
-   - **Opción A:** Proyecto Firebase staging dedicado. Más limpio, datos separados, push tokens separados.
-   - **Opción B:** Proyecto único con API key separada para staging.
-   - **Recomendación:** A si tienes tiempo (~2h), B si no (~30 min).
-   - Documentar la decisión.
+3. **Decisión Firebase: dedicated staging project vs shared** ✅
+   - **Opción A:** Proyecto Firebase staging dedicado. Más limpio, datos separados, push tokens separados. 
+   - **Opción B:** Proyecto único con API key separada para staging. ✅
 
-4. **Deploy del backend**
-   - `railway up` desde `/backend` apuntando al servicio staging
+4. **Deploy del backend** ✅
+   - `railway up` desde `/backend` apuntando al servicio staging ✅
    - Verificar health endpoint
    - Verificar tablas se crearon (`ensure_core_tables` debería correr en startup)
 
@@ -59,7 +57,7 @@ Segundo entorno Railway para que el equipo testee sus features sin tocar producc
    - Verificar que un build EAS preview llega correctamente a staging
 
 6. **Doc 1-pager para el equipo**
-   - `docs/specs_june05/staging.md`
+   - `docs/STAGING.md`
    - Cubrir: cuál URL es cuál, cómo cambiar entre envs en el cliente, qué hacer si staging se cae, contacto si tienen problemas
 
 ### DoD
@@ -231,10 +229,10 @@ Migrar `frontend/` de npm a pnpm. Motivado por problemas recientes con npm (lock
 
 ---
 
-## Feature 6 — Skills + BRAND + MCP setup (P1)
+## Feature 6 — Skills + BRAND + MCP setup (P1) ✅
 
 ### Goal
-Que todos los integrantes tengan el mismo contexto Claude y sigan los mismos lineamientos de frontend.
+Que todos los integrantes tengan el mismo contexto Claude y sigan los mismos lineamientos de frontend. ✅
 
 ### Steps
 
@@ -266,8 +264,8 @@ Que todos los integrantes tengan el mismo contexto Claude y sigan los mismos lin
    - Documentar el setup en un doc del proyecto
 
 ### DoD
-- [ ] `docs/BRAND.md` actualizado con todas las secciones
-- [ ] `CLAUDE.md` del proyecto puesto al día
+- [✅] `docs/BRAND.md` actualizado con todas las secciones
+- [✅] `CLAUDE.md` del proyecto puesto al día
 - [ ] Setup doc para que Val y Edgar repliquen su environment de Claude
 - [ ] Val y Edgar confirman que su Claude tiene el mismo contexto que el tuyo
 

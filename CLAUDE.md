@@ -13,7 +13,7 @@ Bluai — hurricane early-warning platform. React Native (Expo) **mobile** app +
 ## Commands
 
 ### Backend (`cd backend`, venv activated)
-- Run dev server: `uvicorn app.main:app --reload`
+- Run dev server: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload` — `--host 0.0.0.0` lets a physical device on the same Wi-Fi reach it (bare `--reload` binds localhost only, unreachable from a phone). Pointing the app at a local backend: see `docs/STAGING.md`.
 - Run all tests: `pytest`
 - Run one test file: `pytest app/features/ai/tests/test_x.py`
 - Run one test: `pytest path::test_name` (pytest-asyncio is configured; `pythonpath=.`)
@@ -47,12 +47,16 @@ All live features verify Firebase tokens via `app.core.firebase`. Use the same d
 ### Frontend routing is file-based (expo-router)
 Routes live in `frontend/app/`. Route groups: `(auth)`, `(tabs)`. **Underscore-prefixed dirs are NOT routes** — `_components`, `_hooks`, `_services`, `_utils`, `_types.ts` are colocated private code for a route. Maps use `react-native-maps`.
 
-### Backend URL is baked at build time
-The client picks its backend via `EXPO_PUBLIC_API_URL`, set per EAS profile in `frontend/eas.json` (`development` / `preview` / `production`). It is NOT a runtime toggle — changing env target means a different build profile.
+### Backend URL is per-build, never a runtime toggle
+The client picks its backend via `EXPO_PUBLIC_API_URL`, **inlined at bundle time** (never a runtime switch). Two sources depending on artifact:
+- **Standalone builds** (`preview` / `production`): baked from `frontend/eas.json` — changing target means a new build.
+- **Dev client** (`expo start` / `run:android`): read from local `frontend/.env` via Metro — change target by editing `.env` and restarting Metro with `-c`.
+
+Full env setup (staging vs local backend, LAN IP) is in `docs/STAGING.md`.
 
 ## Environments & CI
 
-- **Backend** runs on Railway; **prod DB** is Postgres on Neon. A separate **staging** environment is being stood up — when it exists, env URLs and how to point a build at it are documented in `docs/specs_june05/staging.md`.
+- **Backend** runs on Railway; **prod DB** is Postgres on Neon. A separate **staging** environment is live (`https://backend-blueye-staging.up.railway.app`) — env URLs, teammate setup, the deploy flow, and the prod-DB SACRED RULE are documented in `docs/STAGING.md`.
 - **Client → backend** target is build-time per EAS profile (see the build-time note above). It is not a runtime switch.
 - **CI:** GitHub Actions runs **backend `pytest` on every PR** (`.github/workflows/backend-tests.yml`, with a Postgres service). **There is no frontend CI** — frontend changes are not gated by automated tests; verify on a physical device. Dependabot is enabled (`.github/dependabot.yml`).
 
