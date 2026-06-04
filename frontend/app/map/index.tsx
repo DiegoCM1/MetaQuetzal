@@ -17,7 +17,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
-import { loadRedZones, saveRedZone, updateRedZone, deleteRedZone, generateZoneId, clearAllZones } from "./service";
+import { loadRedZones, saveRedZone, updateRedZone, deleteRedZone, voteRedZone, generateZoneId, clearAllZones } from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, ZONE_TYPES } from "./config";
 import { colors, fonts } from "../../utils/theme";
@@ -62,6 +62,7 @@ export default function WeatherMapNativewind() {
   const [editDescription, setEditDescription] = useState("");
   const [zoneDescription, setZoneDescription] = useState("");
   const [descriptionError, setDescriptionError] = useState(false);
+  const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -93,6 +94,7 @@ export default function WeatherMapNativewind() {
         };
 
         setRegion(userRegion);
+        setCurrentCoords({ latitude: coords.latitude, longitude: coords.longitude });
         mapRef.current?.animateToRegion(userRegion, 1000);
       } catch (error) {
         console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
@@ -107,7 +109,7 @@ export default function WeatherMapNativewind() {
   useEffect(() => {
     (async () => {
       try {
-        const loaded = await loadRedZones();
+        const loaded = await loadRedZones(region.latitude, region.longitude);
         const valid = loaded.filter((z: Zone) => z.type && ZONE_TYPES[z.type]);
         if (valid.length !== loaded.length) {
           await clearAllZones();
@@ -118,7 +120,7 @@ export default function WeatherMapNativewind() {
         console.error('[Map] Failed to load zones:', error);
       }
     })();
-  }, []);
+  }, [region.latitude, region.longitude]);
 
   const handleToggleAddingMode = () => {
     setIsAddingMode(prev => !prev);
@@ -145,7 +147,10 @@ export default function WeatherMapNativewind() {
     setZones(prev => prev.map(z => z.id === updated.id ? updated : z));
     setSelectedZone(updated);
     setIsEditing(false);
-    updateRedZone(updated).catch((error) => {
+    updateRedZone(updated).then((savedZone) => {
+      setZones(prev => prev.map(z => z.id === savedZone.id ? savedZone : z));
+      setSelectedZone(savedZone);
+    }).catch((error) => {
       console.error('[Map] Failed to update zone:', error);
       setZones(prev => prev.map(z => z.id === selectedZone.id ? selectedZone : z));
       setSelectedZone(selectedZone);
@@ -179,6 +184,36 @@ export default function WeatherMapNativewind() {
     );
   };
 
+  const handleVoteZone = (value: 1 | -1) => {
+    if (!selectedZone) return;
+
+    const voteCoords = currentCoords ?? {
+      latitude: region.latitude,
+      longitude: region.longitude,
+    };
+
+    voteRedZone(selectedZone.id, value, voteCoords.latitude, voteCoords.longitude)
+      .then((votedZone) => {
+        setZones((prev) => prev.map((zone) => (zone.id === votedZone.id ? votedZone : zone)));
+        setSelectedZone(votedZone);
+        Toast.show({
+          type: 'success',
+          text1: value === 1 ? 'Evento confirmado' : 'Evento marcado como engañoso',
+          text2: 'Tu voto se registró correctamente',
+        });
+      })
+      .catch((error) => {
+        console.error('[Map] Failed to vote zone:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'No se pudo votar',
+          text2: value === 1
+            ? 'Debes estar cerca del evento para confirmarlo'
+            : 'Debes estar cerca del evento para marcarlo como engañoso',
+        });
+      });
+  };
+
   const handleSaveZone = () => {
     if (!selectedType) return;
     if (!zoneDescription.trim()) {
@@ -204,7 +239,9 @@ export default function WeatherMapNativewind() {
     setDescriptionError(false);
     Toast.show({ type: 'success', text1: 'Zona reportada', text2: 'Gracias por tu reporte' });
 
-    saveRedZone(newZone).catch((error) => {
+    saveRedZone(newZone).then((savedZone) => {
+      setZones(prev => prev.map(z => z.id === newZone.id ? savedZone : z));
+    }).catch((error) => {
       console.error('[Map] Failed to save zone:', error);
       setZones(prev => prev.filter(z => z.id !== newZone.id));
       Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
@@ -224,6 +261,18 @@ export default function WeatherMapNativewind() {
     { label: "Precipitación", state: showPrecip, setter: setShowPrecip, icon: "weather-rainy" },
     { label: "Nubes", state: showClouds, setter: setShowClouds, icon: "weather-cloudy" },
   ]
+
+  const trustCopy: Record<NonNullable<Zone['trustStatus']>, string> = {
+    confirmado: 'Confirmado',
+    en_revision: 'En revisión',
+    dudoso: 'Dudoso',
+  };
+
+  const trustColor: Record<NonNullable<Zone['trustStatus']>, string> = {
+    confirmado: colors.brandGreen,
+    en_revision: colors.brandBlue,
+    dudoso: colors.brandRed,
+  };
 
   return (
     <View className="flex-1">
@@ -466,6 +515,7 @@ export default function WeatherMapNativewind() {
         <View className="flex-1 justify-center bg-black/60" style={{ padding: 24 }}>
           {selectedZone && (() => {
             const cfg = ZONE_TYPES[selectedZone.type];
+            const trustStatus = selectedZone.trustStatus ?? 'en_revision';
             return (
               <View style={{ borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, overflow: 'hidden' }}>
                 {/* Header */}
@@ -518,6 +568,62 @@ export default function WeatherMapNativewind() {
                   <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 20 }}>
                     {new Date(selectedZone.timestamp).toLocaleString('es-MX')}
                   </Text>
+
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+                    <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: `${trustColor[trustStatus]}22`, borderWidth: 1, borderColor: `${trustColor[trustStatus]}66` }}>
+                      <Text style={{ color: trustColor[trustStatus], fontFamily: fonts.poppinsSemiBold, fontSize: 13 }}>
+                        {trustCopy[trustStatus]}
+                      </Text>
+                    </View>
+                    <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                      <Text style={{ color: '#fff', fontFamily: fonts.poppins, fontSize: 13 }}>
+                        {selectedZone.upvotes ?? 0} confirman
+                      </Text>
+                    </View>
+                    <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                      <Text style={{ color: '#fff', fontFamily: fonts.poppins, fontSize: 13 }}>
+                        {selectedZone.downvotes ?? 0} engañoso
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Distancia:</Text>
+                  <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 20 }}>
+                    {selectedZone.distanceKm != null ? `${selectedZone.distanceKm.toFixed(1)} km` : 'Sin calcular'}
+                  </Text>
+
+                  {!selectedZone.isOwner && (
+                    <View style={{ marginBottom: 20 }}>
+                      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins, marginBottom: 10 }}>
+                        Votación de cercanía: solo usuarios a 10 km o menos pueden votar.
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity
+                          disabled={!selectedZone.canVote}
+                          onPress={() => handleVoteZone(1)}
+                          style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.brandGreen, alignItems: 'center', opacity: selectedZone.canVote ? 1 : 0.45 }}
+                        >
+                          <Text style={{ color: '#04233d', fontFamily: fonts.poppinsSemiBold }}>Confirmar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          disabled={!selectedZone.canVote}
+                          onPress={() => handleVoteZone(-1)}
+                          style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', opacity: selectedZone.canVote ? 1 : 0.45 }}
+                        >
+                          <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold }}>Engañoso</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {!selectedZone.canVote && (
+                        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: fonts.poppins, marginTop: 10 }}>
+                          {selectedZone.userVote != null
+                            ? 'Ya votaste este evento.'
+                            : selectedZone.withinVotingRadius
+                              ? 'No puedes votar este evento.'
+                              : 'Acércate a menos de 10 km para votar.'}
+                        </Text>
+                      )}
+                    </View>
+                  )}
 
                   {/* Actions */}
                   <View style={{ flexDirection: 'row', gap: 10 }}>
