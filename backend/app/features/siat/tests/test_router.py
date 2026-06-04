@@ -2,11 +2,19 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from starlette.testclient import TestClient
 from app.main import app
+from app.core.config import settings
 from datetime import datetime, timezone
 
 client = TestClient(app)
 
-API_KEY_HEADERS = {"X-Api-Key": "s3cret-xyz"}
+TEST_API_KEY = "test-siat-api-key"
+API_KEY_HEADERS = {"X-Api-Key": TEST_API_KEY}
+
+
+@pytest.fixture(autouse=True)
+def _patch_api_key():
+    with patch.object(settings, "NOTIF_API_KEY", TEST_API_KEY):
+        yield
 
 # Patch targets must reference WHERE the name is used (router module)
 _ROUTER = "app.features.siat.router"
