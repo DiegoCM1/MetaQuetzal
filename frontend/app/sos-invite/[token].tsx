@@ -1,0 +1,140 @@
+import "../../global.css";
+import { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { authFetch } from "../../utils/api";
+import { API_BASE_URL } from "../../utils/config";
+import { colors, fonts } from "../../utils/theme";
+
+type Stage = "loading" | "preview" | "accepting" | "success" | "error";
+
+interface Preview {
+  inviter_display_name: string;
+  contact_name: string;
+  expires_at: string;
+}
+
+export default function SosInviteScreen() {
+  const { token } = useLocalSearchParams<{ token: string }>();
+  const router = useRouter();
+  const [stage, setStage]       = useState<Stage>("loading");
+  const [preview, setPreview]   = useState<Preview | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (!token) { setStage("error"); setErrorMsg("Enlace inválido."); return; }
+    fetch(`${API_BASE_URL}/api/v1/sos-invitations/preview/${token}`)
+      .then(r => {
+        if (r.status === 404) return Promise.reject("not_found");
+        if (r.status === 410) return Promise.reject("expired");
+        if (r.status === 409) return Promise.reject("already_used");
+        if (!r.ok) return Promise.reject("unknown");
+        return r.json();
+      })
+      .then((data: Preview) => { setPreview(data); setStage("preview"); })
+      .catch((reason: string) => {
+        setStage("error");
+        setErrorMsg(
+          reason === "expired"    ? "Este enlace expiró. Pídele a quien te invitó que genere uno nuevo." :
+          reason === "already_used" ? "Esta invitación ya fue aceptada anteriormente." :
+          reason === "not_found"  ? "Este enlace no existe o ya no es válido." :
+          "No se pudo cargar la invitación. Comprueba tu conexión."
+        );
+      });
+  }, [token]);
+
+  async function handleAccept() {
+    if (!token) return;
+    setStage("accepting");
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/sos-invitations/${token}/accept`, { method: "POST" });
+      if (res.status === 409) { setStage("error"); setErrorMsg("Esta invitación ya fue aceptada."); return; }
+      if (res.status === 410) { setStage("error"); setErrorMsg("Este enlace expiró."); return; }
+      if (res.status === 400) { setStage("error"); setErrorMsg("No puedes aceptar tu propia invitación."); return; }
+      if (!res.ok) throw new Error();
+      setStage("success");
+    } catch {
+      setStage("error");
+      setErrorMsg("No se pudo procesar la invitación. Comprueba tu conexión e inicia sesión.");
+    }
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
+      <View style={s.centered}>
+        <View style={s.card}>
+
+          {(stage === "loading" || stage === "accepting") && (
+            <ActivityIndicator size="large" color={colors.brandCyan} />
+          )}
+
+          {stage === "preview" && preview && (
+            <>
+              <MaterialCommunityIcons name="shield-account-outline" size={52} color={colors.brandCyan} />
+              <Text style={s.title}>Invitación SOS</Text>
+              <Text style={s.body}>
+                <Text style={s.highlight}>{preview.inviter_display_name}</Text>
+                {" quiere agregarte como contacto SOS de emergencia.\nRecibirás su alerta si necesita ayuda urgente."}
+              </Text>
+              <Text style={s.sub}>Contacto guardado: {preview.contact_name}</Text>
+              <View style={s.row}>
+                <TouchableOpacity style={s.cancelBtn} onPress={() => router.back()}>
+                  <Text style={s.cancelTxt}>Rechazar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.acceptBtn} onPress={handleAccept}>
+                  <Text style={s.acceptTxt}>Aceptar</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {stage === "success" && preview && (
+            <>
+              <MaterialCommunityIcons name="check-circle-outline" size={52} color={colors.brandGreen} />
+              <Text style={s.title}>¡Listo!</Text>
+              <Text style={s.body}>
+                Ahora eres contacto SOS de{" "}
+                <Text style={s.highlight}>{preview.inviter_display_name}</Text>.
+                {"\nTe avisarán si necesitan ayuda urgente."}
+              </Text>
+              <TouchableOpacity style={[s.acceptBtn, { marginTop: 20 }]} onPress={() => router.back()}>
+                <Text style={s.acceptTxt}>Cerrar</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {stage === "error" && (
+            <>
+              <MaterialCommunityIcons name="alert-circle-outline" size={52} color={colors.brandRed} />
+              <Text style={s.title}>No disponible</Text>
+              <Text style={[s.body, { textAlign: "center" }]}>{errorMsg}</Text>
+              <TouchableOpacity style={[s.cancelBtn, { marginTop: 20, borderColor: colors.brandCyan }]} onPress={() => router.back()}>
+                <Text style={[s.cancelTxt, { color: colors.brandCyan }]}>Cerrar</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const s = StyleSheet.create({
+  centered: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
+  card:     { backgroundColor: "rgba(10,28,50,0.6)", borderRadius: 20, borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.1)", padding: 28, width: "100%", alignItems: "center" },
+  title:    { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 20, marginTop: 14, marginBottom: 10 },
+  body:     { color: "rgba(255,255,255,0.7)", fontFamily: fonts.poppins, fontSize: 14, lineHeight: 22, textAlign: "center" },
+  highlight:{ color: "white", fontFamily: fonts.poppinsSemiBold },
+  sub:      { color: colors.brandCyan, fontFamily: fonts.poppins, fontSize: 12, marginTop: 10 },
+  row:      { flexDirection: "row", gap: 12, marginTop: 24, width: "100%" },
+  cancelBtn:{ flex: 1, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", borderRadius: 12,
+              paddingVertical: 14, alignItems: "center" },
+  cancelTxt:{ color: "rgba(255,255,255,0.7)", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+  acceptBtn:{ flex: 1, backgroundColor: colors.brandCyan, borderRadius: 12,
+              paddingVertical: 14, alignItems: "center" },
+  acceptTxt:{ color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+});
