@@ -283,6 +283,10 @@ export default Sentry.wrap(function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
+                      name="SOSContactsScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
                       name="AlarmScreen"
                       options={{ headerShown: false }}
                     />
