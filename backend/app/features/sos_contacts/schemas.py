@@ -20,5 +20,7 @@ class SOSContactResponse(BaseModel):
     name: str
     phone: str
     relationship: str | None
+    linked_user_id: int | None
+    link_status: str
     created_at: datetime
     updated_at: datetime
