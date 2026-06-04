@@ -11,6 +11,7 @@ from app.features.map_events.router import router as map_events_router
 from app.features.siat.router import router as siat_router
 from app.features.users.router import router as users_router
 from app.features.notification_preferences.router import router as notification_preferences_router
+from app.features.sos_contacts.router import router as sos_contacts_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
 import app.core.firebase
 import asyncio
@@ -92,6 +93,20 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
                 updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sos_contacts (
+                id           BIGSERIAL PRIMARY KEY,
+                user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name         VARCHAR(100) NOT NULL,
+                phone        VARCHAR(30) NOT NULL,
+                relationship VARCHAR(60),
+                created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_contacts_user_id_idx ON sos_contacts (user_id, created_at ASC)"
+        ))
 
 
 async def _siat_background_loop():
@@ -157,3 +172,4 @@ app.include_router(siat_router)
 app.include_router(map_events_router)
 app.include_router(users_router)
 app.include_router(notification_preferences_router)
+app.include_router(sos_contacts_router)
