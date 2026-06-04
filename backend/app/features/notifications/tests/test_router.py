@@ -1,13 +1,22 @@
+import pytest
 from unittest.mock import AsyncMock, patch
 from starlette.testclient import TestClient
 from app.main import app
+from app.core.config import settings
 from datetime import datetime, timezone
 
 client = TestClient(app)
 
 FAKE_USER = {"uid": "firebase-test-uid"}
 AUTH_HEADERS = {"Authorization": "Bearer faketoken"}
-API_KEY_HEADERS = {"X-Api-Key": "s3cret-xyz"}
+TEST_API_KEY = "test-notif-api-key"
+API_KEY_HEADERS = {"X-Api-Key": TEST_API_KEY}
+
+
+@pytest.fixture(autouse=True)
+def _patch_api_key():
+    with patch.object(settings, "NOTIF_API_KEY", TEST_API_KEY):
+        yield
 
 FAKE_DB_USER = {
     "id": 1,
