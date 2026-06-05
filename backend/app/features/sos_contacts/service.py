@@ -8,7 +8,7 @@ from app.features.sos_contacts.schemas import SOSContactCreate, SOSContactUpdate
 async def list_sos_contacts(db: AsyncSession, user_id: int) -> list[dict]:
     result = await db.execute(
         text("""
-            SELECT id, user_id, name, phone, relationship, created_at, updated_at
+            SELECT id, user_id, name, phone, relationship, linked_user_id, link_status, created_at, updated_at
             FROM sos_contacts
             WHERE user_id = :user_id
             ORDER BY created_at ASC
@@ -23,7 +23,7 @@ async def create_sos_contact(db: AsyncSession, user_id: int, payload: SOSContact
         text("""
             INSERT INTO sos_contacts (user_id, name, phone, relationship)
             VALUES (:user_id, :name, :phone, :relationship)
-            RETURNING id, user_id, name, phone, relationship, created_at, updated_at
+            RETURNING id, user_id, name, phone, relationship, linked_user_id, link_status, created_at, updated_at
         """),
         {
             "user_id": user_id,
@@ -55,7 +55,7 @@ async def update_sos_contact(db: AsyncSession, contact_id: int, user_id: int, pa
             UPDATE sos_contacts
             SET {set_clause}, updated_at = NOW()
             WHERE id = :contact_id AND user_id = :user_id
-            RETURNING id, user_id, name, phone, relationship, created_at, updated_at
+            RETURNING id, user_id, name, phone, relationship, linked_user_id, link_status, created_at, updated_at
         """),
         {**updates, "contact_id": contact_id, "user_id": user_id},
     )
@@ -81,7 +81,7 @@ async def delete_sos_contact(db: AsyncSession, contact_id: int, user_id: int) ->
 async def _get_contact_owned_by(db: AsyncSession, contact_id: int, user_id: int) -> dict:
     result = await db.execute(
         text("""
-            SELECT id, user_id, name, phone, relationship, created_at, updated_at
+            SELECT id, user_id, name, phone, relationship, linked_user_id, link_status, created_at, updated_at
             FROM sos_contacts WHERE id = :id AND user_id = :user_id
         """),
         {"id": contact_id, "user_id": user_id},
