@@ -2,7 +2,7 @@ import "../global.css";
 import { useState, useEffect } from "react";
 import {
   View, Text, FlatList, Modal, TextInput, TouchableOpacity,
-  Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable,
+  Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -13,7 +13,10 @@ import { colors, fonts } from "../utils/theme";
 
 interface SOSContact {
   id: number; user_id: number; name: string; phone: string;
-  relationship: string | null; created_at: string; updated_at: string;
+  relationship: string | null;
+  linked_user_id: number | null;
+  link_status: string;
+  created_at: string; updated_at: string;
 }
 
 export default function SOSContactsScreen() {
@@ -91,6 +94,20 @@ export default function SOSContactsScreen() {
     }
   }
 
+  async function handleInvite(c: SOSContact) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/${c.id}/invite`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      const { share_url } = await res.json();
+      setContacts(prev => prev.map(x => x.id === c.id ? { ...x, link_status: "invite_sent" } : x));
+      await Share.share({
+        message: `Te invito a ser mi contacto SOS de emergencia en BluEye.\nToca aquí para aceptar: ${share_url}`,
+      });
+    } catch {
+      Alert.alert("Error", "No se pudo generar la invitación. Intenta de nuevo.");
+    }
+  }
+
   if (loading) return (
     <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
       <ScreenHeader title="Contactos SOS" />
@@ -139,8 +156,22 @@ export default function SOSContactsScreen() {
                   {item.relationship
                     ? <Text style={s.contactRel}>{item.relationship}</Text>
                     : null}
+                  {item.link_status === "linked" && (
+                    <Text style={s.linkedBadge}>✓ Vinculado</Text>
+                  )}
+                  {item.link_status === "invite_sent" && (
+                    <Text style={s.pendingBadge}>Invitación enviada</Text>
+                  )}
                 </View>
-                <View style={{ flexDirection: "row", gap: 12 }}>
+                <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                  {item.link_status !== "linked" && (
+                    <Pressable onPress={() => handleInvite(item)} hitSlop={8}
+                      accessibilityLabel={item.link_status === "invite_sent" ? "Reenviar invitación" : "Invitar"}>
+                      <MaterialCommunityIcons
+                        name={item.link_status === "invite_sent" ? "email-sync-outline" : "share-outline"}
+                        size={22} color={colors.brandCyan} />
+                    </Pressable>
+                  )}
                   <Pressable onPress={() => openEdit(item)} hitSlop={8} accessibilityLabel="Editar">
                     <MaterialCommunityIcons name="pencil-outline" size={22} color="rgba(255,255,255,0.55)" />
                   </Pressable>
@@ -236,4 +267,6 @@ const s = StyleSheet.create({
   cancelButton: { flex: 1, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
                   borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   cancelText:   { color: "rgba(255,255,255,0.7)", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+  linkedBadge:  { color: colors.brandGreen, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
+  pendingBadge: { color: colors.brandYellow, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
 });
