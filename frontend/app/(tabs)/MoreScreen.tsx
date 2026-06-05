@@ -12,6 +12,7 @@ type MenuItem = {
 
 export default function MoreScreen() {
   const items: MenuItem[] = [
+    { label: "Chat offline", icon: "access-point-network", route: "/local-chat" },
     { label: "Ajustes", icon: "cog-outline", route: "/SettingsScreen" },
     { label: "Contactos SOS", icon: "account-heart-outline", route: "/SOSContactsScreen" },
     { label: "Feedback", icon: "message-reply-outline", route: "/FeedbackScreen" },
