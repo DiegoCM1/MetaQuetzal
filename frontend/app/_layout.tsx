@@ -299,6 +299,10 @@ export default Sentry.wrap(function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
+                      name="local-chat"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
                       name="alerts"
                       options={{ headerShown: false }}
                     />
