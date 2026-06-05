@@ -26,6 +26,8 @@ FAKE_CONTACT = {
     "name": "Mamá",
     "phone": "+5219991234567",
     "relationship": "Madre",
+    "linked_user_id": None,
+    "link_status": "unlinked",
     "created_at": datetime.now(timezone.utc),
     "updated_at": datetime.now(timezone.utc),
 }

@@ -12,6 +12,7 @@ from app.features.siat.router import router as siat_router
 from app.features.users.router import router as users_router
 from app.features.notification_preferences.router import router as notification_preferences_router
 from app.features.sos_contacts.router import router as sos_contacts_router
+from app.features.sos_invite.router import router as sos_invite_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
 import app.core.firebase
 import asyncio
@@ -107,6 +108,44 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS sos_contacts_user_id_idx ON sos_contacts (user_id, created_at ASC)"
         ))
+        await conn.execute(text(
+            "ALTER TABLE sos_contacts ADD COLUMN IF NOT EXISTS linked_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE sos_contacts ADD COLUMN IF NOT EXISTS link_status VARCHAR(20) NOT NULL DEFAULT 'unlinked'"
+        ))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sos_invitations (
+                id                   BIGSERIAL PRIMARY KEY,
+                token                VARCHAR(64) UNIQUE NOT NULL,
+                inviter_id           BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                inviter_display_name VARCHAR(200),
+                contact_id           BIGINT NOT NULL REFERENCES sos_contacts(id) ON DELETE CASCADE,
+                contact_name         VARCHAR(100) NOT NULL,
+                expires_at           TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '72 hours'),
+                accepted_at          TIMESTAMPTZ,
+                accepted_user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                revoked_at           TIMESTAMPTZ,
+                created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT sos_inv_contact_unique UNIQUE (contact_id)
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_invitations_token_idx ON sos_invitations (token)"
+        ))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sos_events (
+                id             BIGSERIAL PRIMARY KEY,
+                sender_id      BIGINT NOT NULL REFERENCES users(id),
+                lat            DOUBLE PRECISION,
+                lon            DOUBLE PRECISION,
+                notified_count INT NOT NULL DEFAULT 0,
+                created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_events_sender_idx ON sos_events (sender_id, created_at DESC)"
+        ))
 
 
 async def _siat_background_loop():
@@ -173,3 +212,4 @@ app.include_router(map_events_router)
 app.include_router(users_router)
 app.include_router(notification_preferences_router)
 app.include_router(sos_contacts_router)
+app.include_router(sos_invite_router)
