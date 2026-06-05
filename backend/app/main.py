@@ -13,6 +13,7 @@ from app.features.users.router import router as users_router
 from app.features.notification_preferences.router import router as notification_preferences_router
 from app.features.sos_contacts.router import router as sos_contacts_router
 from app.features.sos_invite.router import router as sos_invite_router
+from app.features.sos_trigger.router import router as sos_trigger_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
 import app.core.firebase
 import asyncio
@@ -213,3 +214,4 @@ app.include_router(users_router)
 app.include_router(notification_preferences_router)
 app.include_router(sos_contacts_router)
 app.include_router(sos_invite_router)
+app.include_router(sos_trigger_router)
