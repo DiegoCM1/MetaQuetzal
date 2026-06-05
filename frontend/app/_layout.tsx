@@ -12,7 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { gradients } from "../utils/theme";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
-import { AppState, Platform, StatusBar as RNStatusBar } from "react-native";
+import { Alert, AppState, Platform, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
   registerForPushNotificationsAsync,
@@ -64,6 +64,9 @@ interface NotificationData {
   alertTitle?: string
   alertMessage?: string
   bulletinUrl?: string
+  sender_name?: string
+  lat?: string
+  lon?: string
 }
 
 function resolveNotifPayload(
@@ -73,10 +76,19 @@ function resolveNotifPayload(
   const id = data.alertId || data.alert_id
   const levelNum = Number(data.level ?? data.siat_level ?? data.alertLevel ?? 0)
   const isFullScreen = data.fullScreen === 'true' || levelNum >= 4
+  const isSos = data.category === 'sos'
+  const sosLat = parseFloat(data.lat ?? '')
+  const sosLon = parseFloat(data.lon ?? '')
+  const sosHasCoords = Number.isFinite(sosLat) && Number.isFinite(sosLon)
   return {
     id,
     levelNum,
     isFullScreen,
+    isSos,
+    senderName: data.sender_name ?? 'Un contacto',
+    sosLat,
+    sosLon,
+    sosHasCoords,
     params: {
       alertId: id,
       category: data.category ?? String(levelNum),
@@ -154,17 +166,22 @@ export default Sentry.wrap(function Layout() {
     // Tap en notificación (background → foreground, o foreground tap)
     const tapSub = addNotificationResponseListener(async (rawData) => {
       const data = rawData as NotificationData
-      const { id, isFullScreen, params } = resolveNotifPayload(data)
-      if (!id && !isFullScreen) return
+      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
+      if (!id && !isFullScreen && !isSos) return
 
       await initAnalytics();
       track("push_open", {
         alertId: id ? String(id) : undefined,
-        alertLevel: params.category ? Number(params.category) : undefined,
+        alertLevel: isSos ? undefined : (params.category ? Number(params.category) : undefined),
         fullScreen: isFullScreen,
         origin: "listener",
       });
 
+      if (isSos) {
+        const coordsText = sosHasCoords ? `\nUbicación: ${sosLat.toFixed(5)}, ${sosLon.toFixed(5)}` : '';
+        Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
+        return;
+      }
       if (isFullScreen) {
         router.push({ pathname: "AlarmScreen", params });
       } else if (id) {
@@ -176,12 +193,20 @@ export default Sentry.wrap(function Layout() {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       const rawData = notification.request.content.data as NotificationData
       const content = notification.request.content
-      const { isFullScreen, params } = resolveNotifPayload(rawData, content)
+      const { isFullScreen, isSos, senderName, params } = resolveNotifPayload(rawData, content)
       if (isFullScreen && !alarmActiveRef.current) {
         alarmActiveRef.current = true
         router.push({ pathname: "AlarmScreen", params })
         // Liberar el guard después de un debounce para cubrir multi-push
         setTimeout(() => { alarmActiveRef.current = false }, 5000)
+        return;
+      }
+      if (isSos) {
+        Toast.show({
+          type: 'error',
+          text1: `SOS — ${senderName}`,
+          text2: 'Necesita ayuda urgente. Revisa tu pantalla.',
+        });
       }
     });
 
@@ -198,17 +223,22 @@ export default Sentry.wrap(function Layout() {
       const data = initial?.notification?.request?.content?.data as NotificationData | undefined
       if (!data) return
 
-      const { id, isFullScreen, params } = resolveNotifPayload(data)
-      if (!id && !isFullScreen) return
+      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
+      if (!id && !isFullScreen && !isSos) return
 
       await initAnalytics();
       track("push_open", {
         alertId: id ? String(id) : undefined,
-        alertLevel: params.category ? Number(params.category) : undefined,
+        alertLevel: isSos ? undefined : (params.category ? Number(params.category) : undefined),
         fullScreen: isFullScreen,
         origin: "initial",
       });
 
+      if (isSos) {
+        const coordsText = sosHasCoords ? `\nUbicación: ${sosLat.toFixed(5)}, ${sosLon.toFixed(5)}` : '';
+        Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
+        return;
+      }
       if (isFullScreen) {
         router.push({ pathname: "AlarmScreen", params });
       } else if (id) {
