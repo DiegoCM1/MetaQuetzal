@@ -70,19 +70,20 @@ def test_post_map_event_creates_event():
         "trust_status": "en_revision",
     }
 
-    with patch("app.core.auth.auth.verify_id_token", return_value={"uid": "test123"}):
-        with patch("app.features.map_events.router.get_current_user_id", new_callable=AsyncMock, return_value=1):
-            with patch("app.features.map_events.router.create_map_event", new_callable=AsyncMock, return_value=fake_event) as mock_create:
-                response = client.post(
-                    "/api/v1/map-events",
-                    json={
-                        "type": "natural",
-                        "description": "Árbol caído",
-                        "lat": 19.2,
-                        "lon": -96.1,
-                    },
-                    headers={"Authorization": "Bearer faketoken"},
-                )
+    with patch("app.features.map_events.router.DEV_BYPASS_MAP_EVENTS_AUTH", False):
+        with patch("app.core.auth.auth.verify_id_token", return_value={"uid": "test123"}):
+            with patch("app.features.map_events.router.resolve_map_events_user", new_callable=AsyncMock, return_value=1):
+                with patch("app.features.map_events.router.create_map_event", new_callable=AsyncMock, return_value=fake_event) as mock_create:
+                    response = client.post(
+                        "/api/v1/map-events",
+                        json={
+                            "type": "natural",
+                            "description": "Árbol caído",
+                            "lat": 19.2,
+                            "lon": -96.1,
+                        },
+                        headers={"Authorization": "Bearer faketoken"},
+                    )
 
     assert response.status_code == 201
     assert response.json()["is_owner"] is True
@@ -109,14 +110,15 @@ def test_vote_map_event_returns_updated_event():
         "trust_status": "en_revision",
     }
 
-    with patch("app.core.auth.auth.verify_id_token", return_value={"uid": "test123"}):
-        with patch("app.features.map_events.router.get_current_user_id", new_callable=AsyncMock, return_value=9):
-            with patch("app.features.map_events.router.vote_map_event", new_callable=AsyncMock, return_value=fake_event) as mock_vote:
-                response = client.post(
-                    "/api/v1/map-events/2b809806-51ef-4aee-97f1-39039e2d40f0/vote",
-                    json={"value": 1, "lat": 19.2, "lon": -96.1},
-                    headers={"Authorization": "Bearer faketoken"},
-                )
+    with patch("app.features.map_events.router.DEV_BYPASS_MAP_EVENTS_AUTH", False):
+        with patch("app.core.auth.auth.verify_id_token", return_value={"uid": "test123"}):
+            with patch("app.features.map_events.router.resolve_map_events_user", new_callable=AsyncMock, return_value=9):
+                with patch("app.features.map_events.router.vote_map_event", new_callable=AsyncMock, return_value=fake_event) as mock_vote:
+                    response = client.post(
+                        "/api/v1/map-events/2b809806-51ef-4aee-97f1-39039e2d40f0/vote",
+                        json={"value": 1, "lat": 19.2, "lon": -96.1},
+                        headers={"Authorization": "Bearer faketoken"},
+                    )
 
     assert response.status_code == 200
     assert response.json()["user_vote"] == 1
