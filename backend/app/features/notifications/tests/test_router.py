@@ -64,3 +64,75 @@ def test_push_token_404_no_profile():
 def test_send_all_requires_api_key():
     r = client.post("/api/v1/notifications/send-all", json={"title": "Test", "body": "msg", "data": {}})
     assert r.status_code == 422
+
+
+# --- Tests: POST /api/v1/notifications/test ---
+
+ADMIN_EMAIL = "admin@blueye.mx"
+NON_ADMIN_EMAIL = "user@blueye.mx"
+
+
+def _mock_auth_email(email: str):
+    return patch("app.core.auth.auth.verify_id_token", return_value={"uid": "test-uid", "email": email})
+
+
+def test_test_notif_no_auth():
+    """Missing Authorization header → 422 (FastAPI Header validation)."""
+    r = client.post("/api/v1/notifications/test", json={"type": "generic"})
+    assert r.status_code == 422
+
+
+def test_test_notif_not_configured():
+    """Empty allowlist → 403 even for a valid user."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ""):
+        with _mock_auth_email(ADMIN_EMAIL):
+            r = client.post(
+                "/api/v1/notifications/test",
+                json={"type": "generic"},
+                headers=AUTH_HEADERS,
+            )
+    assert r.status_code == 403
+    assert "not configured" in r.json()["detail"].lower()
+
+
+def test_test_notif_user_not_admin():
+    """Authenticated user whose email is not in the allowlist → 403."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(NON_ADMIN_EMAIL):
+            r = client.post(
+                "/api/v1/notifications/test",
+                json={"type": "generic"},
+                headers=AUTH_HEADERS,
+            )
+    assert r.status_code == 403
+    assert "not authorized" in r.json()["detail"].lower()
+
+
+def test_test_notif_admin_success():
+    """Admin email in allowlist → 200 with success_count."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(
+                "app.features.notifications.router.send_all_notifications",
+                new_callable=AsyncMock,
+                return_value={"success_count": 2, "failure_count": 0},
+            ):
+                r = client.post(
+                    "/api/v1/notifications/test",
+                    json={"type": "hurricane_l2"},
+                    headers=AUTH_HEADERS,
+                )
+    assert r.status_code == 200
+    assert r.json()["success_count"] == 2
+
+
+def test_test_notif_invalid_type():
+    """Enum validation: unknown type → 422."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            r = client.post(
+                "/api/v1/notifications/test",
+                json={"type": "hacked_payload"},
+                headers=AUTH_HEADERS,
+            )
+    assert r.status_code == 422

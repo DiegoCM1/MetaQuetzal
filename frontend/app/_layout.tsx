@@ -324,6 +324,10 @@ export default Sentry.wrap(function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
+                      name="NotificationTestScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
                       name="sos-invite"
                       options={{ headerShown: false }}
                     />
