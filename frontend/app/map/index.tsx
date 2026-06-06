@@ -9,6 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -31,6 +32,8 @@ import {
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, ZONE_TYPES } from "./config";
 import { colors, fonts } from "../../utils/theme";
+import { authFetch } from "../../utils/api";
+import { API_BASE_URL } from "../../utils/config";
 import type { Zone, ZoneType } from "./types";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
@@ -74,6 +77,7 @@ export default function WeatherMapNativewind() {
   const [editDescription, setEditDescription] = useState("");
   const [zoneDescription, setZoneDescription] = useState("");
   const [descriptionError, setDescriptionError] = useState(false);
+  const [isSosSending, setIsSosSending] = useState(false);
   const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
@@ -319,6 +323,94 @@ export default function WeatherMapNativewind() {
     setDescriptionError(false);
   };
 
+  const handleSOSTrigger = () => {
+    Alert.alert(
+      "Enviar SOS",
+      "Esto notificará a tus contactos de confianza con tu ubicación actual. ¿Continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Enviar SOS", style: "destructive", onPress: doSendSOS },
+      ]
+    );
+  };
+
+  const doSendSOS = async () => {
+    setIsSosSending(true);
+    try {
+      let lat: number | undefined;
+      let lon: number | undefined;
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        try {
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 5000)
+          );
+          const { coords } = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            timeoutPromise,
+          ]);
+          lat = coords.latitude;
+          lon = coords.longitude;
+        } catch {
+          Toast.show({
+            type: "info",
+            text1: "Sin ubicación precisa",
+            text2: "Se enviará el SOS sin coordenadas.",
+          });
+        }
+      } else {
+        Toast.show({
+          type: "info",
+          text1: "Permiso de ubicación denegado",
+          text2: "Se enviará el SOS sin coordenadas.",
+        });
+      }
+
+      const body: { lat?: number; lon?: number } = {};
+      if (lat !== undefined) body.lat = lat;
+      if (lon !== undefined) body.lon = lon;
+
+      const res = await authFetch(`${API_BASE_URL}/api/v1/sos/trigger`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+
+      if (res.status === 429) {
+        Toast.show({
+          type: "error",
+          text1: "Límite alcanzado",
+          text2: "Demasiadas alertas SOS. Espera unos minutos.",
+        });
+        return;
+      }
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+      if (data.notified_count === 0) {
+        Toast.show({
+          type: "info",
+          text1: "SOS enviado",
+          text2: "No tienes contactos vinculados. Agrégalos en tu perfil.",
+        });
+      } else {
+        Toast.show({
+          type: "success",
+          text1: "SOS enviado",
+          text2: `${data.notified_count} contacto(s) notificado(s).`,
+        });
+      }
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "No se pudo enviar el SOS. Intenta de nuevo.",
+      });
+    } finally {
+      setIsSosSending(false);
+    }
+  };
+
   const layers: Array<{ label: string; state: boolean; setter: (v: boolean) => void; icon: MCIName }> = [
     { label: "Viento", state: showWind, setter: setShowWind, icon: "weather-windy" },
     { label: "Precipitación", state: showPrecip, setter: setShowPrecip, icon: "weather-rainy" },
@@ -475,6 +567,28 @@ export default function WeatherMapNativewind() {
       >
         <MaterialCommunityIcons name="navigation-variant" size={24} color="#FFFFFF" />
       </Pressable>
+
+      {/* SOS FAB */}
+      <TouchableOpacity
+        onPress={handleSOSTrigger}
+        disabled={isSosSending}
+        style={{
+          position: 'absolute',
+          bottom: 56,
+          left: 16,
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          backgroundColor: isSosSending ? 'rgba(226,67,55,0.5)' : colors.brandRed,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {isSosSending
+          ? <ActivityIndicator size="small" color="#fff" />
+          : <MaterialCommunityIcons name="alarm-light-outline" size={24} color="#fff" />
+        }
+      </TouchableOpacity>
 
       {/* Modal: Report Zone */}
       <Modal
