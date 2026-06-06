@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Pressable,
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  AppState,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -34,6 +35,9 @@ import { DEFAULT_REGION, ZONE_TYPES } from "./config";
 import { colors, fonts } from "../../utils/theme";
 import { authFetch } from "../../utils/api";
 import { API_BASE_URL } from "../../utils/config";
+import * as Network from "expo-network";
+import { useFocusEffect } from "expo-router";
+import { enqueueSOS, hasPendingSOSItem, getPendingSOSItem, flushSOSQueue, clearSOSQueue } from "./sosQueue";
 import type { Zone, ZoneType } from "./types";
 
 const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
@@ -79,6 +83,60 @@ export default function WeatherMapNativewind() {
   const [descriptionError, setDescriptionError] = useState(false);
   const [isSosSending, setIsSosSending] = useState(false);
   const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [hasPendingSOS, setHasPendingSOS] = useState(false);
+
+  // Al montar y al volver al foco: verificar cola con control de antigüedad.
+  // Items < 30 min → flush automático. Items > 30 min → pedir confirmación al usuario.
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        const item = await getPendingSOSItem();
+        if (!item) {
+          setHasPendingSOS(false);
+          return;
+        }
+        setHasPendingSOS(true);
+        const ageMs = Date.now() - item.queuedAt;
+        if (ageMs > 30 * 60 * 1000) {
+          const mins = Math.round(ageMs / 60000);
+          Alert.alert(
+            'SOS pendiente',
+            `Tienes un SOS pendiente de hace ${mins} minuto(s). ¿Quieres enviarlo ahora o cancelarlo?`,
+            [
+              {
+                text: 'Cancelar SOS',
+                style: 'destructive',
+                onPress: async () => {
+                  await clearSOSQueue();
+                  setHasPendingSOS(false);
+                },
+              },
+              {
+                text: 'Enviar ahora',
+                onPress: async () => {
+                  await flushSOSQueue();
+                  setHasPendingSOS(await hasPendingSOSItem());
+                },
+              },
+            ]
+          );
+        } else {
+          await flushSOSQueue();
+          setHasPendingSOS(await hasPendingSOSItem());
+        }
+      })();
+    }, [])
+  );
+
+  // Al volver a foreground (desde background): re-chequear cola tras flush de _layout
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        hasPendingSOSItem().then(setHasPendingSOS);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -337,14 +395,16 @@ export default function WeatherMapNativewind() {
   const doSendSOS = async () => {
     setIsSosSending(true);
     try {
+      // 1. Obtener GPS primero (funciona sin internet)
       let lat: number | undefined;
       let lon: number | undefined;
-
+      let gpsFailed = false;
+      let permDenied = false;
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         try {
           const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('timeout')), 5000)
+            setTimeout(() => reject(new Error("timeout")), 5000)
           );
           const { coords } = await Promise.race([
             Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
@@ -353,59 +413,77 @@ export default function WeatherMapNativewind() {
           lat = coords.latitude;
           lon = coords.longitude;
         } catch {
-          Toast.show({
-            type: "info",
-            text1: "Sin ubicación precisa",
-            text2: "Se enviará el SOS sin coordenadas.",
-          });
+          gpsFailed = true;
         }
       } else {
+        permDenied = true;
+      }
+
+      // 2. Verificar conectividad (con coords ya en mano si las hay)
+      const net = await Network.getNetworkStateAsync();
+      if (net.isConnected === false || net.isInternetReachable === false) {
+        const hasCoords = lat !== undefined;
+        await enqueueSOS(lat, lon);
+        setHasPendingSOS(true);
         Toast.show({
           type: "info",
-          text1: "Permiso de ubicación denegado",
-          text2: "Se enviará el SOS sin coordenadas.",
+          text1: hasCoords ? "SOS guardado" : "SOS guardado sin ubicación",
+          text2: "Se enviará cuando recuperes conexión.",
         });
+        return;
+      }
+
+      // 3. Online: mostrar feedback de GPS si aplica
+      if (permDenied) {
+        Toast.show({ type: "info", text1: "Permiso de ubicación denegado", text2: "Se enviará el SOS sin coordenadas." });
+      } else if (gpsFailed) {
+        Toast.show({ type: "info", text1: "Sin ubicación precisa", text2: "Se enviará el SOS sin coordenadas." });
       }
 
       const body: { lat?: number; lon?: number } = {};
       if (lat !== undefined) body.lat = lat;
       if (lon !== undefined) body.lon = lon;
 
-      const res = await authFetch(`${API_BASE_URL}/api/v1/sos/trigger`, {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-
-      if (res.status === 429) {
-        Toast.show({
-          type: "error",
-          text1: "Límite alcanzado",
-          text2: "Demasiadas alertas SOS. Espera unos minutos.",
+      let res: Response;
+      try {
+        res = await authFetch(`${API_BASE_URL}/api/v1/sos/trigger`, {
+          method: "POST",
+          body: JSON.stringify(body),
         });
+      } catch {
+        await enqueueSOS(lat, lon);
+        setHasPendingSOS(true);
+        Toast.show({ type: "info", text1: "SOS guardado", text2: "Se enviará cuando recuperes conexión." });
         return;
       }
-      if (!res.ok) throw new Error();
+
+      if (res.status === 429) {
+        await enqueueSOS(lat, lon);
+        setHasPendingSOS(true);
+        Toast.show({ type: "error", text1: "Límite alcanzado", text2: "El SOS se enviará automáticamente pronto." });
+        return;
+      }
+
+      if (res.status >= 500) {
+        await enqueueSOS(lat, lon);
+        setHasPendingSOS(true);
+        Toast.show({ type: "info", text1: "SOS guardado", text2: "Error del servidor. Se reintentará automáticamente." });
+        return;
+      }
+
+      if (!res.ok) {
+        // 4xx (no 429): error de cliente, no encolar
+        Toast.show({ type: "error", text1: "Error", text2: "No se pudo enviar el SOS. Intenta de nuevo." });
+        return;
+      }
 
       const data = await res.json();
+      setHasPendingSOS(false);
       if (data.notified_count === 0) {
-        Toast.show({
-          type: "info",
-          text1: "SOS enviado",
-          text2: "No tienes contactos vinculados. Agrégalos en tu perfil.",
-        });
+        Toast.show({ type: "info", text1: "SOS enviado", text2: "No tienes contactos vinculados. Agrégalos en tu perfil." });
       } else {
-        Toast.show({
-          type: "success",
-          text1: "SOS enviado",
-          text2: `${data.notified_count} contacto(s) notificado(s).`,
-        });
+        Toast.show({ type: "success", text1: "SOS enviado", text2: `${data.notified_count} contacto(s) notificado(s).` });
       }
-    } catch {
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "No se pudo enviar el SOS. Intenta de nuevo.",
-      });
     } finally {
       setIsSosSending(false);
     }
@@ -589,6 +667,27 @@ export default function WeatherMapNativewind() {
           : <MaterialCommunityIcons name="alarm-light-outline" size={24} color="#fff" />
         }
       </TouchableOpacity>
+
+      {/* SOS pendiente de envío */}
+      {hasPendingSOS && (
+        <View style={{
+          position: 'absolute',
+          top: 60,
+          left: 16,
+          right: 16,
+          backgroundColor: colors.brandOrange + 'dd',
+          borderRadius: 10,
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}>
+          <MaterialCommunityIcons name="clock-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={{ color: '#fff', fontFamily: fonts.poppins, fontSize: 13 }}>
+            SOS pendiente de envío
+          </Text>
+        </View>
+      )}
 
       {/* Modal: Report Zone */}
       <Modal
