@@ -1,25 +1,18 @@
 import "../global.css";
 import { Stack, useRouter, useSegments } from "expo-router";
-import { initExecutorch } from 'react-native-executorch';
-import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher';
 import { ModelProvider } from './ai/_context/ModelContext';
-import { AuthProvider, useAuth } from './(auth)/_context/AuthContext';
-
-initExecutorch({ resourceFetcher: ExpoResourceFetcher });
+import { AuthProvider, useAuth } from '../features/auth/AuthContext';
 // import { Drawer } from "expo-router/drawer";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../context/ThemeContext";
 import { DaltonicModeProvider } from "../context/DaltonicModeContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { LinearGradient } from "expo-linear-gradient";
 import { gradients } from "../utils/theme";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
-<<<<<<< HEAD
 import { Alert, AppState, Platform, StatusBar as RNStatusBar } from "react-native";
-=======
-import { AppState, StatusBar as RNStatusBar } from "react-native";
->>>>>>> 0323521 (feat: add local nearby chat prototype)
 import { StatusBar } from "expo-status-bar";
 import {
   registerForPushNotificationsAsync,
@@ -32,10 +25,41 @@ import { initAnalytics, track, flush } from "../utils/analytics"
 import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
+
+if (Platform.OS !== "web") {
+  const { initExecutorch } = require("react-native-executorch");
+  const { ExpoResourceFetcher } = require("react-native-executorch-expo-resource-fetcher");
+  initExecutorch({ resourceFetcher: ExpoResourceFetcher });
+}
+const DEV_BYPASS_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH === 'true'
 
 interface NotificationData {
   alertId?: string
+  alert_id?: string
   alertLevel?: string
+  level?: string
+  siat_level?: string
+  siat_color?: string
   fullScreen?: string
   category?: string
   alertTitle?: string
@@ -46,7 +70,6 @@ interface NotificationData {
   lon?: string
 }
 
-<<<<<<< HEAD
 function resolveNotifPayload(
   data: NotificationData,
   content?: { title?: string | null; body?: string | null }
@@ -77,22 +100,28 @@ function resolveNotifPayload(
   }
 }
 
-=======
->>>>>>> 0323521 (feat: add local nearby chat prototype)
 function AuthGate({ children }) {
   const { user, loading } = useAuth()
   const router = useRouter()
   const segments = useSegments()
+  const authEnabled = !DEV_BYPASS_AUTH
 
   useEffect(() => {
-    if (!user) return
+    if (!authEnabled || !user) return
     registerForPushNotificationsAsync()
       .then((token) => console.log("Token guardado:", token))
       .catch(console.error)
-  }, [user?.uid])
+  }, [authEnabled, user?.uid])
 
   useEffect(() => {
     if (loading) return
+    if (!authEnabled) {
+      const inTabsGroup = segments[0] === '(tabs)'
+      if (!inTabsGroup) {
+        router.replace('/(tabs)/MapScreen')
+      }
+      return
+    }
     const inAuthGroup = segments[0] === '(auth)'
     if (!user && !inAuthGroup) {
       router.replace('/(auth)')
@@ -107,14 +136,15 @@ function AuthGate({ children }) {
       }
       checkAndRoute()
     }
-  }, [user, loading, segments])
+  }, [authEnabled, user, loading, segments])
 
   return children
 }
 
 /* ---------- Layout raíz ---------- */
-export default function Layout() {
+export default Sentry.wrap(function Layout() {
   const router = useRouter();
+  const alarmActiveRef = React.useRef(false);
 
   const [fontsLoaded] = useFonts({
     'Square721': require('../assets/fonts/square-721-bold-extended-bt.ttf'),
@@ -134,10 +164,9 @@ export default function Layout() {
   useEffect(() => {
     setForegroundNotificationHandler();
 
-    // 👇 Cuando el usuario pulse la notificación (o llegue automáticamente si es critical)
-    const sub = addNotificationResponseListener(async (rawData) => {
+    // Tap en notificación (background → foreground, o foreground tap)
+    const tapSub = addNotificationResponseListener(async (rawData) => {
       const data = rawData as NotificationData
-<<<<<<< HEAD
       const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
       if (!id && !isFullScreen && !isSos) return
 
@@ -186,50 +215,15 @@ export default function Layout() {
       tapSub.remove();
       receivedSub.remove();
     };
-=======
-      if (data?.alertId) {
-        await initAnalytics();
-        track("push_open", {
-          alertId: String(data.alertId),
-          alertLevel: data.alertLevel ? Number(data.alertLevel) : undefined,
-          fullScreen: data.fullScreen === 'true',
-          origin: "listener",
-        });
-
-        // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → Alert details
-        if (data.fullScreen === 'true') {
-          router.push({
-            pathname: "AlarmScreen",
-            params: {
-              alertId: data.alertId,
-              category: data.category || data.alertLevel,
-              title: data.alertTitle || "Alerta de huracán",
-              message: data.alertMessage || "Diríjase a un refugio seguro",
-              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
-            },
-          });
-        } else {
-          router.push({
-            pathname: "/alerts/[id]",
-            params: { id: data.alertId },
-          });
-        }
-      }
-    });
-
-    return () => sub.remove(); // limpia al desmontar
->>>>>>> 0323521 (feat: add local nearby chat prototype)
   }, []);
 
-  // Si la app se abrió tocando una notificación, esta llamada la devuelve
+  // App abierta tocando una notificación desde cold start
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
       const data = initial?.notification?.request?.content?.data as NotificationData | undefined
-      const alertId = data?.alertId;
+      if (!data) return
 
-<<<<<<< HEAD
       const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
       if (!id && !isFullScreen && !isSos) return
 
@@ -250,36 +244,6 @@ export default function Layout() {
         router.push({ pathname: "AlarmScreen", params });
       } else if (id) {
         router.push({ pathname: "/alerts/[id]", params: { id } });
-=======
-      if (alertId) {
-        await initAnalytics();
-        track("push_open", {
-          alertId: String(alertId),
-          alertLevel: data?.alertLevel ? Number(data.alertLevel) : undefined,
-          fullScreen: data?.fullScreen === 'true',
-          origin: "initial",
-        });
-
-        // Si es full-screen (crítica cat 3+) → AlarmScreen
-        // Si no → Alert details
-        if (data?.fullScreen === 'true') {
-          router.push({
-            pathname: "AlarmScreen",
-            params: {
-              alertId: data.alertId,
-              category: data.category || data.alertLevel,
-              title: data.alertTitle || "Alerta de huracán",
-              message: data.alertMessage || "Diríjase a un refugio seguro",
-              bulletinUrl: data.bulletinUrl || "https://www.nhc.noaa.gov/",
-            },
-          });
-        } else {
-          router.push({
-            pathname: "/alerts/[id]",
-            params: { id: alertId },
-          });
-        }
->>>>>>> 0323521 (feat: add local nearby chat prototype)
       }
     })();
   }, []);
@@ -316,6 +280,7 @@ export default function Layout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" translucent={false} />
+      <KeyboardProvider>
       <DaltonicModeProvider>
         <ThemeProvider>
           <SafeAreaProvider>
@@ -351,7 +316,6 @@ export default function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
-<<<<<<< HEAD
                       name="NotificationPreferencesScreen"
                       options={{ headerShown: false }}
                     />
@@ -368,8 +332,6 @@ export default function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
-=======
->>>>>>> 0323521 (feat: add local nearby chat prototype)
                       name="AlarmScreen"
                       options={{ headerShown: false }}
                     />
@@ -402,6 +364,7 @@ export default function Layout() {
           </SafeAreaProvider>
         </ThemeProvider>
       </DaltonicModeProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
-}
+});
