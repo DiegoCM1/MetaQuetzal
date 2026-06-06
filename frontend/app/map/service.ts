@@ -6,6 +6,7 @@ import type { Zone } from './types'
 const STORAGE_KEY = '@BluEye:redZones'
 export const REPORTING_DISTANCE_METERS = 100000
 const DEV_BYPASS_MAP_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_MAP_AUTH === 'true'
+const MAP_EVENT_RADIUS_KM = 100
 
 type ReporterLocation = {
   latitude: number
@@ -17,14 +18,22 @@ type LoadZonesParams = ReporterLocation & {
 }
 
 type MapEventResponse = {
+  can_vote?: boolean
   id: string
   user_id?: number | null
+  is_owner?: boolean
   type: Zone['type']
   description: string
+  distance_km?: number | null
+  downvotes?: number
   lat: number
   lon: number
+  trust_status?: NonNullable<Zone['trustStatus']>
+  upvotes?: number
   created_at?: string
   updated_at?: string
+  user_vote?: Zone['userVote']
+  within_voting_radius?: boolean
 }
 
 function normalizeZone(event: MapEventResponse): Zone {
@@ -36,6 +45,14 @@ function normalizeZone(event: MapEventResponse): Zone {
     timestamp: String(event.created_at ?? event.updated_at ?? new Date().toISOString()),
     radius: 500,
     type: event.type,
+    upvotes: event.upvotes ?? 0,
+    downvotes: event.downvotes ?? 0,
+    userVote: event.user_vote ?? null,
+    isOwner: event.is_owner ?? false,
+    distanceKm: event.distance_km ?? null,
+    withinVotingRadius: event.within_voting_radius ?? false,
+    canVote: event.can_vote ?? false,
+    trustStatus: event.trust_status ?? 'en_revision',
   }
 }
 
@@ -110,7 +127,7 @@ async function mapFetch(path: string, options: RequestInit = {}) {
 export async function loadZones({
   latitude,
   longitude,
-  radiusKm = 100,
+  radiusKm = MAP_EVENT_RADIUS_KM,
 }: LoadZonesParams) {
   try {
     const search = new URLSearchParams({
@@ -151,6 +168,32 @@ export async function createZone(zone: Zone) {
   if (!response.ok) {
     const message = await response.text().catch(() => '')
     throw new Error(message || `Failed to create map event: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return normalizeZone(data)
+}
+
+export async function voteZone(
+  zoneId: string,
+  value: 1 | -1,
+  voterLocation: ReporterLocation
+) {
+  const response = await mapFetch(`/api/v1/map-events/${zoneId}/vote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      value,
+      lat: voterLocation.latitude,
+      lon: voterLocation.longitude,
+    }),
+  })
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => '')
+    throw new Error(message || `Failed to vote map event: ${response.status}`)
   }
 
   const data = await response.json()

@@ -1,7 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from firebase_admin import auth
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +11,7 @@ from app.features.map_events.schemas import (
     MapEventCreate,
     MapEventResponse,
     MapEventUpdate,
+    MapEventVoteCreate,
 )
 from app.features.map_events.service import (
     DEFAULT_RADIUS_KM,
@@ -19,15 +19,16 @@ from app.features.map_events.service import (
     delete_map_event,
     list_map_events,
     update_map_event,
+    vote_map_event,
 )
 
 router = APIRouter(prefix="/api/v1/map-events", tags=["map-events"])
 DEV_BYPASS_MAP_EVENTS_AUTH = settings.DEV_BYPASS_MAP_EVENTS_AUTH
 
 
-async def get_current_user_id(
-    decoded_token: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+async def resolve_map_events_user(
+    db: AsyncSession,
+    decoded_token: dict | None,
 ) -> int:
     firebase_uid = decoded_token["uid"]
     result = await db.execute(
@@ -43,13 +44,36 @@ async def get_current_user_id(
     return int(row[0])
 
 
-async def get_map_events_user_id(
+async def get_current_user_id(
     decoded_token: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> int:
+    return await resolve_map_events_user(db, decoded_token)
+
+
+async def get_optional_map_events_user(
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> int | None:
     if DEV_BYPASS_MAP_EVENTS_AUTH:
         return 1
-    return await get_current_user_id(decoded_token=decoded_token, db=db)
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    decoded_token = await get_current_user(authorization)
+    return await resolve_map_events_user(db, decoded_token)
+
+
+async def require_map_events_auth(
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if DEV_BYPASS_MAP_EVENTS_AUTH:
+        return {"uid": "dev-bypass-user"}
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    decoded_token = await get_current_user(authorization)
+    await resolve_map_events_user(db, decoded_token)
+    return decoded_token
 
 
 @router.get("", response_model=list[MapEventResponse])
@@ -58,16 +82,23 @@ async def get_map_events(
     lon: float = Query(...),
     radius_km: float = Query(DEFAULT_RADIUS_KM, gt=0),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    user: dict = Depends(require_map_events_auth),
 ):
-    return await list_map_events(db, lat=lat, lon=lon, radius_km=radius_km)
+    user_id = 1 if DEV_BYPASS_MAP_EVENTS_AUTH else await resolve_map_events_user(db, user)
+    return await list_map_events(
+        db,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+        current_user_id=user_id,
+    )
 
 
 @router.post("", response_model=MapEventResponse, status_code=status.HTTP_201_CREATED)
 async def post_map_event(
     payload: MapEventCreate,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_map_events_user_id),
+    user_id: int | None = Depends(get_optional_map_events_user),
 ):
     return await create_map_event(db, payload, user_id)
 
@@ -77,7 +108,7 @@ async def patch_map_event(
     event_id: UUID,
     payload: MapEventUpdate,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_map_events_user_id),
+    user_id: int | None = Depends(get_optional_map_events_user),
 ):
     return await update_map_event(db, event_id, payload, user_id)
 
@@ -86,7 +117,17 @@ async def patch_map_event(
 async def remove_map_event(
     event_id: UUID,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_map_events_user_id),
+    user_id: int | None = Depends(get_optional_map_events_user),
 ):
     await delete_map_event(db, event_id, user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{event_id}/vote", response_model=MapEventResponse)
+async def post_map_event_vote(
+    event_id: UUID,
+    payload: MapEventVoteCreate,
+    db: AsyncSession = Depends(get_db),
+    user_id: int | None = Depends(get_optional_map_events_user),
+):
+    return await vote_map_event(db, event_id, user_id, payload.value, payload.lat, payload.lon)

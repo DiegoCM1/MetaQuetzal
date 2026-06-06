@@ -66,3 +66,10 @@ Full env setup (staging vs local backend, LAN IP) is in `docs/STAGING.md`.
 - **PRs:** ≤ 400 lines. Larger features split into multiple PRs. Happy-path integration test + demoable on a physical device before merge.
 - **Backend secrets** (DATABASE_URL, Firebase private key, LLM + notif keys) live in `backend/.env` (gitignored; see `backend/.env.example` for the list). Never commit them.
 - **Frontend has no secrets.** `EXPO_PUBLIC_*` vars are public client config (embedded in the app bundle), set per build profile in `frontend/eas.json` (committed). Anything the client can read is public by definition — never put a real secret behind `EXPO_PUBLIC_`.
+
+
+## Tooling for Claude Code
+
+- **Context7 MCP is available** (configured in `.mcp.json`, committed — everyone on the team has it). Use it to fetch *current* docs for any
+library/framework/SDK in this stack (Expo, FastAPI, SQLAlchemy, Firebase, react-native-*) before answering from memory — training data lags real releases. 
+Prefer it over web search for library docs.

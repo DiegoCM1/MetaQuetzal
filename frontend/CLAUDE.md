@@ -12,6 +12,17 @@ This file supplements the root `CLAUDE.md` with frontend-specific guidance. Read
 - Routes live in `app/`. Route groups: `(auth)`, `(tabs)`.
 - **Underscore-prefixed dirs/files are NOT routes** — `_components`, `_hooks`, `_services`, `_utils`, `_types.ts` are colocated private code for the route they sit under. This is the feature-colocation pattern (see `app/alerts/`, `app/ai/`).
 
+## Feature organization
+
+`app/` is currently inconsistent (some features are folders, some are lone `*Screen.tsx` files) — **converge on this going forward.**
+
+- **A feature is a folder; only a trivial leaf screen is a file.** A feature (its own components, hooks, data layer, types) lives in a folder with colocated underscore dirs — `_components/`, `_hooks/`, `_services/`, `_utils/`, `_types.ts` — like `app/ai/`, `app/alerts/`, `app/educational/`, `app/onboarding/`, `app/subscription/`. Only a genuinely static leaf (no data layer, no sub-components) stays a single file.
+- **Route names are lowercase and `kebab-case`, with no `Screen` suffix.** In expo-router the file/folder name *is* the URL, so `app/SOSContactsScreen.tsx` becomes the route `/SOSContactsScreen`. Name a feature for its route: `app/sos-contacts/` → `/sos-contacts`. The PascalCase `*Screen.tsx` files (`AlarmScreen`, `FeedbackScreen`, `NotificationPreferencesScreen`, `SOSContactsScreen`, `SettingsScreen`) are legacy to migrate, **not** the pattern to copy.
+- **Keep the data layer out of the screen** — network / SWR / cache logic goes in `_hooks` + `_services`, not inline in the component (see `app/alerts/_hooks/useAlerts.ts`).
+- **New files are TypeScript** (`.tsx` / `.ts`). The remaining `.jsx` (`AlarmScreen.jsx`, `FeedbackScreen.jsx`, `index.jsx`) is legacy.
+- **Apply to new work; migrate existing deliberately, not in a rush.** Renaming a route changes its URL and every `router.push(...)` / `<Link>` call site — do it as its own focused change, never folded into a feature PR.
+- **Don't over-structure.** A folder wrapping a single trivial file is just noise — keep a true leaf inline until it grows a real UI/data split.
+
 ## Styling — NativeWind
 
 - **NativeWind (Tailwind `className`) is the styling system.** Default to `className`. A few files use `StyleSheet.create`; that's the minority, not the pattern to follow.
