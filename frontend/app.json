@@ -46,6 +46,10 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "BLUETOOTH_ADVERTISE",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "NEARBY_WIFI_DEVICES",
         "USE_FULL_SCREEN_INTENT",
         "SYSTEM_ALERT_WINDOW",
         "android.permission.RECORD_AUDIO",
@@ -64,6 +68,7 @@
       "expo-router",
       "expo-notifications",
       "expo-audio",
+      "./plugins/with-nearby-connections",
       "@react-native-firebase/app",
       [
         "@sentry/react-native/expo",
