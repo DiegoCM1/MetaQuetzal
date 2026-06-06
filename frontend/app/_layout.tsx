@@ -21,7 +21,8 @@ import {
 } from "../utils/pushNotifications";
 import * as Notifications from "expo-notifications";
 import Toast from "react-native-toast-message";
-import { initAnalytics, track, flush } from "../utils/analytics";
+import { initAnalytics, track, flush } from "../utils/analytics"
+import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
 import * as Sentry from '@sentry/react-native';
@@ -263,6 +264,12 @@ export default Sentry.wrap(function Layout() {
       if (state === "background") {
         track("app_background");
         flush();
+      }
+      if (state === "active") {
+        shouldConfirmPendingSOS().then((needsConfirm) => {
+          if (!needsConfirm) flushSOSQueue();
+          // Si needsConfirm: MapScreen mostrará el Alert cuando el usuario vuelva al mapa.
+        });
       }
     });
     return () => sub.remove();
