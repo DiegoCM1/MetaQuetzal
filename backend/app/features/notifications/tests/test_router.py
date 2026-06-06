@@ -136,3 +136,19 @@ def test_test_notif_invalid_type():
                 headers=AUTH_HEADERS,
             )
     assert r.status_code == 422
+
+
+def test_send_all_firebase_failure_returns_503():
+    """Si Firebase falla en send_all_notifications, el endpoint retorna 503 en lugar de 500."""
+    with patch(
+        "app.features.notifications.router.send_all_notifications",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("Firebase timeout"),
+    ):
+        r = client.post(
+            "/api/v1/notifications/send-all",
+            json={"title": "Test", "body": "msg", "data": {}},
+            headers=API_KEY_HEADERS,
+        )
+    assert r.status_code == 503
+    assert "Error al enviar" in r.json()["detail"]

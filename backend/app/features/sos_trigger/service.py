@@ -6,7 +6,7 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.notifications.service import get_tokens_for_users
+from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ async def trigger_sos(
                 tokens=all_tokens,
             )
             try:
-                response = await asyncio.to_thread(messaging.send_each_for_multicast, msg)
+                response = await _send_multicast_with_retry(msg)
                 notified_count = response.success_count
                 logger.info(
                     "SOS push → sender_id=%d contacts=%d tokens=%d success=%d failure=%d",
@@ -86,7 +86,9 @@ async def trigger_sos(
                     failed = [all_tokens[i] for i, r in enumerate(response.responses) if not r.success]
                     logger.warning("SOS push failures sender_id=%d: %s", sender_id, failed[:5])
             except Exception as exc:
-                logger.error("SOS Firebase push failed sender_id=%d: %s", sender_id, exc, exc_info=True)
+                # Firebase failed after retries — notified_count stays 0.
+                # Rate limit is consumed by design (see comment at step 5).
+                logger.error("SOS Firebase push failed after retries sender_id=%d: %s", sender_id, exc, exc_info=True)
 
     # 5. Log event (always — rate limit applies even to failed pushes)
     event_result = await db.execute(
