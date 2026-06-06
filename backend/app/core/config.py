@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # Dev-only bypasses
     DEV_BYPASS_MAP_EVENTS_AUTH: bool = False
 
+    # Notification test tool — comma-separated emails allowed to call POST /api/v1/notifications/test.
+    # Empty string disables the endpoint for everyone (production default).
+    NOTIFICATION_TEST_ADMIN_EMAILS: str = ""
+
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"))
 
 settings = Settings()

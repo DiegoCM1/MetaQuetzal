@@ -4,76 +4,42 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { colors } from '../utils/theme';
+import { authFetch } from '../utils/api';
 import { API_BASE_URL } from '../utils/config';
 
-const NOTIF_KEY = process.env.EXPO_PUBLIC_NOTIF_API_KEY as string | undefined;
-
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+type NotificationTestType = 'hurricane_l2' | 'hurricane_l4' | 'sos_test' | 'generic';
 
 type TestButton = {
   label: string;
   icon: MCIName;
   color: string;
-  payload: { title: string; body: string; data: Record<string, string> };
+  type: NotificationTestType;
 };
 
 const BUTTONS: TestButton[] = [
-  {
-    label: 'Huracán Nivel 2 — Verde',
-    icon: 'weather-hurricane',
-    color: colors.brandGreen,
-    payload: {
-      title: 'Alerta SIAT-CT Verde [PRUEBA]',
-      body: 'Ciclón de prueba | Distancia: ~200 km | ETA: ~36h',
-      data: { siat_level: '2', siat_color: 'VERDE' },
-    },
-  },
-  {
-    label: 'Huracán Nivel 4 — Naranja (fullscreen)',
-    icon: 'alert-octagram',
-    color: colors.brandOrange,
-    payload: {
-      title: 'Alerta SIAT-CT Naranja [PRUEBA]',
-      body: 'Ciclón de prueba | Distancia: ~50 km | ETA: ~8h',
-      data: { siat_level: '4', siat_color: 'NARANJA', fullScreen: 'true' },
-    },
-  },
-  {
-    label: 'SOS de prueba',
-    icon: 'alarm-light-outline',
-    color: colors.brandRed,
-    payload: {
-      title: 'SOS — Equipo BluEye [PRUEBA]',
-      body: 'Necesita ayuda urgente. Toca para ver su ubicación.',
-      data: { category: 'sos', sender_name: 'Test BluEye', lat: '19.43264', lon: '-99.13318' },
-    },
-  },
-  {
-    label: 'Push genérico',
-    icon: 'bell-outline',
-    color: colors.brandBlue,
-    payload: {
-      title: 'Notificación de prueba [PRUEBA]',
-      body: 'Esta es una notificación de prueba del equipo BluEye.',
-      data: {},
-    },
-  },
+  { label: 'Huracán Nivel 2 — Verde',          icon: 'weather-hurricane',  color: colors.brandGreen,  type: 'hurricane_l2' },
+  { label: 'Huracán Nivel 4 — Naranja (fullscreen)', icon: 'alert-octagram', color: colors.brandOrange, type: 'hurricane_l4' },
+  { label: 'SOS de prueba',                    icon: 'alarm-light-outline', color: colors.brandRed,    type: 'sos_test' },
+  { label: 'Push genérico',                   icon: 'bell-outline',        color: colors.brandBlue,   type: 'generic' },
 ];
 
 export default function NotificationTestScreen() {
   const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
-  const keyMissing = !NOTIF_KEY;
 
   const sendTest = async (index: number) => {
-    if (keyMissing || loadingIndex !== null) return;
+    if (loadingIndex !== null) return;
     setLoadingIndex(index);
     try {
-      const { payload } = BUTTONS[index];
-      const res = await fetch(`${API_BASE_URL}/api/v1/notifications/send-all`, {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/notifications/test`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-Key': NOTIF_KEY! },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ type: BUTTONS[index].type }),
       });
+      if (res.status === 403) {
+        Toast.show({ type: 'error', text1: 'No autorizado', text2: 'Tu cuenta no tiene acceso a esta herramienta.' });
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       Toast.show({ type: 'success', text1: 'Enviado', text2: `${data.success_count} dispositivo(s)` });
@@ -94,51 +60,25 @@ export default function NotificationTestScreen() {
           Herramienta interna — solo visible en staging/dev
         </Text>
 
-        {keyMissing && (
-          <View
-            className="mb-6 rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: `${colors.brandOrange}22`,
-              borderWidth: 1,
-              borderColor: colors.brandOrange,
-            }}
-          >
-            <Text className="text-sm font-poppins-semibold" style={{ color: colors.brandOrange }}>
-              API key no configurada
-            </Text>
-            <Text className="text-xs font-poppins text-white/60 mt-1">
-              Agrega EXPO_PUBLIC_NOTIF_API_KEY en tu .env o en las variables de tu build.
-            </Text>
-          </View>
-        )}
-
         {BUTTONS.map((btn, index) => (
           <TouchableOpacity
-            key={btn.label}
+            key={btn.type}
             onPress={() => sendTest(index)}
-            disabled={keyMissing || loadingIndex !== null}
+            disabled={loadingIndex !== null}
             className="flex-row items-center mb-4 rounded-2xl px-5 py-4"
             style={{
-              backgroundColor: keyMissing ? 'rgba(255,255,255,0.03)' : `${btn.color}22`,
+              backgroundColor: `${btn.color}22`,
               borderWidth: 1,
-              borderColor: keyMissing ? 'rgba(255,255,255,0.1)' : btn.color,
+              borderColor: btn.color,
               opacity: loadingIndex !== null && loadingIndex !== index ? 0.5 : 1,
             }}
           >
             {loadingIndex === index ? (
               <ActivityIndicator size="small" color={btn.color} style={{ marginRight: 12 }} />
             ) : (
-              <MaterialCommunityIcons
-                name={btn.icon}
-                size={22}
-                color={keyMissing ? 'rgba(255,255,255,0.3)' : btn.color}
-                style={{ marginRight: 12 }}
-              />
+              <MaterialCommunityIcons name={btn.icon} size={22} color={btn.color} style={{ marginRight: 12 }} />
             )}
-            <Text
-              className="flex-1 font-poppins-semibold text-sm"
-              style={{ color: keyMissing ? 'rgba(255,255,255,0.3)' : 'white' }}
-            >
+            <Text className="flex-1 font-poppins-semibold text-sm" style={{ color: 'white' }}>
               {btn.label}
             </Text>
             {loadingIndex !== null && loadingIndex !== index && (

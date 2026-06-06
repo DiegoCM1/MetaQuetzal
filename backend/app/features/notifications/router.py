@@ -3,11 +3,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.features.notifications.service import push_token, send_all_notifications
-from app.features.notifications.schemas import NotificationSend, NotificationResponse, PushTokenCreate
+from app.features.notifications.schemas import (
+    NotificationSend, NotificationResponse, PushTokenCreate,
+    NotificationTestType, NotificationTestRequest,
+)
 from app.middleware.api_key_auth import verify_api_key
+from app.core.config import settings
 from app.features.users.service import get_user_by_firebase_uid
 
 router = APIRouter()
+
+_TEST_PAYLOADS: dict[str, dict] = {
+    "hurricane_l2": {
+        "title": "Alerta SIAT-CT Verde [PRUEBA]",
+        "body": "Ciclón de prueba | Distancia: ~200 km | ETA: ~36h",
+        "data": {"siat_level": "2", "siat_color": "VERDE"},
+    },
+    "hurricane_l4": {
+        "title": "Alerta SIAT-CT Naranja [PRUEBA]",
+        "body": "Ciclón de prueba | Distancia: ~50 km | ETA: ~8h",
+        "data": {"siat_level": "4", "siat_color": "NARANJA", "fullScreen": "true"},
+    },
+    "sos_test": {
+        "title": "SOS — Equipo BluEye [PRUEBA]",
+        "body": "Necesita ayuda urgente. Toca para ver su ubicación.",
+        "data": {"category": "sos", "sender_name": "Test BluEye",
+                 "lat": "19.43264", "lon": "-99.13318"},
+    },
+    "generic": {
+        "title": "Notificación de prueba [PRUEBA]",
+        "body": "Esta es una notificación de prueba del equipo BluEye.",
+        "data": {},
+    },
+}
 
 
 @router.post("/api/v1/push-token", status_code=201)
@@ -33,6 +61,29 @@ async def send_notifications(
 ):
     result = await send_all_notifications(db, body.title, body.body, body.data)
     return result
+
+
+@router.post("/api/v1/notifications/test", response_model=NotificationResponse)
+async def send_test_notification(
+    body: NotificationTestRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Send a test notification to all devices. Requires Firebase auth + admin email allowlist."""
+    admin_emails = [
+        e.strip().lower()
+        for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
+        if e.strip()
+    ]
+    if not admin_emails:
+        raise HTTPException(status_code=403, detail="Test notifications not configured.")
+
+    user_email = (current_user.get("email") or "").lower()
+    if user_email not in admin_emails:
+        raise HTTPException(status_code=403, detail="Not authorized to send test notifications.")
+
+    payload = _TEST_PAYLOADS[body.type]
+    return await send_all_notifications(db, payload["title"], payload["body"], payload["data"])
 
 
 # Legacy aliases for cached tester app builds shipped before the /api/v1 migration.
