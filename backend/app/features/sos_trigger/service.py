@@ -31,10 +31,21 @@ async def trigger_sos(
         {"sender_id": sender_id},
     )
     if count_row.scalar() >= _RATE_LIMIT_MAX:
+        oldest_row = await db.execute(
+            text(f"""
+                SELECT GREATEST(0, EXTRACT(EPOCH FROM
+                    (MIN(created_at) + INTERVAL '{_RATE_LIMIT_WINDOW}' - NOW()))::int)
+                FROM sos_events
+                WHERE sender_id = :sender_id
+                  AND created_at > NOW() - INTERVAL '{_RATE_LIMIT_WINDOW}'
+            """),
+            {"sender_id": sender_id},
+        )
+        retry_after = int(oldest_row.scalar() or 600)
         raise HTTPException(
             status_code=429,
             detail="Demasiadas alertas SOS. Espera unos minutos antes de enviar otra.",
-            headers={"Retry-After": "600"},
+            headers={"Retry-After": str(retry_after)},
         )
 
     # 2. Linked contacts
