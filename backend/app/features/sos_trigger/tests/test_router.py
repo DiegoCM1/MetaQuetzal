@@ -1,10 +1,12 @@
+import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
 from starlette.testclient import TestClient
 
 from app.main import app
+from app.features.sos_trigger.service import trigger_sos
 
 client = TestClient(app)
 
@@ -76,3 +78,35 @@ def test_trigger_user_not_found():
     with _mock_auth(), _mock_user(rv=None):
         r = client.post("/api/v1/sos/trigger", json={}, headers=AUTH_HEADERS)
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_trigger_sos_firebase_failure_notified_zero():
+    """Si Firebase falla después de retries, trigger_sos registra el evento con notified_count=0 (diseño intencional)."""
+    mock_db = AsyncMock()
+
+    rate_mock = MagicMock()
+    rate_mock.scalar.return_value = 0
+
+    contacts_mock = MagicMock()
+    contacts_mock.fetchall.return_value = [(99,)]
+
+    tokens_mock = MagicMock()
+    tokens_mock.mappings.return_value = [{"user_id": 99, "token": "tok1"}]
+
+    event_mock = MagicMock()
+    event_mock.scalar.return_value = 7
+
+    mock_db.execute.side_effect = [rate_mock, contacts_mock, tokens_mock, event_mock]
+    mock_db.commit = AsyncMock()
+
+    with patch(
+        "app.features.sos_trigger.service._send_multicast_with_retry",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("Firebase down"),
+    ):
+        result = await trigger_sos(mock_db, sender_id=1, sender_display_name="Boro", lat=20.0, lon=-90.0)
+
+    assert result["notified_count"] == 0
+    assert result["sos_event_id"] == 7
+    mock_db.commit.assert_awaited_once()

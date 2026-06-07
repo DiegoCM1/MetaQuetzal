@@ -1,8 +1,31 @@
 import asyncio
+import logging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from firebase_admin import messaging
+
+logger = logging.getLogger(__name__)
+
+
+async def _send_multicast_with_retry(
+    message: messaging.MulticastMessage,
+    max_attempts: int = 3,
+):
+    """
+    Intenta un Firebase multicast hasta max_attempts veces con backoff exponencial (1s, 2s).
+    Re-lanza la última excepción si todas las tentativas fallan.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(max_attempts):
+        try:
+            return await asyncio.to_thread(messaging.send_each_for_multicast, message)
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("Firebase multicast attempt %d/%d failed: %s", attempt + 1, max_attempts, exc)
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(2 ** attempt)  # 1s → 2s between retries
+    raise last_exc  # max_attempts >= 1 garantiza que last_exc está asignado
 
 
 async def push_token(db: AsyncSession, token: str, user_id: int) -> None:
@@ -52,7 +75,11 @@ async def send_all_notifications(db: AsyncSession, title:str, body:str, data:dic
         data=data or {},
         tokens=tokens,
     )
-    response = await asyncio.to_thread(messaging.send_each_for_multicast, message)
+    try:
+        response = await _send_multicast_with_retry(message)
+    except Exception as exc:
+        logger.error("send_all_notifications Firebase failed after retries: %s", exc, exc_info=True)
+        raise
 
     # Cleaning up missing/bad tokens
     invalid_tokens = []

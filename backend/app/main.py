@@ -147,6 +147,10 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS sos_events_sender_idx ON sos_events (sender_id, created_at DESC)"
         ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_contacts_linked_uid_idx "
+            "ON sos_contacts (linked_user_id) WHERE linked_user_id IS NOT NULL"
+        ))
 
 
 async def _siat_background_loop():

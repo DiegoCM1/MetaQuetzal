@@ -59,8 +59,12 @@ async def send_notifications(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(verify_api_key),
 ):
-    result = await send_all_notifications(db, body.title, body.body, body.data)
-    return result
+    try:
+        return await send_all_notifications(db, body.title, body.body, body.data)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Error al enviar notificaciones. Intenta de nuevo.")
 
 
 @router.post("/api/v1/notifications/test", response_model=NotificationResponse)
@@ -83,7 +87,12 @@ async def send_test_notification(
         raise HTTPException(status_code=403, detail="Not authorized to send test notifications.")
 
     payload = _TEST_PAYLOADS[body.type]
-    return await send_all_notifications(db, payload["title"], payload["body"], payload["data"])
+    try:
+        return await send_all_notifications(db, payload["title"], payload["body"], payload["data"])
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Error al enviar notificaciones. Intenta de nuevo.")
 
 
 # Legacy aliases for cached tester app builds shipped before the /api/v1 migration.
