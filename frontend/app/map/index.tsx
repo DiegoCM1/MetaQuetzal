@@ -84,6 +84,7 @@ export default function WeatherMapNativewind() {
   const [isSosSending, setIsSosSending] = useState(false);
   const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [hasPendingSOS, setHasPendingSOS] = useState(false);
+  const [linkedContactCount, setLinkedContactCount] = useState<number | null>(null);
 
   // Al montar y al volver al foco: verificar cola con control de antigüedad.
   // Items < 30 min → flush automático. Items > 30 min → pedir confirmación al usuario.
@@ -123,6 +124,22 @@ export default function WeatherMapNativewind() {
         } else {
           await flushSOSQueue();
           setHasPendingSOS(await hasPendingSOSItem());
+        }
+      })();
+    }, [])
+  );
+
+  // Al volver al foco: actualizar conteo de contactos vinculados para el badge del FAB
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts`);
+          if (!res.ok) return;
+          const data: { link_status: string }[] = await res.json();
+          setLinkedContactCount(data.filter(c => c.link_status === 'linked').length);
+        } catch {
+          // best-effort — badge stays hidden on error
         }
       })();
     }, [])
@@ -460,7 +477,10 @@ export default function WeatherMapNativewind() {
       if (res.status === 429) {
         await enqueueSOS(lat, lon);
         setHasPendingSOS(true);
-        Toast.show({ type: "error", text1: "Límite alcanzado", text2: "El SOS se enviará automáticamente pronto." });
+        const retryAfterSec = parseInt(res.headers.get('Retry-After') ?? '600', 10);
+        const minutes = Math.ceil(retryAfterSec / 60);
+        const retryText = minutes <= 1 ? 'en 1 min.' : `en ${minutes} min.`;
+        Toast.show({ type: "error", text1: "Límite alcanzado", text2: `Podrás enviar otro SOS ${retryText}` });
         return;
       }
 
@@ -647,26 +667,45 @@ export default function WeatherMapNativewind() {
       </Pressable>
 
       {/* SOS FAB */}
-      <TouchableOpacity
-        onPress={handleSOSTrigger}
-        disabled={isSosSending}
-        style={{
-          position: 'absolute',
-          bottom: 56,
-          left: 16,
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          backgroundColor: isSosSending ? 'rgba(226,67,55,0.5)' : colors.brandRed,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {isSosSending
-          ? <ActivityIndicator size="small" color="#fff" />
-          : <MaterialCommunityIcons name="alarm-light-outline" size={24} color="#fff" />
-        }
-      </TouchableOpacity>
+      <View style={{ position: 'absolute', bottom: 56, left: 16 }}>
+        <TouchableOpacity
+          onPress={handleSOSTrigger}
+          disabled={isSosSending}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 14,
+            backgroundColor: isSosSending ? 'rgba(226,67,55,0.5)' : colors.brandRed,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {isSosSending
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <MaterialCommunityIcons name="alarm-light-outline" size={24} color="#fff" />
+          }
+        </TouchableOpacity>
+        {linkedContactCount !== null && (
+          <View style={{
+            position: 'absolute',
+            top: -6,
+            right: -6,
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+            backgroundColor: linkedContactCount === 0 ? colors.brandOrange : colors.brandGreen,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 4,
+            borderWidth: 1.5,
+            borderColor: '#fff',
+          }}>
+            <Text style={{ color: '#fff', fontSize: 10, fontFamily: fonts.poppinsSemiBold }}>
+              {linkedContactCount === 0 ? '!' : linkedContactCount > 9 ? '9+' : String(linkedContactCount)}
+            </Text>
+          </View>
+        )}
+      </View>
 
       {/* SOS pendiente de envío */}
       {hasPendingSOS && (
