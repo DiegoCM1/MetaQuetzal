@@ -3,10 +3,70 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Alert } from "react-native";
 import Toast from "react-native-toast-message";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from "./analytics";
 import { authFetch } from './api'
 import { API_BASE_URL } from './config'
 
+const _LAST_TOKEN_KEY = 'push_last_registered_token';
+// In-memory guard prevents concurrent calls with the same token from both POSTing
+let _registrationInFlight: string | null = null;
+
+export async function sendTokenToBackend(fcmToken: string): Promise<void> {
+  if (_registrationInFlight === fcmToken) return;
+  _registrationInFlight = fcmToken;  // set before any await — closes TOCTOU window
+
+  let success = false;
+  let lastErr: unknown;
+
+  try {
+    // Persistent deduplication: skip if token already registered successfully
+    try {
+      const stored = await AsyncStorage.getItem(_LAST_TOKEN_KEY);
+      if (stored === fcmToken) return;   // finally handles _registrationInFlight = null
+    } catch {
+      // AsyncStorage unavailable — proceed with registration
+    }
+
+    const MAX = 3;
+    for (let i = 0; i < MAX; i++) {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/push-token`, {
+          method: 'POST',
+          body: JSON.stringify({ token: fcmToken }),
+        });
+        if (res.ok) {
+          try {
+            await AsyncStorage.setItem(_LAST_TOKEN_KEY, fcmToken);
+          } catch { /* best-effort; next launch will re-POST (idempotent) */ }
+          track('push_token_saved', { ok: true });
+          success = true;
+          break;
+        }
+        if (res.status < 500) break;                       // 4xx permanente — no reintentar
+        lastErr = new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        lastErr = err;                                     // error de red → reintentar
+      }
+      if (i < MAX - 1) await new Promise(r => setTimeout(r, 1000 * 2 ** i)); // 1s → 2s
+    }
+  } finally {
+    _registrationInFlight = null;
+  }
+
+  if (!success) {
+    console.error('Error enviando token al backend después de retries:', lastErr);
+    track('push_token_saved', { ok: false, error: String(lastErr) });
+    if (lastErr !== undefined) {
+      // Only show Toast for transient failures (network errors, 5xx) — not for 4xx permanent
+      Toast.show({
+        type: 'error',
+        text1: 'No se pudieron activar notificaciones',
+        text2: 'Revisa tu conexión e intenta abrir la app de nuevo.',
+      });
+    }
+  }
+}
 
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
@@ -37,24 +97,7 @@ export async function registerForPushNotificationsAsync() {
   const { data: fcmToken } = await Notifications.getDevicePushTokenAsync();
   console.log("FCM token →", fcmToken);
 
-  try {
-    await authFetch(
-      `${API_BASE_URL}/push-token`,
-      {
-        method: "POST",
-        body: JSON.stringify({ token: fcmToken }),
-      },
-    );
-    console.log("Token enviado al backend (frontend)");
-    track("push_token_saved", { ok: true });
-  } catch (error) {
-    console.error("Error enviando token al backend:", error);
-    track("push_token_saved", {
-      ok: false,
-      error: String(error?.message || error),
-    });
-  }
-  // TODO: envíalo a tu backend
+  await sendTokenToBackend(fcmToken);
   return fcmToken;
 }
 

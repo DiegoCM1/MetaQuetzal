@@ -16,6 +16,7 @@ import { Alert, AppState, Platform, StatusBar as RNStatusBar } from "react-nativ
 import { StatusBar } from "expo-status-bar";
 import {
   registerForPushNotificationsAsync,
+  sendTokenToBackend,
   setForegroundNotificationHandler,
   addNotificationResponseListener,
 } from "../utils/pushNotifications";
@@ -111,6 +112,10 @@ function AuthGate({ children }) {
     registerForPushNotificationsAsync()
       .then((token) => console.log("Token guardado:", token))
       .catch(console.error)
+    const tokenSub = Notifications.addPushTokenListener(({ data }) => {
+      sendTokenToBackend(data).catch(console.error)
+    })
+    return () => tokenSub.remove()
   }, [authEnabled, user?.uid])
 
   useEffect(() => {
