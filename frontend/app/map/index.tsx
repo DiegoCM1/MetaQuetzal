@@ -517,17 +517,12 @@ export default function WeatherMapNativewind() {
     { label: "Eventos", state: showEvents, setter: setShowEvents, icon: "map-marker-multiple-outline" },
   ]
 
-  const trustCopy: Record<NonNullable<Zone['trustStatus']>, string> = {
-    confirmado: 'Confirmado',
-    en_revision: 'En revisión',
-    dudoso: 'Dudoso',
-  };
-
-  const trustColor: Record<NonNullable<Zone['trustStatus']>, string> = {
-    confirmado: colors.brandGreen,
-    en_revision: colors.brandBlue,
-    dudoso: colors.brandRed,
-  };
+  // Trust is shown as a binary: an event is either community-verified or not yet.
+  // 'dudoso' folds into "Sin verificar" — doubtful events are already hidden from other users.
+  const getTrustBadge = (status: NonNullable<Zone['trustStatus']>) =>
+    status === 'confirmado'
+      ? { label: 'Verificado', tone: colors.brandGreen }
+      : { label: 'Sin verificar', tone: colors.brandBlue };
 
   return (
     <View className="flex-1">
@@ -833,19 +828,50 @@ export default function WeatherMapNativewind() {
           {selectedZone && (() => {
             const cfg = ZONE_TYPES[selectedZone.type];
             const trustStatus = selectedZone.trustStatus ?? 'en_revision';
+            const trust = getTrustBadge(trustStatus);
+            const headerIconButton = {
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: 'rgba(0,0,0,0.18)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            } as const;
             return (
               <View style={{ borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20, overflow: 'hidden' }}>
                 {/* Header */}
-                <View style={{ backgroundColor: cfg.color, padding: 24, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ backgroundColor: cfg.color, padding: 24, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Image source={cfg.image} style={{ width: 32, height: 32 }} resizeMode="contain" />
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={{ color: '#fff', fontSize: 24, fontFamily: fonts.poppinsSemiBold, letterSpacing: 2 }}>
                       {cfg.label.toUpperCase()}
                     </Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontFamily: fonts.poppins, letterSpacing: 3 }}>
-                      REPORTADA
+                    <Text style={{
+                      color: selectedZone.isOwner ? '#fff' : 'rgba(255,255,255,0.7)',
+                      fontSize: 12,
+                      fontFamily: selectedZone.isOwner ? fonts.poppinsSemiBold : fonts.poppins,
+                      letterSpacing: 3,
+                    }}>
+                      {selectedZone.isOwner ? 'REPORTADA POR TI' : 'REPORTADA'}
                     </Text>
                   </View>
+                  {!isEditing && selectedZone.isOwner && (
+                    <>
+                      <TouchableOpacity onPress={() => setIsEditing(true)} style={headerIconButton} accessibilityLabel="Editar reporte">
+                        <MaterialCommunityIcons name="pencil-outline" size={20} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={handleDeleteZone} style={headerIconButton} accessibilityLabel="Eliminar reporte">
+                        <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
+                      </TouchableOpacity>
+                    </>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => { setShowDetailModal(false); setIsEditing(false); }}
+                    style={headerIconButton}
+                    accessibilityLabel="Cerrar"
+                  >
+                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                  </TouchableOpacity>
                 </View>
 
                 {/* Body */}
@@ -886,20 +912,23 @@ export default function WeatherMapNativewind() {
                     {new Date(selectedZone.timestamp).toLocaleString('es-MX')}
                   </Text>
 
-                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                    <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: `${trustColor[trustStatus]}22`, borderWidth: 1, borderColor: `${trustColor[trustStatus]}66` }}>
-                      <Text style={{ color: trustColor[trustStatus], fontFamily: fonts.poppinsSemiBold, fontSize: 13 }}>
-                        {trustCopy[trustStatus]}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: `${trust.tone}22`, borderWidth: 1, borderColor: `${trust.tone}66` }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: trust.tone }} />
+                      <Text style={{ color: trust.tone, fontFamily: fonts.poppinsSemiBold, fontSize: 13 }}>
+                        {trust.label}
                       </Text>
                     </View>
-                    <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                      <Text style={{ color: '#fff', fontFamily: fonts.poppins, fontSize: 13 }}>
-                        {selectedZone.upvotes ?? 0} confirman
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <MaterialCommunityIcons name="thumb-up" size={15} color={colors.brandGreen} />
+                      <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 13 }}>
+                        {selectedZone.upvotes ?? 0}
                       </Text>
                     </View>
-                    <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                      <Text style={{ color: '#fff', fontFamily: fonts.poppins, fontSize: 13 }}>
-                        {selectedZone.downvotes ?? 0} engañoso
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <MaterialCommunityIcons name="thumb-down" size={15} color={colors.brandRed} />
+                      <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 13 }}>
+                        {selectedZone.downvotes ?? 0}
                       </Text>
                     </View>
                   </View>
@@ -909,87 +938,78 @@ export default function WeatherMapNativewind() {
                     {selectedZone.distanceKm != null ? `${selectedZone.distanceKm.toFixed(1)} km` : 'Sin calcular'}
                   </Text>
 
-                  {!selectedZone.isOwner && (
-                    <View style={{ marginBottom: 20 }}>
-                      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins, marginBottom: 10 }}>
-                        Votación de cercanía: solo usuarios a 10 km o menos pueden votar.
-                      </Text>
-                      <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity
-                          disabled={!selectedZone.canVote}
-                          onPress={() => handleVoteZone(1)}
-                          style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.brandGreen, alignItems: 'center', opacity: selectedZone.canVote ? 1 : 0.45 }}
-                        >
-                          <Text style={{ color: '#04233d', fontFamily: fonts.poppinsSemiBold }}>Confirmar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          disabled={!selectedZone.canVote}
-                          onPress={() => handleVoteZone(-1)}
-                          style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', opacity: selectedZone.canVote ? 1 : 0.45 }}
-                        >
-                          <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold }}>Engañoso</Text>
-                        </TouchableOpacity>
-                      </View>
-                      {!selectedZone.canVote && (
-                        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: fonts.poppins, marginTop: 10 }}>
-                          {selectedZone.userVote != null
-                            ? 'Ya votaste este evento.'
-                            : selectedZone.withinVotingRadius
-                              ? 'No puedes votar este evento.'
-                              : 'Acércate a menos de 10 km para votar.'}
+                  {/* Voting (non-owner only) — collapses to a result chip once you've voted */}
+                  {!selectedZone.isOwner && !isEditing && (
+                    selectedZone.userVote != null ? (
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                        paddingVertical: 12,
+                        paddingHorizontal: 14,
+                        borderRadius: 10,
+                        backgroundColor: `${selectedZone.userVote === 1 ? colors.brandGreen : colors.brandRed}22`,
+                        borderWidth: 1,
+                        borderColor: `${selectedZone.userVote === 1 ? colors.brandGreen : colors.brandRed}66`,
+                      }}>
+                        <MaterialCommunityIcons
+                          name={selectedZone.userVote === 1 ? 'check-circle' : 'alert-circle'}
+                          size={20}
+                          color={selectedZone.userVote === 1 ? colors.brandGreen : colors.brandRed}
+                        />
+                        <Text style={{ color: '#fff', fontFamily: fonts.poppins, fontSize: 13 }}>
+                          {selectedZone.userVote === 1
+                            ? 'Confirmaste este evento'
+                            : 'Marcaste este evento como engañoso'}
                         </Text>
-                      )}
-                    </View>
+                      </View>
+                    ) : (
+                      <View>
+                        <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins, marginBottom: 10 }}>
+                          Votación de cercanía: solo usuarios a 10 km o menos pueden votar.
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TouchableOpacity
+                            disabled={!selectedZone.canVote}
+                            onPress={() => handleVoteZone(1)}
+                            style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.brandGreen, alignItems: 'center', opacity: selectedZone.canVote ? 1 : 0.45 }}
+                          >
+                            <Text style={{ color: '#04233d', fontFamily: fonts.poppinsSemiBold }}>Confirmar</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            disabled={!selectedZone.canVote}
+                            onPress={() => handleVoteZone(-1)}
+                            style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', opacity: selectedZone.canVote ? 1 : 0.45 }}
+                          >
+                            <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold }}>Engañoso</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {!selectedZone.canVote && (
+                          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontFamily: fonts.poppins, marginTop: 10 }}>
+                            Acércate a menos de 10 km para votar.
+                          </Text>
+                        )}
+                      </View>
+                    )
                   )}
 
-                  {/* Actions */}
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {isEditing ? (
-                      <>
-                        <TouchableOpacity
-                          onPress={() => setIsEditing(false)}
-                          style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
-                        >
-                          <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Cancelar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={handleSaveEdit}
-                          style={{ flex: 1, padding: 10, borderRadius: 10, backgroundColor: cfg.color, alignItems: 'center' }}
-                        >
-                          <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold }}>Guardar</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <>
-                        {selectedZone.isOwner && (
-                          <>
-                            <TouchableOpacity
-                              onPress={handleDeleteZone}
-                              style={{ padding: 10, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              onPress={() => setIsEditing(true)}
-                              style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
-                            >
-                              <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Editar</Text>
-                            </TouchableOpacity>
-                          </>
-                        )}
-                        <TouchableOpacity
-                          onPress={() => setShowDetailModal(false)}
-                          style={{ flex: selectedZone.isOwner ? undefined : 1, padding: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          {selectedZone.isOwner ? (
-                            <MaterialCommunityIcons name="close" size={20} color="#fff" />
-                          ) : (
-                            <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Cerrar</Text>
-                          )}
-                        </TouchableOpacity>
-                      </>
-                    )}
-                  </View>
+                  {/* Edit-mode footer — only while editing your own report */}
+                  {isEditing && (
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity
+                        onPress={() => setIsEditing(false)}
+                        style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
+                      >
+                        <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Cancelar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleSaveEdit}
+                        style={{ flex: 1, padding: 10, borderRadius: 10, backgroundColor: cfg.color, alignItems: 'center' }}
+                      >
+                        <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold }}>Guardar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               </View>
             );
