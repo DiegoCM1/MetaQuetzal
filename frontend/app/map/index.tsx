@@ -23,6 +23,7 @@ import {
   canReportFromLocation,
   createZone,
   deleteZone,
+  formatRelativeTime,
   generateZoneId,
   loadZones,
   syncCachedZones,
@@ -913,7 +914,7 @@ export default function WeatherMapNativewind() {
 
                   <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Reportado:</Text>
                   <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 20 }}>
-                    {new Date(selectedZone.timestamp).toLocaleString('es-MX')}
+                    {formatRelativeTime(selectedZone.timestamp)}
                   </Text>
 
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>

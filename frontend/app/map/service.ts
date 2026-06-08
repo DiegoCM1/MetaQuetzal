@@ -59,6 +59,33 @@ export function generateZoneId() {
   return `zone_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 }
 
+// Human-friendly "how long ago" for an event timestamp.
+// Degrades: unos segundos → X min → X h → X días → absolute date (>7 días).
+// Guards clock skew: a server timestamp slightly ahead of the device reads "hace un momento".
+export function formatRelativeTime(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+
+  const diffSec = Math.round((Date.now() - then) / 1000)
+  if (diffSec < 0) return 'hace un momento'
+  if (diffSec < 60) return 'hace unos segundos'
+
+  const minutes = Math.floor(diffSec / 60)
+  if (minutes < 60) return `hace ${minutes} min`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `hace ${hours} h`
+
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `hace ${days} ${days === 1 ? 'día' : 'días'}`
+
+  return new Date(iso).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 export function distanceInMeters(
   lat1: number,
   lon1: number,
