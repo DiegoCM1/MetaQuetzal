@@ -45,16 +45,22 @@ const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
 
 const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
+  // Custom-image markers must redraw their native bitmap once on load, then STOP.
+  // While tracksViewChanges is true the hit area is unstable and Android drops taps,
+  // so we flip it off after the image renders → reliable taps + big perf win.
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
   return (
     <Marker
       coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
       onPress={onPress}
       anchor={{ x: 0.5, y: 0.5 }}
+      tracksViewChanges={tracksViewChanges}
     >
       <Image
         source={ZONE_TYPES[zone.type].image}
         style={{ width: zone.type === 'ayuda' ? 44 : 38, height: zone.type === 'ayuda' ? 44 : 38 }}
         resizeMode="contain"
+        onLoad={() => setTracksViewChanges(false)}
       />
     </Marker>
   );
@@ -248,6 +254,7 @@ export default function WeatherMapNativewind() {
   };
 
   const handleCirclePress = (zone: Zone) => {
+    console.log('[Map] marker tapped → opening card for zone:', zone.id, zone.type);
     setSelectedZone(zone);
     setEditDescription(zone.description);
     setShowDetailModal(true);

@@ -142,8 +142,6 @@ export async function loadZones({
     }
 
     const data = await response.json()
-    console.log('[Map] GET map-events status:', response.status, 'count:', Array.isArray(data) ? data.length : 'n/a')
-    console.log('[Map] first event raw:', JSON.stringify(data?.[0]))
     const zones = Array.isArray(data) ? data.map(normalizeZone) : []
     await saveCachedZones(zones)
     return zones
