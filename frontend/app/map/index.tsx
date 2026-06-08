@@ -25,13 +25,12 @@ import {
   deleteZone,
   generateZoneId,
   loadZones,
-  REPORTING_DISTANCE_METERS,
   syncCachedZones,
   updateZone,
   voteZone,
 } from "./service";
 import { darkMapStyle } from "./mapStyle";
-import { DEFAULT_REGION, ZONE_TYPES } from "./config";
+import { DEFAULT_REGION, REPORTING_DISTANCE_METERS, ZONE_TYPES } from "./config";
 import { colors, fonts } from "../../utils/theme";
 import { authFetch } from "../../utils/api";
 import { API_BASE_URL } from "../../utils/config";
@@ -212,7 +211,6 @@ export default function WeatherMapNativewind() {
         const loaded = await loadZones({
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
-          radiusKm: 100,
         });
         const valid = loaded.filter((z: Zone) => z.type && ZONE_TYPES[z.type]);
         setZones(valid);
@@ -254,7 +252,6 @@ export default function WeatherMapNativewind() {
   };
 
   const handleCirclePress = (zone: Zone) => {
-    console.log('[Map] marker tapped → opening card for zone:', zone.id, zone.type);
     setSelectedZone(zone);
     setEditDescription(zone.description);
     setShowDetailModal(true);

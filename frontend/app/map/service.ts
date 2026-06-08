@@ -1,12 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { API_BASE_URL } from '../../utils/config'
+import { MAP_EVENT_RADIUS_KM, REPORTING_DISTANCE_METERS } from './config'
 import type { Zone } from './types'
 
 const STORAGE_KEY = '@BluEye:redZones'
-export const REPORTING_DISTANCE_METERS = 100000
 const DEV_BYPASS_MAP_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_MAP_AUTH === 'true'
-const MAP_EVENT_RADIUS_KM = 100
 
 type ReporterLocation = {
   latitude: number
