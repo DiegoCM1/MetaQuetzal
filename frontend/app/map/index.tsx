@@ -367,6 +367,7 @@ export default function WeatherMapNativewind() {
       timestamp: new Date().toISOString(),
       radius: 500,
       type: selectedType,
+      isOwner: true, // you created it → you own it, until the server confirms with the real record
     };
 
     setZones(prev => [...prev, newZone]);
@@ -960,23 +961,31 @@ export default function WeatherMapNativewind() {
                       </>
                     ) : (
                       <>
-                        <TouchableOpacity
-                          onPress={handleDeleteZone}
-                          style={{ padding: 10, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => setIsEditing(true)}
-                          style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
-                        >
-                          <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Editar</Text>
-                        </TouchableOpacity>
+                        {selectedZone.isOwner && (
+                          <>
+                            <TouchableOpacity
+                              onPress={handleDeleteZone}
+                              style={{ padding: 10, borderRadius: 10, backgroundColor: colors.brandRed, alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => setIsEditing(true)}
+                              style={{ flex: 1, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center' }}
+                            >
+                              <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Editar</Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
                         <TouchableOpacity
                           onPress={() => setShowDetailModal(false)}
-                          style={{ padding: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ flex: selectedZone.isOwner ? undefined : 1, padding: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                          {selectedZone.isOwner ? (
+                            <MaterialCommunityIcons name="close" size={20} color="#fff" />
+                          ) : (
+                            <Text style={{ color: '#fff', fontFamily: fonts.poppins }}>Cerrar</Text>
+                          )}
                         </TouchableOpacity>
                       </>
                     )}
