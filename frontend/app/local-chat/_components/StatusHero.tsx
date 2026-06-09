@@ -24,7 +24,7 @@ const STATE_META: Record<TransportState, Meta> = {
   },
   advertising: {
     label: "Visible para otros",
-    helper: "Otros teléfonos con BluEye pueden encontrarte.",
+    helper: "Otros teléfonos con Bluai pueden encontrarte.",
     icon: "broadcast",
     tint: "text-brand-cyan",
     ring: "border-brand-cyan/40",

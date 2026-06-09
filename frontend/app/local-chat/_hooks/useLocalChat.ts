@@ -40,6 +40,10 @@ export function useLocalChat() {
   // app restarts (AsyncStorage) — kept in-memory during the refactor phase.
   const selfId = useRef<string>(newId()).current;
 
+  // Name other phones see in their discovery list. The short suffix keeps two
+  // devices distinguishable. TODO(spec): replace with a user-editable nickname.
+  const displayName = `Bluai-${selfId.slice(0, 4)}`;
+
   const [state, setState] = useState<TransportState>("idle");
   const [draft, setDraft] = useState("");
   const [endpoints, setEndpoints] = useState<Peer[]>([]);
@@ -155,7 +159,7 @@ export function useLocalChat() {
   const startAdvertising = async () => {
     if (!(await ensureReady())) return;
     try {
-      await transport.startAdvertising("BluEye");
+      await transport.startAdvertising(displayName);
     } catch (e: any) {
       reportError(`No se pudo anunciar: ${e?.message ?? e}`);
     }

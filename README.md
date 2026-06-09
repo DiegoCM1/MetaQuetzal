@@ -1,4 +1,4 @@
-# BluEye
+# Bluai
 
 Hurricane early-warning **mobile** app for the Mexican Pacific coast. Real-time weather alerts, AI-assisted emergency chat (on-device + online), geolocation, and offline support. Built with React Native (Expo) and a FastAPI backend.
 
