@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Location from 'expo-location'
 
 import { API_BASE_URL } from '../../utils/config'
 import { MAP_EVENT_RADIUS_KM, REPORTING_DISTANCE_METERS } from './config'
@@ -33,6 +34,7 @@ type MapEventResponse = {
   updated_at?: string
   user_vote?: Zone['userVote']
   within_voting_radius?: boolean
+  address?: string | null
 }
 
 function normalizeZone(event: MapEventResponse): Zone {
@@ -52,11 +54,41 @@ function normalizeZone(event: MapEventResponse): Zone {
     withinVotingRadius: event.within_voting_radius ?? false,
     canVote: event.can_vote ?? false,
     trustStatus: event.trust_status ?? 'en_revision',
+    address: event.address ?? null,
   }
 }
 
 export function generateZoneId() {
   return `zone_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+}
+
+const GEOCODE_TIMEOUT_MS = 5000
+
+// Reverse-geocode coordinates into a human-readable "Calle, Colonia, Ciudad" string,
+// ONCE, on the reporter's device (free OS geocoder — no API key, no per-viewer cost).
+// Returns null on any failure (offline, no result, timeout, no permission) so callers
+// fall back to coordinates. Never throws — a geocode hiccup must not block a report.
+export async function reverseGeocodeAddress(
+  latitude: number,
+  longitude: number,
+): Promise<string | null> {
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('geocode timeout')), GEOCODE_TIMEOUT_MS),
+    )
+    const results = await Promise.race([
+      Location.reverseGeocodeAsync({ latitude, longitude }),
+      timeout,
+    ])
+    const place = results?.[0]
+    if (!place) return null
+    // Build defensively — fields vary by platform/locale and any can be null.
+    // Order: calle (street) → colonia (district) → municipio/ciudad (city ?? subregion).
+    const parts = [place.street, place.district, place.city ?? place.subregion].filter(Boolean)
+    return parts.length > 0 ? parts.join(', ') : null
+  } catch {
+    return null
+  }
 }
 
 // Human-friendly "how long ago" for an event timestamp.
@@ -188,6 +220,7 @@ export async function createZone(zone: Zone) {
       description: zone.description,
       lat: zone.latitude,
       lon: zone.longitude,
+      address: zone.address ?? null,
     }),
   })
 

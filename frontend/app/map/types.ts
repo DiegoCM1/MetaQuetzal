@@ -16,4 +16,5 @@ export interface Zone {
   withinVotingRadius?: boolean
   canVote?: boolean
   trustStatus?: 'confirmado' | 'en_revision' | 'dudoso'
+  address?: string | null
 }     

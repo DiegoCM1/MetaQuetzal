@@ -26,6 +26,7 @@ import {
   formatRelativeTime,
   generateZoneId,
   loadZones,
+  reverseGeocodeAddress,
   syncCachedZones,
   updateZone,
   voteZone,
@@ -377,17 +378,26 @@ export default function WeatherMapNativewind() {
     setDescriptionError(false);
     toast.success('Zona reportada', { description: 'Gracias por tu reporte' });
 
-    createZone(newZone).then((savedZone) => {
-      setZones(prev => {
-        const next = prev.map(z => z.id === newZone.id ? savedZone : z);
-        syncCachedZones(next);
-        return next;
-      });
-    }).catch((error) => {
-      console.error('[Map] Failed to save zone:', error);
-      setZones(prev => prev.filter(z => z.id !== newZone.id));
-      toast.error('Error al guardar', { description: 'No se pudo guardar la zona' });
-    });
+    // Geocode in the background so the optimistic marker/toast appear instantly,
+    // then persist the event WITH the resolved address (null → coords fallback).
+    (async () => {
+      const address = await reverseGeocodeAddress(newZone.latitude, newZone.longitude);
+      if (address) {
+        setZones(prev => prev.map(z => (z.id === newZone.id ? { ...z, address } : z)));
+      }
+      try {
+        const savedZone = await createZone({ ...newZone, address });
+        setZones(prev => {
+          const next = prev.map(z => (z.id === newZone.id ? savedZone : z));
+          syncCachedZones(next);
+          return next;
+        });
+      } catch (error) {
+        console.error('[Map] Failed to save zone:', error);
+        setZones(prev => prev.filter(z => z.id !== newZone.id));
+        toast.error('Error al guardar', { description: 'No se pudo guardar la zona' });
+      }
+    })();
   };
 
   const handleCancelAdd = () => {
@@ -901,7 +911,7 @@ export default function WeatherMapNativewind() {
 
                   <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Ubicación:</Text>
                   <Text style={{ color: '#fff', fontFamily: fonts.poppinsSemiBold, fontSize: 15, marginBottom: 12 }}>
-                    {selectedZone.latitude.toFixed(5)}, {selectedZone.longitude.toFixed(5)}
+                    {selectedZone.address ?? `${selectedZone.latitude.toFixed(5)}, ${selectedZone.longitude.toFixed(5)}`}
                   </Text>
 
                   <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontFamily: fonts.poppins }}>Reportado:</Text>
