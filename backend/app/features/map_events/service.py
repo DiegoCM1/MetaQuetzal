@@ -63,6 +63,7 @@ async def ensure_map_events_table(db: AsyncSession) -> None:
                 description TEXT NOT NULL,
                 lat DOUBLE PRECISION NOT NULL,
                 lon DOUBLE PRECISION NOT NULL,
+                address TEXT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
@@ -82,6 +83,10 @@ async def ensure_map_events_table(db: AsyncSession) -> None:
             """
         )
     )
+    # Idempotent migration for tables created before the address column existed.
+    await db.execute(
+        text("ALTER TABLE map_events ADD COLUMN IF NOT EXISTS address TEXT")
+    )
     await db.commit()
 
 
@@ -100,6 +105,7 @@ async def get_map_event_with_votes(
                 e.description,
                 e.lat,
                 e.lon,
+                e.address,
                 e.created_at,
                 e.updated_at,
                 COALESCE(SUM(CASE WHEN v.value = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
@@ -191,8 +197,8 @@ async def create_map_event(db: AsyncSession, payload: MapEventCreate, user_id: i
     result = await db.execute(
         text(
             """
-            INSERT INTO map_events (user_id, type, description, lat, lon)
-            VALUES (:user_id, :type, :description, :lat, :lon)
+            INSERT INTO map_events (user_id, type, description, lat, lon, address)
+            VALUES (:user_id, :type, :description, :lat, :lon, :address)
             RETURNING id, user_id, type, description, lat, lon, created_at, updated_at
             """
         ),
@@ -202,6 +208,7 @@ async def create_map_event(db: AsyncSession, payload: MapEventCreate, user_id: i
             "description": payload.description.strip(),
             "lat": payload.lat,
             "lon": payload.lon,
+            "address": payload.address,
         },
     )
     await db.commit()
