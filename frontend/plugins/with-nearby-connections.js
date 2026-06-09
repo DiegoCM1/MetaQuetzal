@@ -92,10 +92,12 @@ function ensurePermission(manifest, permission) {
 function buildNearbyModuleSource(packageName) {
   return `package ${packageName}.nearby
 
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
@@ -125,9 +127,20 @@ class NearbyConnectionsModule(
   override fun getName(): String = "NearbyConnections"
 
   private fun emit(eventName: String, params: Map<String, Any?> = emptyMap()) {
+    val payload: WritableMap = Arguments.createMap()
+    for ((key, value) in params) {
+      when (value) {
+        null -> payload.putNull(key)
+        is String -> payload.putString(key, value)
+        is Boolean -> payload.putBoolean(key, value)
+        is Int -> payload.putInt(key, value)
+        is Double -> payload.putDouble(key, value)
+        else -> payload.putString(key, value.toString())
+      }
+    }
     reactContext
       .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-      .emit(eventName, params)
+      .emit(eventName, payload)
   }
 
   private fun endpointName(endpointId: String): String {
@@ -337,10 +350,22 @@ class NearbyConnectionsPackage : ReactPackage {
 const withNearbyConnections = (config) => {
   config = withAndroidManifest(config, (mod) => {
     ensurePermission(mod.modResults, "android.permission.ACCESS_FINE_LOCATION");
+    ensurePermission(
+      mod.modResults,
+      "android.permission.ACCESS_COARSE_LOCATION",
+    );
     ensurePermission(mod.modResults, "android.permission.BLUETOOTH_ADVERTISE");
     ensurePermission(mod.modResults, "android.permission.BLUETOOTH_CONNECT");
     ensurePermission(mod.modResults, "android.permission.BLUETOOTH_SCAN");
     ensurePermission(mod.modResults, "android.permission.NEARBY_WIFI_DEVICES");
+    // Nearby Connections upgrades to Wi-Fi for the high-bandwidth link, so it
+    // needs the Wi-Fi-state permissions (normal/install-time). Missing
+    // CHANGE_WIFI_STATE is what raises status 8033.
+    ensurePermission(mod.modResults, "android.permission.ACCESS_WIFI_STATE");
+    ensurePermission(mod.modResults, "android.permission.CHANGE_WIFI_STATE");
+    // Legacy Bluetooth permissions for Android < 12 (e.g. the old test device).
+    ensurePermission(mod.modResults, "android.permission.BLUETOOTH");
+    ensurePermission(mod.modResults, "android.permission.BLUETOOTH_ADMIN");
     return mod;
   });
 

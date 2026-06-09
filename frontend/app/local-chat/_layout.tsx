@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 /**
  * Local chat layout with Stack navigator
@@ -9,8 +9,8 @@ export default function LocalChatLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
-        contentStyle: { backgroundColor: 'transparent' },
+        animation: "slide_from_right",
+        contentStyle: { backgroundColor: "transparent" },
       }}
     >
       <Stack.Screen name="index" />
