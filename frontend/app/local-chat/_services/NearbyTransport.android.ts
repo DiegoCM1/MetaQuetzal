@@ -16,6 +16,21 @@ type NativeNearby = {
 
 const native = NativeModules.NearbyConnections as NativeNearby | undefined;
 
+/**
+ * Fail loud, not silent. Without this guard, `native?.method()` would resolve
+ * as if the call succeeded when the native module isn't in the build — the UI
+ * would show "advertising" while nothing is on the radio. Throwing surfaces a
+ * clear, actionable error up through the hook's try/catch instead.
+ */
+function requireNative(): NativeNearby {
+  if (!native) {
+    throw new Error(
+      "Módulo nativo NearbyConnections no disponible. Reconstruye con `expo run:android`.",
+    );
+  }
+  return native;
+}
+
 /** Translate the native DeviceEventEmitter events into our handler shape. */
 function bind(handlers: Partial<TransportHandlers>): () => void {
   const subs = [
@@ -92,30 +107,30 @@ export function createNearbyTransport(): LocalTransport {
     isAvailable: Boolean(native),
 
     async startAdvertising(displayName: string) {
-      await native?.startAdvertising(displayName);
+      await requireNative().startAdvertising(displayName);
     },
 
     async startDiscovery() {
-      await native?.startDiscovery();
+      await requireNative().startDiscovery();
     },
 
     async requestConnection(endpointId: string) {
-      await native?.requestConnection(endpointId);
+      await requireNative().requestConnection(endpointId);
     },
 
     async send(_endpointId: string, raw: string) {
       // The current native module tracks a single connection, so the target
       // endpointId is implicit. When the Kotlin gains a peer map (mesh prep),
       // forward `_endpointId` here — nothing above this line changes.
-      await native?.sendMessage(raw);
+      await requireNative().sendMessage(raw);
     },
 
     async disconnect() {
-      await native?.disconnect();
+      await requireNative().disconnect();
     },
 
     async stopAll() {
-      await native?.stopAll();
+      await requireNative().stopAll();
     },
 
     subscribe(handlers) {

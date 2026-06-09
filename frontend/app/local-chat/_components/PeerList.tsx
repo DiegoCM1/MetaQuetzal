@@ -29,7 +29,9 @@ export function PeerList({
             <Pressable
               key={peer.endpointId}
               onPress={() => onConnect(peer.endpointId)}
-              className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5"
+              disabled={isConnected}
+              android_ripple={{ color: "rgba(255,255,255,0.12)" }}
+              className="flex-row items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 active:opacity-70"
             >
               <View className="flex-row items-center gap-3">
                 <View className="h-9 w-9 items-center justify-center rounded-full bg-white/10">

@@ -10,7 +10,8 @@ export function TechLog({ logs }: { logs: string[] }) {
     <View className="rounded-2xl border border-white/10 bg-white/5">
       <Pressable
         onPress={() => setOpen((o) => !o)}
-        className="flex-row items-center justify-between p-4"
+        android_ripple={{ color: "rgba(255,255,255,0.08)" }}
+        className="flex-row items-center justify-between overflow-hidden rounded-2xl p-4 active:opacity-70"
       >
         <Text className="font-poppins-semibold text-sm text-white/70">
           Detalles técnicos

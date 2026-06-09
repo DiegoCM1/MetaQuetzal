@@ -99,12 +99,14 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionResolution
 import com.google.android.gms.nearby.connection.ConnectionsClient
+import com.google.android.gms.nearby.connection.ConnectionsStatusCodes
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.DiscoveryOptions
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
@@ -182,6 +184,12 @@ class NearbyConnectionsModule(
     override fun onConnectionResult(endpointId: String, resolution: ConnectionResolution) {
       if (resolution.status.isSuccess) {
         connectedEndpointId = endpointId
+        // Once paired, stop both radios. Leaving advertising + discovery
+        // running under P2P_POINT_TO_POINT makes Nearby renegotiate mediums
+        // and tear the link down after a few seconds. These calls do NOT
+        // affect the established connection — only peer-finding.
+        connectionsClient.stopAdvertising()
+        connectionsClient.stopDiscovery()
         emitState("connected")
         emit(
           "NearbyConnectionConnected",
@@ -250,8 +258,14 @@ class NearbyConnectionsModule(
         promise.resolve(true)
       }
       .addOnFailureListener { error ->
-        emitState("error")
-        promise.reject("NEARBY_ADVERTISING_FAILED", error.message, error)
+        // Already advertising is not a failure — the radio is already on.
+        if ((error as? ApiException)?.statusCode == ConnectionsStatusCodes.STATUS_ALREADY_ADVERTISING) {
+          emitState("advertising")
+          promise.resolve(true)
+        } else {
+          emitState("error")
+          promise.reject("NEARBY_ADVERTISING_FAILED", error.message, error)
+        }
       }
   }
 
@@ -266,8 +280,14 @@ class NearbyConnectionsModule(
         promise.resolve(true)
       }
       .addOnFailureListener { error ->
-        emitState("error")
-        promise.reject("NEARBY_DISCOVERY_FAILED", error.message, error)
+        // Already discovering is not a failure — the radio is already on.
+        if ((error as? ApiException)?.statusCode == ConnectionsStatusCodes.STATUS_ALREADY_DISCOVERING) {
+          emitState("discovering")
+          promise.resolve(true)
+        } else {
+          emitState("error")
+          promise.reject("NEARBY_DISCOVERY_FAILED", error.message, error)
+        }
       }
   }
 

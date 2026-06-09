@@ -118,7 +118,12 @@ export function useLocalChat() {
       },
       onPayload: (endpointId, raw) => {
         const env = decode(raw);
-        if (!env) return;
+        if (!env) {
+          addLog(
+            `⚠️ Payload descartado: vacío o no decodificable (${raw.length} bytes)`,
+          );
+          return;
+        }
         pushMessage({
           author: "remote",
           body: env.body,
@@ -130,7 +135,11 @@ export function useLocalChat() {
 
     return () => {
       unsubscribe();
-      transport.stopAll().catch(() => null);
+      // Runs on unmount: log to console (not state) so we never update an
+      // unmounted component, but never swallow the failure silently either.
+      transport.stopAll().catch((e) => {
+        console.warn("[local-chat] stopAll en cleanup falló:", e);
+      });
     };
   }, [available, transport]);
 
@@ -214,7 +223,8 @@ export function useLocalChat() {
       setMessages((c) =>
         c.map((m) => (m.id === localId ? { ...m, status: "sent" } : m)),
       );
-    } catch {
+    } catch (e: any) {
+      addLog(`⚠️ Mensaje no enviado: ${e?.message ?? e}`);
       setMessages((c) =>
         c.map((m) => (m.id === localId ? { ...m, status: "failed" } : m)),
       );
@@ -222,16 +232,24 @@ export function useLocalChat() {
   };
 
   const disconnect = async () => {
-    await transport.disconnect().catch(() => null);
+    try {
+      await transport.disconnect();
+    } catch (e: any) {
+      reportError(`No se pudo desconectar: ${e?.message ?? e}`);
+    }
     setConnectedPeers([]);
   };
 
   const resetSession = async () => {
-    await transport.stopAll().catch(() => null);
     setEndpoints([]);
     setConnectedPeers([]);
     setState("idle");
     setError(null);
+    try {
+      await transport.stopAll();
+    } catch (e: any) {
+      reportError(`No se pudo detener todo: ${e?.message ?? e}`);
+    }
   };
 
   return {

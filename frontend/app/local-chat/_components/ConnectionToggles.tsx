@@ -22,7 +22,8 @@ function ToggleCard({
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      className={`flex-row items-center justify-between rounded-2xl border p-4 ${
+      android_ripple={{ color: "rgba(255,255,255,0.12)" }}
+      className={`flex-row items-center justify-between overflow-hidden rounded-2xl border p-4 active:opacity-70 ${
         active
           ? "border-brand-blue bg-brand-blue/15"
           : "border-white/10 bg-white/5"
@@ -96,7 +97,11 @@ export function ConnectionToggles({
         onPress={discovering ? onStop : onDiscover}
       />
       {busy ? (
-        <Pressable onPress={onStop} className="mt-1 self-center">
+        <Pressable
+          onPress={onStop}
+          hitSlop={8}
+          className="mt-1 self-center rounded-lg px-4 py-2 active:opacity-50"
+        >
           <Text className="font-poppins text-sm text-white/50">
             Detener todo
           </Text>

@@ -79,7 +79,11 @@ export function MessagePanel({
         <Pressable
           disabled={sendDisabled}
           onPress={onSend}
-          className={`h-12 w-12 items-center justify-center rounded-2xl bg-brand-blue ${
+          android_ripple={{
+            color: "rgba(255,255,255,0.25)",
+            borderless: false,
+          }}
+          className={`h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-brand-blue active:opacity-70 ${
             sendDisabled ? "opacity-40" : ""
           }`}
         >
