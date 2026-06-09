@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import Toast from 'react-native-toast-message'
+import { toast } from 'sonner-native'
 import { authFetch } from '../../utils/api'
 import { API_BASE_URL } from '../../utils/config'
 
@@ -95,20 +95,16 @@ export async function flushSOSQueue(): Promise<void> {
         if (!res.ok) {
           // 4xx (no 429): error de cliente, no reintentable → eliminar con aviso
           await removeSOSItem(item.id)
-          Toast.show({
-            type: 'error',
-            text1: 'SOS no enviado',
-            text2: 'Hubo un error. Tus contactos no fueron notificados.',
+          toast.error('SOS no enviado', {
+            description: 'Hubo un error. Tus contactos no fueron notificados.',
           })
           continue
         }
 
         await removeSOSItem(item.id)
         const data = await res.json()
-        Toast.show({
-          type: 'success',
-          text1: 'SOS enviado',
-          text2:
+        toast.success('SOS enviado', {
+          description:
             data.notified_count === 0
               ? 'No tienes contactos vinculados. Agrégalos en tu perfil.'
               : `${data.notified_count} contacto(s) notificado(s).`,
