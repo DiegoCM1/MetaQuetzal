@@ -60,6 +60,10 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
         source={ZONE_TYPES[zone.type].image}
         style={{ width: zone.type === 'ayuda' ? 44 : 38, height: zone.type === 'ayuda' ? 44 : 38 }}
         resizeMode="contain"
+        // Android fades images in (~300ms). Without this, tracksViewChanges freezes the
+        // marker bitmap mid-fade → permanently faded markers. fadeDuration={0} removes
+        // the partial-opacity window so the frozen bitmap is always full opacity.
+        fadeDuration={0}
         onLoad={() => setTracksViewChanges(false)}
       />
     </Marker>
