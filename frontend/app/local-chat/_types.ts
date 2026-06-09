@@ -34,3 +34,33 @@ export interface LocalMessage {
   /** Which peer this message belongs to (mesh-ready; unused in 1-to-1 UI). */
   peerId?: string;
 }
+
+/**
+ * Identity broadcast over the radio in the endpoint name (see identity.ts).
+ * `deviceId` is the stable, persisted key; `nickname` is the mutable label.
+ * Changing the nickname does NOT change the deviceId, so conversations stay
+ * anchored to the same thread.
+ */
+export interface Identity {
+  deviceId: string;
+  nickname: string;
+}
+
+/** A peer currently in range — live transport handle + decoded identity. */
+export interface DiscoveredPeer extends Identity {
+  /** Ephemeral transport handle (changes per session); used to route now. */
+  endpointId: string;
+}
+
+/**
+ * A persisted conversation, keyed by the peer's stable `peerId` (= their
+ * deviceId). Survives app restarts and the peer leaving range.
+ */
+export interface Conversation {
+  peerId: string;
+  /** Last-known nickname for this peer (updated whenever we see them). */
+  peerNickname: string;
+  /** Epoch ms we last saw / exchanged with this peer. */
+  lastSeen: number;
+  messages: LocalMessage[];
+}

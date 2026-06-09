@@ -2,16 +2,17 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 
 import { colors } from "../../../utils/theme";
-import type { Peer } from "../_types";
+import type { DiscoveredPeer } from "../_types";
 
+/** In-range devices. Tapping one opens the conversation (and connects). */
 export function PeerList({
   peers,
-  connectedId,
-  onConnect,
+  connectedPeerId,
+  onOpen,
 }: {
-  peers: Peer[];
-  connectedId?: string | null;
-  onConnect: (endpointId: string) => void;
+  peers: DiscoveredPeer[];
+  connectedPeerId?: string | null;
+  onOpen: (peer: DiscoveredPeer) => void;
 }) {
   return (
     <View className="gap-2">
@@ -24,12 +25,11 @@ export function PeerList({
         </Text>
       ) : (
         peers.map((peer) => {
-          const isConnected = peer.endpointId === connectedId;
+          const isConnected = peer.deviceId === connectedPeerId;
           return (
             <Pressable
-              key={peer.endpointId}
-              onPress={() => onConnect(peer.endpointId)}
-              disabled={isConnected}
+              key={peer.deviceId}
+              onPress={() => onOpen(peer)}
               android_ripple={{ color: "rgba(255,255,255,0.12)" }}
               className="flex-row items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 active:opacity-70"
             >
@@ -43,7 +43,7 @@ export function PeerList({
                 </View>
                 <View>
                   <Text className="font-poppins-semibold text-sm text-white">
-                    {peer.name}
+                    {peer.nickname}
                   </Text>
                   <Text className="font-poppins text-xs text-white/40">
                     {isConnected ? "Conectado" : "Toca para conectar"}
