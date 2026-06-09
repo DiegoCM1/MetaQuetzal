@@ -16,7 +16,7 @@ export function PeerList({
 }) {
   return (
     <View className="gap-2">
-      <Text className="font-poppins-semibold text-base text-white">
+      <Text className="font-poppins-semibold text-lg text-white">
         Dispositivos cercanos
       </Text>
       {peers.length === 0 ? (
@@ -31,7 +31,7 @@ export function PeerList({
               key={peer.deviceId}
               onPress={() => onOpen(peer)}
               android_ripple={{ color: "rgba(255,255,255,0.12)" }}
-              className="flex-row items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 active:opacity-70"
+              className="flex-row items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-brand-surface px-4 py-3.5 active:opacity-70"
             >
               <View className="flex-row items-center gap-3">
                 <View className="h-9 w-9 items-center justify-center rounded-full bg-white/10">

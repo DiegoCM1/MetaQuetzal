@@ -7,7 +7,9 @@ import type { LocalTransport, TransportHandlers } from "./transport";
  * `plugins/with-nearby-connections.js`). */
 type NativeNearby = {
   startAdvertising: (displayName?: string) => Promise<boolean>;
+  stopAdvertising: () => Promise<boolean>;
   startDiscovery: () => Promise<boolean>;
+  stopDiscovery: () => Promise<boolean>;
   requestConnection: (endpointId: string) => Promise<boolean>;
   sendMessage: (message: string) => Promise<boolean>;
   disconnect: () => Promise<boolean>;
@@ -110,8 +112,16 @@ export function createNearbyTransport(): LocalTransport {
       await requireNative().startAdvertising(displayName);
     },
 
+    async stopAdvertising() {
+      await requireNative().stopAdvertising();
+    },
+
     async startDiscovery() {
       await requireNative().startDiscovery();
+    },
+
+    async stopDiscovery() {
+      await requireNative().stopDiscovery();
     },
 
     async requestConnection(endpointId: string) {

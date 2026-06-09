@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Platform,
   Text,
   TextInput,
@@ -8,7 +9,10 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { FlashList } from "@shopify/flash-list";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 
@@ -66,6 +70,7 @@ export default function LocalChatConversationScreen() {
 
   const {
     getConversation,
+    clearConversation,
     sendMessage,
     isPeerInRange,
     connectedPeerId,
@@ -73,6 +78,7 @@ export default function LocalChatConversationScreen() {
     peers,
   } = useLocalChatContext();
 
+  const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState("");
   const convo = getConversation(peerId);
 
@@ -116,9 +122,37 @@ export default function LocalChatConversationScreen() {
     setDraft("");
   };
 
+  const handleClear = () => {
+    if (data.length === 0) return;
+    Alert.alert(
+      "Limpiar chat",
+      "Se borrarán los mensajes de esta conversación en este dispositivo. No se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Limpiar",
+          style: "destructive",
+          onPress: () => clearConversation(peerId),
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
       <ScreenHeader title={peerName} />
+
+      {/* Clear conversation — same icon/style as the AI chat's restart */}
+      {data.length > 0 ? (
+        <TouchableOpacity
+          onPress={handleClear}
+          hitSlop={8}
+          className="absolute right-4 z-50 h-10 w-10 items-center justify-center rounded-full"
+          style={{ top: insets.top }}
+        >
+          <MaterialCommunityIcons name="reload" size={20} color="white" />
+        </TouchableOpacity>
+      ) : null}
 
       {/* Connection status line */}
       <View className="flex-row items-center gap-2 px-4 pb-2">

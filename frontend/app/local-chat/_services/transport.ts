@@ -24,7 +24,9 @@ export interface TransportHandlers {
 export interface LocalTransport {
   readonly isAvailable: boolean;
   startAdvertising(displayName: string): Promise<void>;
+  stopAdvertising(): Promise<void>;
   startDiscovery(): Promise<void>;
+  stopDiscovery(): Promise<void>;
   requestConnection(endpointId: string): Promise<void>;
   /** Send a raw payload to a specific connected peer. */
   send(endpointId: string, raw: string): Promise<void>;

@@ -1,8 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 
-import type { TransportState } from "../_types";
-
 function ToggleCard({
   active,
   disabled,
@@ -26,7 +24,7 @@ function ToggleCard({
       className={`flex-row items-center justify-between overflow-hidden rounded-2xl border p-4 active:opacity-70 ${
         active
           ? "border-brand-blue bg-brand-blue/15"
-          : "border-white/10 bg-white/5"
+          : "border-white/10 bg-brand-surface"
       } ${disabled ? "opacity-40" : ""}`}
     >
       <View className="flex-1 flex-row items-center gap-3">
@@ -58,26 +56,23 @@ function ToggleCard({
 }
 
 export function ConnectionToggles({
-  state,
+  advertising,
+  discovering,
+  busy,
   disabled,
-  onAdvertise,
-  onDiscover,
+  onToggleAdvertise,
+  onToggleDiscover,
   onStop,
 }: {
-  state: TransportState;
+  advertising: boolean;
+  discovering: boolean;
+  /** Anything active worth a "stop all": a radio, a connection in progress, or a live link. */
+  busy: boolean;
   disabled?: boolean;
-  onAdvertise: () => void;
-  onDiscover: () => void;
+  onToggleAdvertise: () => void;
+  onToggleDiscover: () => void;
   onStop: () => void;
 }) {
-  const advertising = state === "advertising";
-  const discovering = state === "discovering";
-  const busy =
-    advertising ||
-    discovering ||
-    state === "connecting" ||
-    state === "connected";
-
   return (
     <View className="gap-3">
       <ToggleCard
@@ -86,7 +81,7 @@ export function ConnectionToggles({
         icon="broadcast"
         title="Soy visible"
         subtitle="Deja que otros te encuentren"
-        onPress={advertising ? onStop : onAdvertise}
+        onPress={onToggleAdvertise}
       />
       <ToggleCard
         active={discovering}
@@ -94,7 +89,7 @@ export function ConnectionToggles({
         icon="magnify"
         title="Buscar gente"
         subtitle="Encuentra teléfonos cercanos"
-        onPress={discovering ? onStop : onDiscover}
+        onPress={onToggleDiscover}
       />
       {busy ? (
         <Pressable

@@ -7,7 +7,7 @@ export function TechLog({ logs }: { logs: string[] }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <View className="rounded-2xl border border-white/10 bg-white/5">
+    <View className="rounded-2xl border border-white/10 bg-brand-surface">
       <Pressable
         onPress={() => setOpen((o) => !o)}
         android_ripple={{ color: "rgba(255,255,255,0.08)" }}

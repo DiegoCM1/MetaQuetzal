@@ -65,23 +65,43 @@ const STATE_META: Record<TransportState, Meta> = {
 };
 
 export function StatusHero({
-  state,
+  advertising,
+  discovering,
+  connecting,
   peerName,
   error,
 }: {
-  state: TransportState;
+  advertising: boolean;
+  discovering: boolean;
+  connecting: boolean;
   peerName?: string | null;
   error?: string | null;
 }) {
   const showError = Boolean(error);
-  const meta = showError ? STATE_META.error : STATE_META[state];
-  const label =
-    !showError && state === "connected" && peerName
-      ? `Conectado con ${peerName}`
-      : meta.label;
+  const connected = Boolean(peerName);
+
+  // Pick the dominant status to headline, but the helper text stays honest
+  // about both radios when they're on together.
+  let key: TransportState = "idle";
+  if (showError) key = "error";
+  else if (connected) key = "connected";
+  else if (connecting) key = "connecting";
+  else if (advertising) key = "advertising";
+  else if (discovering) key = "discovering";
+
+  const meta = STATE_META[key];
+
+  let label = meta.label;
+  let helper = meta.helper;
+  if (!showError && connected && peerName) {
+    label = `Conectado con ${peerName}`;
+  } else if (!showError && advertising && discovering) {
+    label = "Visible y buscando";
+    helper = "Otros pueden encontrarte y tú estás buscando teléfonos cercanos.";
+  }
 
   return (
-    <View className={`rounded-3xl border ${meta.ring} bg-white/5 p-5`}>
+    <View className={`rounded-2xl border ${meta.ring} bg-brand-surface p-5`}>
       <View className="flex-row items-center gap-3">
         <MaterialCommunityIcons name={meta.icon} size={26} color={meta.hex} />
         <Text className={`font-poppins-semibold text-lg ${meta.tint}`}>
@@ -94,7 +114,7 @@ export function StatusHero({
         </Text>
       ) : (
         <Text className="mt-2 font-poppins text-sm leading-5 text-white/60">
-          {meta.helper}
+          {helper}
         </Text>
       )}
     </View>

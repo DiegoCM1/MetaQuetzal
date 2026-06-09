@@ -22,12 +22,7 @@ import {
 import { PermissionsAndroid, Platform } from "react-native";
 import type { Permission } from "react-native";
 
-import type {
-  Conversation,
-  DiscoveredPeer,
-  LocalMessage,
-  TransportState,
-} from "../_types";
+import type { Conversation, DiscoveredPeer, LocalMessage } from "../_types";
 import { decode, encode, makeEnvelope, newId } from "../_services/protocol";
 import { getTransport } from "../_services/transport";
 import {
@@ -79,8 +74,10 @@ interface LocalChatValue {
   needsNickname: boolean;
   setNickname: (nickname: string) => Promise<void>;
 
-  // transport status
-  state: TransportState;
+  // transport status — independent radios + connection phase (never conflated)
+  advertising: boolean;
+  discovering: boolean;
+  connecting: boolean;
   error: string | null;
   logs: string[];
 
@@ -90,10 +87,11 @@ interface LocalChatValue {
   isPeerInRange: (peerId: string) => boolean;
   conversations: Conversation[];
   getConversation: (peerId: string) => Conversation | undefined;
+  clearConversation: (peerId: string) => void;
 
   // actions
-  startAdvertising: () => Promise<void>;
-  startDiscovery: () => Promise<void>;
+  toggleAdvertise: () => Promise<void>;
+  toggleDiscover: () => Promise<void>;
   resetSession: () => Promise<void>;
   connectToPeer: (endpointId: string) => Promise<void>;
   disconnect: () => Promise<void>;
@@ -114,7 +112,12 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
     Record<string, Conversation>
   >({});
 
-  const [state, setState] = useState<TransportState>("idle");
+  // Honest state: two independent radios + a connection phase. Each toggle
+  // binds to its own boolean, so the UI can never claim a radio is off while
+  // it's actually on. These are driven by what the native calls actually did.
+  const [advertising, setAdvertising] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [peers, setPeers] = useState<DiscoveredPeer[]>([]);
   const [connected, setConnected] = useState<DiscoveredPeer | null>(null);
   const [logs, setLogs] = useState<string[]>([
@@ -222,6 +225,15 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  /** Empty a conversation's messages locally (keeps the peer entry). */
+  const clearConversation = useCallback((peerId: string) => {
+    setConversations((prev) => {
+      const convo = prev[peerId];
+      if (!convo) return prev;
+      return { ...prev, [peerId]: { ...convo, messages: [] } };
+    });
+  }, []);
+
   /** Apply a peer's new nickname everywhere it's shown (live rename). */
   const updatePeerNickname = useCallback(
     (peerDeviceId: string, nickname: string) => {
@@ -253,7 +265,12 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = transport.subscribe({
       onStateChange: (s) => {
-        setState(s);
+        // The two radios are tracked as booleans (driven by our own calls).
+        // From the native state stream we only take the connection phase.
+        if (s === "connecting") setConnecting(true);
+        if (s === "idle" || s === "error" || s === "connected") {
+          setConnecting(false);
+        }
         addLog(`Estado: ${s}`);
       },
       onPeerFound: (peer) => {
@@ -286,6 +303,11 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
           nickname: id.nickname,
         };
         setConnected(link);
+        setConnecting(false);
+        // Native auto-stops both radios on connect (see onConnectionResult in
+        // the plugin) — reflect that truthfully so the toggles read OFF.
+        setAdvertising(false);
+        setDiscovering(false);
         setError(null);
         // Touch the conversation so it appears in "previas" even before any
         // message, and its nickname stays current.
@@ -303,10 +325,15 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
         });
         addLog(`Conectado con ${id.nickname}`);
       },
-      onConnectionFailed: () =>
-        reportError("No se pudo completar la conexión."),
+      onConnectionFailed: () => {
+        setConnecting(false);
+        reportError("No se pudo completar la conexión.");
+      },
       onDisconnected: (endpointId) => {
         setConnected((c) => (c?.endpointId === endpointId ? null : c));
+        setConnecting(false);
+        // Radios were stopped on connect and we don't silently re-enable them,
+        // so leaving both OFF here is the truthful state.
         addLog("La conexión se cerró.");
       },
       onPayload: (endpointId, raw) => {
@@ -423,24 +450,47 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
   }, [supported, available, nickname]);
 
   // --- actions ---------------------------------------------------------------
-  const startAdvertising = useCallback(async () => {
+  // Each toggle owns one radio. We set the boolean only AFTER the native call
+  // resolves, so the UI reflects what actually happened — never an optimistic
+  // guess. (8001/8002 "already on" resolve as success, keeping us truthful.)
+  const toggleAdvertise = useCallback(async () => {
+    if (advertising) {
+      try {
+        await transport.stopAdvertising();
+        setAdvertising(false);
+      } catch (e: any) {
+        reportError(`No se pudo dejar de anunciar: ${e?.message ?? e}`);
+      }
+      return;
+    }
     if (!(await ensureReady())) return;
     try {
       await transport.startAdvertising(encodeIdentity({ deviceId, nickname }));
+      setAdvertising(true);
     } catch (e: any) {
       reportError(`No se pudo anunciar: ${e?.message ?? e}`);
     }
-  }, [ensureReady, transport, deviceId, nickname, reportError]);
+  }, [advertising, ensureReady, transport, deviceId, nickname, reportError]);
 
-  const startDiscovery = useCallback(async () => {
+  const toggleDiscover = useCallback(async () => {
+    if (discovering) {
+      try {
+        await transport.stopDiscovery();
+        setDiscovering(false);
+      } catch (e: any) {
+        reportError(`No se pudo dejar de buscar: ${e?.message ?? e}`);
+      }
+      return;
+    }
     if (!(await ensureReady())) return;
     setPeers([]);
     try {
       await transport.startDiscovery();
+      setDiscovering(true);
     } catch (e: any) {
       reportError(`No se pudo buscar: ${e?.message ?? e}`);
     }
-  }, [ensureReady, transport, reportError]);
+  }, [discovering, ensureReady, transport, reportError]);
 
   const connectToPeer = useCallback(
     async (endpointId: string) => {
@@ -466,7 +516,9 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
   const resetSession = useCallback(async () => {
     setPeers([]);
     setConnected(null);
-    setState("idle");
+    setAdvertising(false);
+    setDiscovering(false);
+    setConnecting(false);
     setError(null);
     try {
       await transport.stopAll();
@@ -571,7 +623,9 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
     nickname,
     needsNickname,
     setNickname,
-    state,
+    advertising,
+    discovering,
+    connecting,
     error,
     logs,
     peers,
@@ -579,8 +633,9 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
     isPeerInRange,
     conversations: conversationList,
     getConversation,
-    startAdvertising,
-    startDiscovery,
+    clearConversation,
+    toggleAdvertise,
+    toggleDiscover,
     resetSession,
     connectToPeer,
     disconnect,

@@ -36,7 +36,7 @@ export function NicknameModal({
       onRequestClose={dismissable ? onClose : undefined}
     >
       <View className="flex-1 items-center justify-center bg-black/70 px-6">
-        <View className="w-full rounded-3xl border border-white/10 bg-[#0b1424] p-6">
+        <View className="w-full rounded-2xl border border-white/10 bg-brand-surface p-6">
           <Text className="font-poppins-semibold text-lg text-white">
             ¿Cómo te llamas?
           </Text>

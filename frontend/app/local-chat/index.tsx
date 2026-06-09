@@ -35,7 +35,7 @@ export default function LocalChatLobbyScreen() {
       {/* Identity row */}
       <Pressable
         onPress={() => setEditing(true)}
-        className="mx-4 mt-2 flex-row items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 active:opacity-70"
+        className="mx-4 mt-2 flex-row items-center justify-between rounded-2xl border border-white/10 bg-brand-surface px-4 py-3 active:opacity-70"
       >
         <View className="flex-row items-center gap-2">
           <MaterialCommunityIcons
@@ -63,7 +63,9 @@ export default function LocalChatLobbyScreen() {
         showsVerticalScrollIndicator={false}
       >
         <StatusHero
-          state={chat.state}
+          advertising={chat.advertising}
+          discovering={chat.discovering}
+          connecting={chat.connecting}
           peerName={connectedName}
           error={chat.error}
         />
@@ -71,10 +73,17 @@ export default function LocalChatLobbyScreen() {
         {chat.supported ? (
           <>
             <ConnectionToggles
-              state={chat.state}
+              advertising={chat.advertising}
+              discovering={chat.discovering}
+              busy={
+                chat.advertising ||
+                chat.discovering ||
+                chat.connecting ||
+                chat.connectedPeerId !== null
+              }
               disabled={!chat.available}
-              onAdvertise={chat.startAdvertising}
-              onDiscover={chat.startDiscovery}
+              onToggleAdvertise={chat.toggleAdvertise}
+              onToggleDiscover={chat.toggleDiscover}
               onStop={chat.resetSession}
             />
 
@@ -90,7 +99,8 @@ export default function LocalChatLobbyScreen() {
               onOpen={openChat}
             />
 
-            <TechLog logs={chat.logs} />
+            {/* Dev-only: hidden in release builds (preview/production). */}
+            {__DEV__ ? <TechLog logs={chat.logs} /> : null}
           </>
         ) : null}
       </ScrollView>

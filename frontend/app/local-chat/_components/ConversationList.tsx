@@ -18,7 +18,7 @@ export function ConversationList({
 
   return (
     <View className="gap-2">
-      <Text className="font-poppins-semibold text-base text-white">
+      <Text className="font-poppins-semibold text-lg text-white">
         Conversaciones previas
       </Text>
       {conversations.map((c) => {
@@ -29,7 +29,7 @@ export function ConversationList({
             key={c.peerId}
             onPress={() => onOpen(c.peerId, c.peerNickname)}
             android_ripple={{ color: "rgba(255,255,255,0.12)" }}
-            className="flex-row items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 active:opacity-70"
+            className="flex-row items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-brand-surface px-4 py-3.5 active:opacity-70"
           >
             <View className="flex-1 flex-row items-center gap-3">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-white/10">

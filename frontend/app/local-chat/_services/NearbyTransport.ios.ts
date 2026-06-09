@@ -10,7 +10,9 @@ export function createNearbyTransport(): LocalTransport {
   return {
     isAvailable: false,
     async startAdvertising() {},
+    async stopAdvertising() {},
     async startDiscovery() {},
+    async stopDiscovery() {},
     async requestConnection() {},
     async send() {},
     async disconnect() {},

@@ -331,6 +331,20 @@ class NearbyConnectionsModule(
     promise.resolve(true)
   }
 
+  // Independent stops so a single toggle can turn off ONLY its own radio
+  // without killing the other radio or an established connection.
+  @ReactMethod
+  fun stopAdvertising(promise: Promise) {
+    connectionsClient.stopAdvertising()
+    promise.resolve(true)
+  }
+
+  @ReactMethod
+  fun stopDiscovery(promise: Promise) {
+    connectionsClient.stopDiscovery()
+    promise.resolve(true)
+  }
+
   @ReactMethod
   fun stopAll(promise: Promise) {
     connectionsClient.stopAdvertising()
