@@ -21,7 +21,7 @@ import {
   addNotificationResponseListener,
 } from "../utils/pushNotifications";
 import * as Notifications from "expo-notifications";
-import Toast from "react-native-toast-message";
+import { Toaster, toast } from "sonner-native";
 import { initAnalytics, track, flush } from "../utils/analytics"
 import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
@@ -208,10 +208,8 @@ export default Sentry.wrap(function Layout() {
         return;
       }
       if (isSos) {
-        Toast.show({
-          type: 'error',
-          text1: `SOS — ${senderName}`,
-          text2: 'Necesita ayuda urgente. Revisa tu pantalla.',
+        toast.error(`SOS — ${senderName}`, {
+          description: 'Necesita ayuda urgente. Revisa tu pantalla.',
         });
       }
     });
@@ -361,7 +359,7 @@ export default Sentry.wrap(function Layout() {
                       options={{ headerShown: false }}
                     />
                   </Stack>
-                  <Toast />
+                  <Toaster />
                   </LinearGradient>
                 </ModelProvider>
               </AuthGate>

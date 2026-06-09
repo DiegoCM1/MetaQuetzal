@@ -18,7 +18,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
-import Toast from "react-native-toast-message";
+import { toast } from "sonner-native";
 import {
   canReportFromLocation,
   createZone,
@@ -229,19 +229,15 @@ export default function WeatherMapNativewind() {
     if (isAddingMode) {
       const { latitude, longitude } = e.nativeEvent.coordinate;
       if (!userLocation) {
-        Toast.show({
-          type: 'error',
-          text1: 'Ubicacion requerida',
-          text2: 'Activa tu ubicacion para reportar una zona',
+        toast.error('Ubicacion requerida', {
+          description: 'Activa tu ubicacion para reportar una zona',
         });
         setIsAddingMode(false);
         return;
       }
       if (!canReportFromLocation({ latitude, longitude }, userLocation)) {
-        Toast.show({
-          type: 'error',
-          text1: 'Reporte demasiado lejos',
-          text2: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
+        toast.error('Reporte demasiado lejos', {
+          description: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
         });
         setIsAddingMode(false);
         return;
@@ -275,7 +271,7 @@ export default function WeatherMapNativewind() {
       console.error('[Map] Failed to update zone:', error);
       setZones(prev => prev.map(z => z.id === selectedZone.id ? selectedZone : z));
       setSelectedZone(selectedZone);
-      Toast.show({ type: 'error', text1: 'Error al editar', text2: 'No se pudo guardar el cambio' });
+      toast.error('Error al editar', { description: 'No se pudo guardar el cambio' });
     });
   };
 
@@ -303,7 +299,7 @@ export default function WeatherMapNativewind() {
             }).catch((error) => {
               console.error('[Map] Failed to delete zone:', error);
               setZones(prev => [...prev, deleted]);
-              Toast.show({ type: 'error', text1: 'Error al eliminar', text2: 'No se pudo eliminar la zona' });
+              toast.error('Error al eliminar', { description: 'No se pudo eliminar la zona' });
             });
           },
         },
@@ -327,18 +323,14 @@ export default function WeatherMapNativewind() {
           return next;
         });
         setSelectedZone(votedZone);
-        Toast.show({
-          type: 'success',
-          text1: value === 1 ? 'Evento confirmado' : 'Evento marcado como engañoso',
-          text2: 'Tu voto se registró correctamente',
+        toast.success(value === 1 ? 'Evento confirmado' : 'Evento marcado como engañoso', {
+          description: 'Tu voto se registró correctamente',
         });
       })
       .catch((error) => {
         console.error('[Map] Failed to vote zone:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'No se pudo votar',
-          text2: value === 1
+        toast.error('No se pudo votar', {
+          description: value === 1
             ? 'Debes estar cerca del evento para confirmarlo'
             : 'Debes estar cerca del evento para marcarlo como engañoso',
         });
@@ -352,14 +344,12 @@ export default function WeatherMapNativewind() {
       return;
     }
     if (!pendingLocation || !userLocation) {
-      Toast.show({ type: 'error', text1: 'Ubicacion requerida', text2: 'Necesitamos tu ubicacion para validar el reporte' });
+      toast.error('Ubicacion requerida', { description: 'Necesitamos tu ubicacion para validar el reporte' });
       return;
     }
     if (!canReportFromLocation(pendingLocation, userLocation)) {
-      Toast.show({
-        type: 'error',
-        text1: 'Reporte demasiado lejos',
-        text2: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
+      toast.error('Reporte demasiado lejos', {
+        description: `Solo puedes reportar dentro de ${Math.round(REPORTING_DISTANCE_METERS / 1000)} km de tu ubicacion`,
       });
       return;
     }
@@ -381,7 +371,7 @@ export default function WeatherMapNativewind() {
     setZoneDescription('');
     setSelectedType(null);
     setDescriptionError(false);
-    Toast.show({ type: 'success', text1: 'Zona reportada', text2: 'Gracias por tu reporte' });
+    toast.success('Zona reportada', { description: 'Gracias por tu reporte' });
 
     createZone(newZone).then((savedZone) => {
       setZones(prev => {
@@ -392,7 +382,7 @@ export default function WeatherMapNativewind() {
     }).catch((error) => {
       console.error('[Map] Failed to save zone:', error);
       setZones(prev => prev.filter(z => z.id !== newZone.id));
-      Toast.show({ type: 'error', text1: 'Error al guardar', text2: 'No se pudo guardar la zona' });
+      toast.error('Error al guardar', { description: 'No se pudo guardar la zona' });
     });
   };
 
@@ -448,19 +438,17 @@ export default function WeatherMapNativewind() {
         const hasCoords = lat !== undefined;
         await enqueueSOS(lat, lon);
         setHasPendingSOS(true);
-        Toast.show({
-          type: "info",
-          text1: hasCoords ? "SOS guardado" : "SOS guardado sin ubicación",
-          text2: "Se enviará cuando recuperes conexión.",
+        toast.info(hasCoords ? "SOS guardado" : "SOS guardado sin ubicación", {
+          description: "Se enviará cuando recuperes conexión.",
         });
         return;
       }
 
       // 3. Online: mostrar feedback de GPS si aplica
       if (permDenied) {
-        Toast.show({ type: "info", text1: "Permiso de ubicación denegado", text2: "Se enviará el SOS sin coordenadas." });
+        toast.info("Permiso de ubicación denegado", { description: "Se enviará el SOS sin coordenadas." });
       } else if (gpsFailed) {
-        Toast.show({ type: "info", text1: "Sin ubicación precisa", text2: "Se enviará el SOS sin coordenadas." });
+        toast.info("Sin ubicación precisa", { description: "Se enviará el SOS sin coordenadas." });
       }
 
       const body: { lat?: number; lon?: number } = {};
@@ -476,7 +464,7 @@ export default function WeatherMapNativewind() {
       } catch {
         await enqueueSOS(lat, lon);
         setHasPendingSOS(true);
-        Toast.show({ type: "info", text1: "SOS guardado", text2: "Se enviará cuando recuperes conexión." });
+        toast.info("SOS guardado", { description: "Se enviará cuando recuperes conexión." });
         return;
       }
 
@@ -486,29 +474,29 @@ export default function WeatherMapNativewind() {
         const retryAfterSec = parseInt(res.headers.get('Retry-After') ?? '600', 10);
         const minutes = Math.ceil(retryAfterSec / 60);
         const retryText = minutes <= 1 ? 'en 1 min.' : `en ${minutes} min.`;
-        Toast.show({ type: "error", text1: "Límite alcanzado", text2: `Podrás enviar otro SOS ${retryText}` });
+        toast.error("Límite alcanzado", { description: `Podrás enviar otro SOS ${retryText}` });
         return;
       }
 
       if (res.status >= 500) {
         await enqueueSOS(lat, lon);
         setHasPendingSOS(true);
-        Toast.show({ type: "info", text1: "SOS guardado", text2: "Error del servidor. Se reintentará automáticamente." });
+        toast.info("SOS guardado", { description: "Error del servidor. Se reintentará automáticamente." });
         return;
       }
 
       if (!res.ok) {
         // 4xx (no 429): error de cliente, no encolar
-        Toast.show({ type: "error", text1: "Error", text2: "No se pudo enviar el SOS. Intenta de nuevo." });
+        toast.error("Error", { description: "No se pudo enviar el SOS. Intenta de nuevo." });
         return;
       }
 
       const data = await res.json();
       setHasPendingSOS(false);
       if (data.notified_count === 0) {
-        Toast.show({ type: "info", text1: "SOS enviado", text2: "No tienes contactos vinculados. Agrégalos en tu perfil." });
+        toast.info("SOS enviado", { description: "No tienes contactos vinculados. Agrégalos en tu perfil." });
       } else {
-        Toast.show({ type: "success", text1: "SOS enviado", text2: `${data.notified_count} contacto(s) notificado(s).` });
+        toast.success("SOS enviado", { description: `${data.notified_count} contacto(s) notificado(s).` });
       }
     } finally {
       setIsSosSending(false);
