@@ -15,6 +15,8 @@ from app.features.sos_contacts.router import router as sos_contacts_router
 from app.features.sos_invite.router import router as sos_invite_router
 from app.features.sos_trigger.router import router as sos_trigger_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
+from app.features.future_integration.chat_rooms.router import router as chat_rooms_router
+from app.features.future_integration.chat_rooms.service import ensure_chat_tables
 import app.core.firebase
 import asyncio
 import logging
@@ -154,7 +156,6 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
 
 
 async def _siat_background_loop():
-    """Runs SIAT evaluation cycle every SIAT_CYCLE_INTERVAL_SECONDS."""
     while True:
         try:
             async with AsyncSessionLocal() as db:
@@ -174,10 +175,12 @@ async def _siat_background_loop():
 async def lifespan(app: FastAPI):
     await ensure_core_tables(engine)
     await ensure_siat_tables(engine)
+    await ensure_chat_tables(engine)
     siat_task = asyncio.create_task(_siat_background_loop())
     yield
     siat_task.cancel()
     await engine.dispose()
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -188,7 +191,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Health of the app
+
 @app.get("/health")
 def get_health():
     return {
@@ -197,7 +200,7 @@ def get_health():
         "message": "Backend running",
     }
 
-# Health of db
+
 @app.get("/health-db")
 async def get_db_health(db: AsyncSession = Depends(get_db)):
     try:
@@ -219,3 +222,4 @@ app.include_router(notification_preferences_router)
 app.include_router(sos_contacts_router)
 app.include_router(sos_invite_router)
 app.include_router(sos_trigger_router)
+app.include_router(chat_rooms_router)

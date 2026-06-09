@@ -3,8 +3,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.features.chat.schemas import RoomCreate, RoomResponse, MessageCreate, MessageResponse
-from app.features.chat.service import create_room, list_rooms, join_room, send_message, list_messages
+from app.features.future_integration.chat_rooms.schemas import (
+    MessageCreate,
+    MessageResponse,
+    RoomCreate,
+    RoomResponse,
+)
+from app.features.future_integration.chat_rooms.service import (
+    create_room,
+    join_room,
+    list_messages,
+    list_rooms,
+    send_message,
+)
 
 router = APIRouter()
 
@@ -15,7 +26,7 @@ async def create_chat_room(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    return await create_room(db, body.name, body.type, current_user["id"])
+    return await create_room(db, body.name, body.type, current_user["uid"])
 
 
 @router.get("/api/v1/chat/rooms", response_model=list[RoomResponse])
@@ -23,7 +34,7 @@ async def my_rooms(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    return await list_rooms(db, current_user["id"])
+    return await list_rooms(db, current_user["uid"])
 
 
 @router.post("/api/v1/chat/rooms/{room_id}/join", status_code=200)
@@ -32,7 +43,7 @@ async def join_chat_room(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    ok = await join_room(db, room_id, current_user["id"])
+    ok = await join_room(db, room_id, current_user["uid"])
     if not ok:
         raise HTTPException(status_code=404, detail="Room not found")
     return {"message": "Joined"}
@@ -45,7 +56,7 @@ async def post_message(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    msg = await send_message(db, room_id, current_user["id"], body.body)
+    msg = await send_message(db, room_id, current_user["uid"], body.body)
     if msg is None:
         raise HTTPException(status_code=403, detail="Not a member of this room")
     return msg
@@ -59,7 +70,7 @@ async def get_messages(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    msgs = await list_messages(db, room_id, current_user["id"], limit, offset)
+    msgs = await list_messages(db, room_id, current_user["uid"], limit, offset)
     if msgs is None:
         raise HTTPException(status_code=403, detail="Not a member of this room")
     return msgs

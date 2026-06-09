@@ -21,6 +21,6 @@ class MessageCreate(BaseModel):
 class MessageResponse(BaseModel):
     id: int
     room_id: int
-    user_id: int | None
+    user_uid: str | None
     body: str
     created_at: datetime

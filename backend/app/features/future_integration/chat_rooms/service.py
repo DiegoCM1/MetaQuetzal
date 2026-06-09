@@ -15,16 +15,16 @@ async def ensure_chat_tables(engine: AsyncEngine) -> None:
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS chat_members (
                 room_id   BIGINT NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
-                user_id   BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                user_uid  VARCHAR(128) NOT NULL,
                 joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                PRIMARY KEY (room_id, user_id)
+                PRIMARY KEY (room_id, user_uid)
             )
         """))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS chat_messages (
                 id         BIGSERIAL PRIMARY KEY,
                 room_id    BIGINT NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
-                user_id    BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                user_uid   VARCHAR(128),
                 body       TEXT NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
@@ -34,7 +34,7 @@ async def ensure_chat_tables(engine: AsyncEngine) -> None:
         ))
 
 
-async def create_room(db: AsyncSession, name: str | None, room_type: str, user_id: int):
+async def create_room(db: AsyncSession, name: str | None, room_type: str, user_uid: str):
     result = await db.execute(
         text("""
             INSERT INTO chat_rooms (name, type) VALUES (:name, :type)
@@ -45,72 +45,72 @@ async def create_room(db: AsyncSession, name: str | None, room_type: str, user_i
     room = result.mappings().first()
     # Add creator as member
     await db.execute(
-        text("INSERT INTO chat_members (room_id, user_id) VALUES (:room_id, :user_id) ON CONFLICT DO NOTHING"),
-        {"room_id": room["id"], "user_id": user_id},
+        text("INSERT INTO chat_members (room_id, user_uid) VALUES (:room_id, :user_uid) ON CONFLICT DO NOTHING"),
+        {"room_id": room["id"], "user_uid": user_uid},
     )
     await db.commit()
     return room
 
 
-async def list_rooms(db: AsyncSession, user_id: int):
+async def list_rooms(db: AsyncSession, user_uid: str):
     result = await db.execute(
         text("""
             SELECT r.id, r.name, r.type, r.created_at
             FROM chat_rooms r
             JOIN chat_members m ON m.room_id = r.id
-            WHERE m.user_id = :uid
+            WHERE m.user_uid = :uid
             ORDER BY r.created_at DESC
         """),
-        {"uid": user_id},
+        {"uid": user_uid},
     )
     return result.mappings().all()
 
 
-async def join_room(db: AsyncSession, room_id: int, user_id: int) -> bool:
+async def join_room(db: AsyncSession, room_id: int, user_uid: str) -> bool:
     row = await db.execute(text("SELECT id FROM chat_rooms WHERE id = :rid"), {"rid": room_id})
     if row.mappings().first() is None:
         return False
     await db.execute(
-        text("INSERT INTO chat_members (room_id, user_id) VALUES (:rid, :uid) ON CONFLICT DO NOTHING"),
-        {"rid": room_id, "uid": user_id},
+        text("INSERT INTO chat_members (room_id, user_uid) VALUES (:rid, :uid) ON CONFLICT DO NOTHING"),
+        {"rid": room_id, "uid": user_uid},
     )
     await db.commit()
     return True
 
 
-async def send_message(db: AsyncSession, room_id: int, user_id: int, body: str):
+async def send_message(db: AsyncSession, room_id: int, user_uid: str, body: str):
     # Verify membership
     row = await db.execute(
-        text("SELECT 1 FROM chat_members WHERE room_id = :rid AND user_id = :uid"),
-        {"rid": room_id, "uid": user_id},
+        text("SELECT 1 FROM chat_members WHERE room_id = :rid AND user_uid = :uid"),
+        {"rid": room_id, "uid": user_uid},
     )
     if row.first() is None:
         return None  # not a member
 
     result = await db.execute(
         text("""
-            INSERT INTO chat_messages (room_id, user_id, body)
-            VALUES (:room_id, :user_id, :body)
-            RETURNING id, room_id, user_id, body, created_at
+            INSERT INTO chat_messages (room_id, user_uid, body)
+            VALUES (:room_id, :user_uid, :body)
+            RETURNING id, room_id, user_uid, body, created_at
         """),
-        {"room_id": room_id, "user_id": user_id, "body": body},
+        {"room_id": room_id, "user_uid": user_uid, "body": body},
     )
     await db.commit()
     return result.mappings().first()
 
 
-async def list_messages(db: AsyncSession, room_id: int, user_id: int, limit: int, offset: int):
+async def list_messages(db: AsyncSession, room_id: int, user_uid: str, limit: int, offset: int):
     # Verify membership
     row = await db.execute(
-        text("SELECT 1 FROM chat_members WHERE room_id = :rid AND user_id = :uid"),
-        {"rid": room_id, "uid": user_id},
+        text("SELECT 1 FROM chat_members WHERE room_id = :rid AND user_uid = :uid"),
+        {"rid": room_id, "uid": user_uid},
     )
     if row.first() is None:
         return None  # not a member
 
     result = await db.execute(
         text("""
-            SELECT id, room_id, user_id, body, created_at
+            SELECT id, room_id, user_uid, body, created_at
             FROM chat_messages WHERE room_id = :rid
             ORDER BY created_at DESC LIMIT :limit OFFSET :offset
         """),
