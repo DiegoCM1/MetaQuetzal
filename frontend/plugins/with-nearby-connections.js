@@ -92,17 +92,21 @@ function ensurePermission(manifest, permission) {
 function buildNearbyModuleSource(packageName) {
   return `package ${packageName}.nearby
 
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback
 import com.google.android.gms.nearby.connection.ConnectionResolution
 import com.google.android.gms.nearby.connection.ConnectionsClient
+import com.google.android.gms.nearby.connection.ConnectionsStatusCodes
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.DiscoveryOptions
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
@@ -125,9 +129,20 @@ class NearbyConnectionsModule(
   override fun getName(): String = "NearbyConnections"
 
   private fun emit(eventName: String, params: Map<String, Any?> = emptyMap()) {
+    val payload: WritableMap = Arguments.createMap()
+    for ((key, value) in params) {
+      when (value) {
+        null -> payload.putNull(key)
+        is String -> payload.putString(key, value)
+        is Boolean -> payload.putBoolean(key, value)
+        is Int -> payload.putInt(key, value)
+        is Double -> payload.putDouble(key, value)
+        else -> payload.putString(key, value.toString())
+      }
+    }
     reactContext
       .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-      .emit(eventName, params)
+      .emit(eventName, payload)
   }
 
   private fun endpointName(endpointId: String): String {
@@ -169,6 +184,12 @@ class NearbyConnectionsModule(
     override fun onConnectionResult(endpointId: String, resolution: ConnectionResolution) {
       if (resolution.status.isSuccess) {
         connectedEndpointId = endpointId
+        // Once paired, stop both radios. Leaving advertising + discovery
+        // running under P2P_POINT_TO_POINT makes Nearby renegotiate mediums
+        // and tear the link down after a few seconds. These calls do NOT
+        // affect the established connection — only peer-finding.
+        connectionsClient.stopAdvertising()
+        connectionsClient.stopDiscovery()
         emitState("connected")
         emit(
           "NearbyConnectionConnected",
@@ -237,8 +258,14 @@ class NearbyConnectionsModule(
         promise.resolve(true)
       }
       .addOnFailureListener { error ->
-        emitState("error")
-        promise.reject("NEARBY_ADVERTISING_FAILED", error.message, error)
+        // Already advertising is not a failure — the radio is already on.
+        if ((error as? ApiException)?.statusCode == ConnectionsStatusCodes.STATUS_ALREADY_ADVERTISING) {
+          emitState("advertising")
+          promise.resolve(true)
+        } else {
+          emitState("error")
+          promise.reject("NEARBY_ADVERTISING_FAILED", error.message, error)
+        }
       }
   }
 
@@ -253,8 +280,14 @@ class NearbyConnectionsModule(
         promise.resolve(true)
       }
       .addOnFailureListener { error ->
-        emitState("error")
-        promise.reject("NEARBY_DISCOVERY_FAILED", error.message, error)
+        // Already discovering is not a failure — the radio is already on.
+        if ((error as? ApiException)?.statusCode == ConnectionsStatusCodes.STATUS_ALREADY_DISCOVERING) {
+          emitState("discovering")
+          promise.resolve(true)
+        } else {
+          emitState("error")
+          promise.reject("NEARBY_DISCOVERY_FAILED", error.message, error)
+        }
       }
   }
 
@@ -298,6 +331,20 @@ class NearbyConnectionsModule(
     promise.resolve(true)
   }
 
+  // Independent stops so a single toggle can turn off ONLY its own radio
+  // without killing the other radio or an established connection.
+  @ReactMethod
+  fun stopAdvertising(promise: Promise) {
+    connectionsClient.stopAdvertising()
+    promise.resolve(true)
+  }
+
+  @ReactMethod
+  fun stopDiscovery(promise: Promise) {
+    connectionsClient.stopDiscovery()
+    promise.resolve(true)
+  }
+
   @ReactMethod
   fun stopAll(promise: Promise) {
     connectionsClient.stopAdvertising()
@@ -337,10 +384,22 @@ class NearbyConnectionsPackage : ReactPackage {
 const withNearbyConnections = (config) => {
   config = withAndroidManifest(config, (mod) => {
     ensurePermission(mod.modResults, "android.permission.ACCESS_FINE_LOCATION");
+    ensurePermission(
+      mod.modResults,
+      "android.permission.ACCESS_COARSE_LOCATION",
+    );
     ensurePermission(mod.modResults, "android.permission.BLUETOOTH_ADVERTISE");
     ensurePermission(mod.modResults, "android.permission.BLUETOOTH_CONNECT");
     ensurePermission(mod.modResults, "android.permission.BLUETOOTH_SCAN");
     ensurePermission(mod.modResults, "android.permission.NEARBY_WIFI_DEVICES");
+    // Nearby Connections upgrades to Wi-Fi for the high-bandwidth link, so it
+    // needs the Wi-Fi-state permissions (normal/install-time). Missing
+    // CHANGE_WIFI_STATE is what raises status 8033.
+    ensurePermission(mod.modResults, "android.permission.ACCESS_WIFI_STATE");
+    ensurePermission(mod.modResults, "android.permission.CHANGE_WIFI_STATE");
+    // Legacy Bluetooth permissions for Android < 12 (e.g. the old test device).
+    ensurePermission(mod.modResults, "android.permission.BLUETOOTH");
+    ensurePermission(mod.modResults, "android.permission.BLUETOOTH_ADMIN");
     return mod;
   });
 
