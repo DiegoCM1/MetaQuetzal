@@ -2,7 +2,7 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Alert } from "react-native";
-import Toast from "react-native-toast-message";
+import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from "./analytics";
 import { authFetch } from './api'
@@ -59,10 +59,8 @@ export async function sendTokenToBackend(fcmToken: string): Promise<void> {
     track('push_token_saved', { ok: false, error: String(lastErr) });
     if (lastErr !== undefined) {
       // Only show Toast for transient failures (network errors, 5xx) — not for 4xx permanent
-      Toast.show({
-        type: 'error',
-        text1: 'No se pudieron activar notificaciones',
-        text2: 'Revisa tu conexión e intenta abrir la app de nuevo.',
+      toast.error('No se pudieron activar notificaciones', {
+        description: 'Revisa tu conexión e intenta abrir la app de nuevo.',
       });
     }
   }
@@ -116,7 +114,7 @@ export function setForegroundNotificationHandler() {
   Notifications.addNotificationReceivedListener((notif) => {
     const { title, body } = notif.request.content;
     const data = notif.request.content.data;
-    Toast.show({ text1: title, text2: body });
+    toast(title ?? '', { description: body ?? undefined });
     track("push_received_foreground", {
       alertId: data?.alertId ? String(data.alertId) : undefined,
     });

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
+import { toast } from 'sonner-native';
 import { colors } from '../utils/theme';
 import { authFetch } from '../utils/api';
 import { API_BASE_URL } from '../utils/config';
@@ -37,14 +37,14 @@ export default function NotificationTestScreen() {
         body: JSON.stringify({ type: BUTTONS[index].type }),
       });
       if (res.status === 403) {
-        Toast.show({ type: 'error', text1: 'No autorizado', text2: 'Tu cuenta no tiene acceso a esta herramienta.' });
+        toast.error('No autorizado', { description: 'Tu cuenta no tiene acceso a esta herramienta.' });
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      Toast.show({ type: 'success', text1: 'Enviado', text2: `${data.success_count} dispositivo(s)` });
+      toast.success('Enviado', { description: `${data.success_count} dispositivo(s)` });
     } catch (e) {
-      Toast.show({ type: 'error', text1: 'Error al enviar', text2: String(e) });
+      toast.error('Error al enviar', { description: String(e) });
     } finally {
       setLoadingIndex(null);
     }
