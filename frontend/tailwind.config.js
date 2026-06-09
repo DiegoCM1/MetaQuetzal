@@ -29,6 +29,9 @@ module.exports = {
         'brand-green':  '#00e774',
         'brand-red':    '#e24337',
         'brand-teal':   '#4ed5de',
+
+        // Surface — content cards (DarkCard) on the primary gradient.
+        'brand-surface': '#0a1c32',
       },
     },
   },

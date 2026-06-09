@@ -9,12 +9,21 @@ import { randomUUID } from "expo-crypto";
  * Keeping this envelope now means the mesh router is purely additive later —
  * the transport and UI never learn about hops.
  */
+/**
+ * What a payload means:
+ * - `text`     → a chat message (`body` is the text).
+ * - `identity` → a live identity update (`body` is the sender's new nickname).
+ * Control kinds ride the same wire path as text, typed by this field.
+ */
+export type MessageKind = "text" | "identity";
+
 export interface Envelope {
   v: 1;
   id: string;
   from: string;
   to: string; // peerId | BROADCAST
   ttl: number;
+  kind: MessageKind;
   body: string;
   ts: number;
 }
@@ -30,6 +39,7 @@ export function makeEnvelope(params: {
   to: string;
   body: string;
   ttl?: number;
+  kind?: MessageKind;
 }): Envelope {
   return {
     v: 1,
@@ -37,6 +47,7 @@ export function makeEnvelope(params: {
     from: params.from,
     to: params.to,
     ttl: params.ttl ?? 1,
+    kind: params.kind ?? "text",
     body: params.body,
     ts: Date.now(),
   };
@@ -55,7 +66,10 @@ export function decode(raw: string): Envelope | null {
   try {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.v === 1 && typeof parsed.body === "string") {
-      return parsed as Envelope;
+      // Coerce kind so older senders (no `kind`) are treated as text.
+      const kind: MessageKind =
+        parsed.kind === "identity" ? "identity" : "text";
+      return { ...parsed, kind } as Envelope;
     }
   } catch {
     // Not JSON — fall through and treat as plain text.
@@ -68,6 +82,7 @@ export function decode(raw: string): Envelope | null {
       from: "unknown",
       to: BROADCAST,
       ttl: 0,
+      kind: "text",
       body: raw,
       ts: Date.now(),
     };

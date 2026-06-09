@@ -132,8 +132,10 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
   // a live endpointId → stable deviceId without capturing stale closures.
   const peersRef = useRef<DiscoveredPeer[]>([]);
   const connectedRef = useRef<DiscoveredPeer | null>(null);
+  const conversationsRef = useRef<Record<string, Conversation>>({});
   peersRef.current = peers;
   connectedRef.current = connected;
+  conversationsRef.current = conversations;
 
   const addLog = useCallback(
     (m: string) => setLogs((c) => [m, ...c].slice(0, 12)),
@@ -220,6 +222,31 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  /** Apply a peer's new nickname everywhere it's shown (live rename). */
+  const updatePeerNickname = useCallback(
+    (peerDeviceId: string, nickname: string) => {
+      setPeers((c) =>
+        c.map((p) => (p.deviceId === peerDeviceId ? { ...p, nickname } : p)),
+      );
+      setConnected((c) =>
+        c?.deviceId === peerDeviceId ? { ...c, nickname } : c,
+      );
+      setConversations((prev) => {
+        const convo = prev[peerDeviceId];
+        if (!convo) return prev;
+        return {
+          ...prev,
+          [peerDeviceId]: {
+            ...convo,
+            peerNickname: nickname,
+            lastSeen: Date.now(),
+          },
+        };
+      });
+    },
+    [],
+  );
+
   // --- transport subscription ------------------------------------------------
   useEffect(() => {
     if (!available) return;
@@ -297,6 +324,14 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
             ? connectedRef.current
             : peersRef.current.find((p) => p.endpointId === endpointId);
         const peerId = link?.deviceId ?? env.from;
+
+        // Control message: a live rename — apply it, don't show a bubble.
+        if (env.kind === "identity") {
+          updatePeerNickname(peerId, env.body);
+          addLog(`Nombre actualizado: ${env.body}`);
+          return;
+        }
+
         const peerNickname = link?.nickname ?? env.from;
         upsertMessage(peerId, peerNickname, {
           id: `remote-${env.id}`,
@@ -316,7 +351,14 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
           console.warn("[local-chat] stopAll en cleanup falló:", e),
         );
     };
-  }, [available, transport, addLog, reportError, upsertMessage]);
+  }, [
+    available,
+    transport,
+    addLog,
+    reportError,
+    upsertMessage,
+    updatePeerNickname,
+  ]);
 
   // --- identity --------------------------------------------------------------
   const needsNickname = hydrated && nickname.trim().length === 0;
@@ -334,8 +376,27 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
       } catch (e: any) {
         reportError(`No se pudo guardar el nombre: ${e?.message ?? e}`);
       }
+      // Live-push the rename to a currently-connected peer so their view
+      // updates without waiting for a fresh discovery. New discoverers still
+      // get the latest name via the broadcast on the next advertise.
+      const link = connectedRef.current;
+      if (link) {
+        const env = makeEnvelope({
+          from: deviceId,
+          to: link.deviceId,
+          body: trimmed,
+          kind: "identity",
+        });
+        transport
+          .send(link.endpointId, encode(env))
+          .catch((e) =>
+            addLog(
+              `No se pudo actualizar el nombre en vivo: ${e?.message ?? e}`,
+            ),
+          );
+      }
     },
-    [reportError],
+    [reportError, deviceId, transport, addLog],
   );
 
   // --- gating ----------------------------------------------------------------
@@ -414,42 +475,79 @@ export function LocalChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [transport, reportError]);
 
+  /**
+   * Transmit one already-stored self-message over the live connection.
+   * Returns whether it left the device. Used by both a fresh send and the
+   * reconnect flush, so the wire path has a single implementation.
+   */
+  const transmit = useCallback(
+    async (peerId: string, localId: string, body: string): Promise<boolean> => {
+      const link = connectedRef.current;
+      if (link?.deviceId !== peerId) return false; // not the live peer
+      const envelope = makeEnvelope({ from: deviceId, to: peerId, body });
+      patchMessageStatus(peerId, localId, "sending");
+      try {
+        await transport.send(link.endpointId, encode(envelope));
+        patchMessageStatus(peerId, localId, "sent");
+        return true;
+      } catch (e: any) {
+        addLog(`⚠️ Mensaje no enviado: ${e?.message ?? e}`);
+        patchMessageStatus(peerId, localId, "failed");
+        return false;
+      }
+    },
+    [deviceId, transport, patchMessageStatus, addLog],
+  );
+
   const sendMessage = useCallback(
     async (peerId: string, body: string) => {
       const text = body.trim().slice(0, MAX_MESSAGE_LENGTH);
       if (!text) return;
 
       const link = connectedRef.current;
-      const inRangeConnected = link?.deviceId === peerId;
-      const envelope = makeEnvelope({ from: deviceId, to: peerId, body: text });
-      const localId = `self-${envelope.id}`;
-      const nick = link?.nickname ?? peerId;
+      const live = link?.deviceId === peerId;
+      const localId = `self-${newId()}`;
 
-      // Optimistic insert. If the peer isn't the live connection, it queues.
-      upsertMessage(peerId, nick, {
+      // Optimistic insert. If the peer isn't the live connection, it queues
+      // and the flush-on-reconnect effect will pick it up.
+      upsertMessage(peerId, link?.nickname ?? peerId, {
         id: localId,
         author: "self",
         body: text,
         sentAt: new Date().toISOString(),
-        status: inRangeConnected ? "sending" : "queued",
+        status: live ? "sending" : "queued",
         peerId,
       });
 
-      if (!inRangeConnected) {
-        addLog(`Mensaje en cola (peer fuera de conexión): ${peerId}`);
-        return; // auto-retry on reconnect is a later step.
-      }
-
-      try {
-        await transport.send(link!.endpointId, encode(envelope));
-        patchMessageStatus(peerId, localId, "sent");
-      } catch (e: any) {
-        addLog(`⚠️ Mensaje no enviado: ${e?.message ?? e}`);
-        patchMessageStatus(peerId, localId, "failed");
+      if (live) {
+        await transmit(peerId, localId, text);
+      } else {
+        addLog(`Mensaje en cola (sin conexión): ${peerId}`);
       }
     },
-    [deviceId, transport, upsertMessage, patchMessageStatus, addLog],
+    [upsertMessage, transmit, addLog],
   );
+
+  // Drain the queue when a peer (re)connects: replay every still-queued
+  // self-message for that peer, oldest first. Without this, queued messages
+  // would sit forever — the "se enviará al reconectar" promise would be empty.
+  useEffect(() => {
+    if (!connected) return;
+    const convo = conversationsRef.current[connected.deviceId];
+    if (!convo) return;
+    const queued = convo.messages
+      .filter((m) => m.author === "self" && m.status === "queued")
+      .reverse(); // store is newest-first → send oldest first
+    if (queued.length === 0) return;
+
+    const peerId = connected.deviceId;
+    (async () => {
+      addLog(`Reenviando ${queued.length} en cola a ${connected.nickname}`);
+      for (const m of queued) {
+        await transmit(peerId, m.id, m.body);
+      }
+    })();
+  }, [connected, transmit, addLog]);
 
   // --- selectors -------------------------------------------------------------
   const conversationList = useMemo(
