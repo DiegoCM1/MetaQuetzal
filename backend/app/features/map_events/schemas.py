@@ -13,6 +13,7 @@ class MapEventCreate(BaseModel):
     description: str = Field(min_length=1, max_length=2000)
     lat: float
     lon: float
+    address: str | None = Field(default=None, max_length=300)
 
 
 class MapEventUpdate(BaseModel):
@@ -32,6 +33,7 @@ class MapEventResponse(BaseModel):
     description: str
     lat: float
     lon: float
+    address: str | None = None
     created_at: datetime
     updated_at: datetime
     upvotes: int = 0
