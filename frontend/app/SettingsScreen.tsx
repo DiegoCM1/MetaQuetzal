@@ -12,7 +12,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
 export default function SettingsScreen() {
   const router = useRouter();
-  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelFailure } = useModel();
+  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelFailure, retryAttempt } = useModel();
   const { signOut, deleteAccount } = useAuth();
 
   const handleDeleteAccount = () => {
@@ -118,10 +118,23 @@ export default function SettingsScreen() {
           }}
         /> */}
 
-        {modelOptedIn && !modelReady && !modelFailure && (
+        {modelOptedIn && !modelReady && !modelFailure && retryAttempt === 0 && (
           <OptionCard
             icon="cloud-download-outline"
             title="Descargando modelo IA..."
+            rightElement={
+              <Text style={{ color: "white", fontWeight: "600" }}>
+                {Math.round(downloadProgress * 100)}%
+              </Text>
+            }
+          />
+        )}
+
+        {modelOptedIn && !modelReady && !modelFailure && retryAttempt > 0 && (
+          <OptionCard
+            icon="autorenew"
+            title="Reintentando descarga..."
+            subtitle={`Conexión interrumpida — reanudando (intento ${retryAttempt})`}
             rightElement={
               <Text style={{ color: "white", fontWeight: "600" }}>
                 {Math.round(downloadProgress * 100)}%

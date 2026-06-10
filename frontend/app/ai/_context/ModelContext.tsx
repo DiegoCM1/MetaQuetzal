@@ -11,6 +11,7 @@ import {
   reportModelFailure,
   resetModelFailureReporting,
   type ModelFailure,
+  type ModelFailureType,
   type ModelPhase,
   type ModelTelemetryContext,
 } from '../_services/modelTelemetry'
@@ -20,6 +21,13 @@ import {
 const STALL_MS = 30_000 // no download progress for 30s while < 100% => stalled
 const LOAD_TIMEOUT_MS = 120_000 // bytes done but not ready after 2 min => load-timeout
 const WATCHDOG_INTERVAL_MS = 5_000
+
+// Transient download faults resume from the partial file on disk, so we absorb
+// them with exponential-backoff auto-retry instead of surfacing a failure. Each
+// backoff stays under STALL_MS so the watchdog can't double-fire mid-retry.
+const TRANSIENT_FAILURES: ModelFailureType[] = ['download-network', 'download-stalled']
+const MAX_AUTO_RETRIES = 4 // delays: 2s, 4s, 8s, 16s — all < STALL_MS
+const RETRY_BASE_MS = 2_000
 
 export const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 
@@ -68,6 +76,8 @@ interface ModelContextValue {
   modelError: BasicModelError
   /** Named, classified failure (incl. silent stalls). Drives the UI + telemetry. */
   modelFailure: ModelFailure | null
+  /** >0 while auto-retrying a transient download fault (drives a soft UI state). */
+  retryAttempt: number
   modelMode: ModelMode
   setModelMode: (mode: 'online' | 'offline') => void
 }
@@ -121,6 +131,15 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   // so the logs stay readable and the download *rate* is visible.
   const lastLoggedPctRef = useRef(-1)
 
+  // Auto-retry bookkeeping. retryAttempt drives the UI; the ref mirrors it so the
+  // progress effect can read it; retryCount is the budget; the timer holds the
+  // pending resume so we can cancel it on success/opt-out/unmount.
+  const [retryAttempt, setRetryAttempt] = useState(0)
+  const retryAttemptRef = useRef(0)
+  retryAttemptRef.current = retryAttempt
+  const retryCountRef = useRef(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Context attached to every failure report (captured at opt-in time).
   const telemetryCtxRef = useRef<ModelTelemetryContext>({
     modelName: MODEL.modelName,
@@ -135,14 +154,91 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     return 'downloading'
   }
 
-  /** Reset all per-attempt tracking before a fresh download starts. */
-  const resetDownloadTracking = () => {
-    resetModelFailureReporting()
-    setModelFailure(null)
+  const clearRetryTimer = () => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current)
+      retryTimerRef.current = null
+    }
+  }
+
+  /** Reset progress clocks. The partial file on disk is left untouched so the
+   *  next fetch can resume from it. */
+  const resetProgressTracking = () => {
     lastProgressValueRef.current = 0
     lastProgressAtRef.current = Date.now()
     reached100AtRef.current = 0
     lastLoggedPctRef.current = -1
+  }
+
+  /** Full reset before a brand-new download (fresh opt-in): clears progress,
+   *  the failure-report de-dupe, and the auto-retry budget. */
+  const resetDownloadTracking = () => {
+    clearRetryTimer()
+    resetModelFailureReporting()
+    setModelFailure(null)
+    retryCountRef.current = 0
+    setRetryAttempt(0)
+    resetProgressTracking()
+  }
+
+  /** Re-trigger the executorch download by toggling preventLoad. The partial
+   *  file is KEPT (so the fetch resumes) unless `deletePartial` — a corrupt
+   *  file must be wiped, a dropped connection must not. */
+  const restartDownload = async ({ deletePartial }: { deletePartial: boolean }) => {
+    setModelOptedIn(false)
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    if (deletePartial && Platform.OS !== 'web') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { ExpoResourceFetcher } = require('react-native-executorch-expo-resource-fetcher')
+        await ExpoResourceFetcher.deleteResources(
+          MODEL.modelSource,
+          MODEL.tokenizerSource,
+          MODEL.tokenizerConfigSource,
+        )
+        modelBreadcrumb('cleared partial files for clean restart')
+      } catch (e) {
+        modelBreadcrumb('deleteResources failed (file may not exist)', { error: String(e) })
+      }
+    }
+
+    resetProgressTracking()
+    setModelFailure(null)
+    setModelOptedIn(true)
+  }
+
+  /** Route a detected fault. Transient faults (network drop, stall) resume from
+   *  the partial file, so we auto-retry them with backoff and never show an
+   *  error. Anything else — or a transient fault that outlived the retry budget
+   *  — is a real failure: report it to Sentry and surface it to the user. */
+  const handleFault = (failure: ModelFailure) => {
+    const transient = TRANSIENT_FAILURES.includes(failure.type)
+
+    if (transient && retryCountRef.current < MAX_AUTO_RETRIES) {
+      retryCountRef.current += 1
+      const attempt = retryCountRef.current
+      const delay = Math.min(RETRY_BASE_MS * 2 ** (attempt - 1), STALL_MS - 5_000)
+      modelBreadcrumb('download fault — scheduling auto-retry (resume)', {
+        type: failure.type,
+        attempt,
+        delayMs: delay,
+        progressPct: Math.round(failure.progress * 100),
+      })
+      setModelFailure(null)
+      setRetryAttempt(attempt)
+      clearRetryTimer()
+      retryTimerRef.current = setTimeout(() => {
+        retryTimerRef.current = null
+        restartDownload({ deletePartial: false })
+      }, delay)
+      return
+    }
+
+    // Non-transient, or out of auto-retries: a failure that survived recovery.
+    setRetryAttempt(0)
+    reportModelFailure(failure, telemetryCtxRef.current)
+    setModelFailure(failure)
   }
 
   useEffect(() => {
@@ -163,6 +259,9 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (Platform.OS === 'web') return
     if (llm.isReady) {
+      clearRetryTimer()
+      retryCountRef.current = 0
+      setRetryAttempt(0)
       setModelFailure(null)
       modelBreadcrumb('model ready', { modelName: MODEL.modelName })
       console.log('[Model] ready -> configuring system prompt')
@@ -181,6 +280,11 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       // Only a real advance resets the stall clock — a repeated value is a freeze.
       if (progress > lastProgressValueRef.current) {
         lastProgressAtRef.current = Date.now()
+        // Bytes moving again after a scheduled retry = the fault healed.
+        if (retryAttemptRef.current > 0) {
+          modelBreadcrumb('download resumed after fault', { progressPct: Math.round(progress * 100) })
+          setRetryAttempt(0)
+        }
       }
       if (progress >= 1 && reached100AtRef.current === 0) {
         reached100AtRef.current = Date.now()
@@ -207,8 +311,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       phase,
       progress,
     }
-    reportModelFailure(failure, telemetryCtxRef.current)
-    setModelFailure(failure)
+    handleFault(failure)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [llm.error])
 
@@ -232,8 +335,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
             phase: 'loading',
             progress,
           }
-          reportModelFailure(failure, telemetryCtxRef.current)
-          setModelFailure(failure)
+          handleFault(failure)
         }
       } else if (progress > 0) {
         const idle = now - lastProgressAtRef.current
@@ -244,13 +346,14 @@ export function ModelProvider({ children }: { children: ReactNode }) {
             phase: 'downloading',
             progress,
           }
-          reportModelFailure(failure, telemetryCtxRef.current)
-          setModelFailure(failure)
+          handleFault(failure)
         }
       }
     }, WATCHDOG_INTERVAL_MS)
 
     return () => clearInterval(id)
+    // handleFault is stable via refs; re-subscribing each render would reset the timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelOptedIn, llm.isReady, modelFailure])
 
   const optIn = async () => {
@@ -307,31 +410,19 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   }
 
   const retryDownload = async () => {
-    modelBreadcrumb('retry: cleaning partial files and restarting download')
-    resetDownloadTracking()
-    setModelOptedIn(false)
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    if (Platform.OS !== 'web') {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { ExpoResourceFetcher } = require('react-native-executorch-expo-resource-fetcher')
-        await ExpoResourceFetcher.deleteResources(
-          MODEL.modelSource,
-          MODEL.tokenizerSource,
-          MODEL.tokenizerConfigSource,
-        )
-        console.log('[Model] retry: cleaned partial files')
-      } catch (e) {
-        console.warn('[Model] retry: delete error (files may not exist):', e)
-      }
-    }
-
-    setModelOptedIn(true)
-    console.log('[Model] retry: restarted download')
+    // A corrupt file must be wiped; anything else resumes from the partial.
+    const needsClean = modelFailure?.type === 'load-corrupt'
+    modelBreadcrumb(needsClean ? 'manual retry: clean restart' : 'manual retry: resume from partial')
+    // A user-initiated retry earns a fresh auto-retry budget.
+    clearRetryTimer()
+    retryCountRef.current = 0
+    setRetryAttempt(0)
+    resetModelFailureReporting()
+    await restartDownload({ deletePartial: needsClean })
   }
 
   const optOut = async () => {
+    clearRetryTimer()
     if (Platform.OS !== 'web') {
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -352,6 +443,9 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     console.log('[Model] opt_in -> false')
   }
 
+  // Cancel any pending resume if the provider unmounts.
+  useEffect(() => clearRetryTimer, [])
+
   const value = useMemo<ModelContextValue>(() => ({
     llm,
     modelOptedIn,
@@ -362,9 +456,10 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     modelReady: llm.isReady,
     modelError: llm.error,
     modelFailure,
+    retryAttempt,
     modelMode,
     setModelMode,
-  }), [llm, modelOptedIn, modelMode, modelFailure])
+  }), [llm, modelOptedIn, modelMode, modelFailure, retryAttempt])
 
   return (
     <ModelContext.Provider value={value}>
