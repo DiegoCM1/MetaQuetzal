@@ -1,9 +1,25 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as Network from 'expo-network'
 import * as Device from 'expo-device'
 import * as FileSystem from 'expo-file-system/legacy'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Alert, Platform } from 'react-native'
+
+import {
+  classifyModelError,
+  modelBreadcrumb,
+  reportModelFailure,
+  resetModelFailureReporting,
+  type ModelFailure,
+  type ModelPhase,
+  type ModelTelemetryContext,
+} from '../_services/modelTelemetry'
+
+// Watchdog thresholds. A stall (frozen bytes) and a slow load-into-RAM are the
+// two failures executorch never reports as errors — these turn them loud.
+const STALL_MS = 30_000 // no download progress for 30s while < 100% => stalled
+const LOAD_TIMEOUT_MS = 120_000 // bytes done but not ready after 2 min => load-timeout
+const WATCHDOG_INTERVAL_MS = 5_000
 
 export const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 
@@ -50,6 +66,8 @@ interface ModelContextValue {
   downloadProgress: number
   modelReady: boolean
   modelError: BasicModelError
+  /** Named, classified failure (incl. silent stalls). Drives the UI + telemetry. */
+  modelFailure: ModelFailure | null
   modelMode: ModelMode
   setModelMode: (mode: 'online' | 'offline') => void
 }
@@ -82,8 +100,50 @@ function useNativeLLM(preventLoad: boolean): BasicLLM {
 export function ModelProvider({ children }: { children: ReactNode }) {
   const [modelOptedIn, setModelOptedIn] = useState(false)
   const [modelMode, setModelMode] = useState<ModelMode>(Platform.OS === 'web' ? 'online' : null)
+  const [modelFailure, setModelFailure] = useState<ModelFailure | null>(null)
 
   const llm = useNativeLLM(!modelOptedIn)
+
+  // Mirror live values into refs so the error effect and watchdog interval read
+  // the *current* progress/ready/opt-in without re-subscribing on every change.
+  const progressRef = useRef(0)
+  const readyRef = useRef(false)
+  const optedInRef = useRef(false)
+  progressRef.current = llm.downloadProgress
+  readyRef.current = llm.isReady
+  optedInRef.current = modelOptedIn
+
+  // Watchdog bookkeeping for the two silent failures.
+  const lastProgressValueRef = useRef(0)
+  const lastProgressAtRef = useRef(Date.now())
+  const reached100AtRef = useRef(0)
+  // executorch fires sub-percent updates constantly; only log on a whole-% change
+  // so the logs stay readable and the download *rate* is visible.
+  const lastLoggedPctRef = useRef(-1)
+
+  // Context attached to every failure report (captured at opt-in time).
+  const telemetryCtxRef = useRef<ModelTelemetryContext>({
+    modelName: MODEL.modelName,
+    totalRAMBytes: totalRAM,
+  })
+
+  /** Current pipeline phase, derived from live refs. */
+  const currentPhase = (): ModelPhase => {
+    if (readyRef.current) return 'ready'
+    if (!optedInRef.current) return 'idle'
+    if (progressRef.current >= 1) return 'loading'
+    return 'downloading'
+  }
+
+  /** Reset all per-attempt tracking before a fresh download starts. */
+  const resetDownloadTracking = () => {
+    resetModelFailureReporting()
+    setModelFailure(null)
+    lastProgressValueRef.current = 0
+    lastProgressAtRef.current = Date.now()
+    reached100AtRef.current = 0
+    lastLoggedPctRef.current = -1
+  }
 
   useEffect(() => {
     console.log('[Model] device_ram:', Math.round((totalRAM / GB) * 10) / 10, 'GB -> model:', MODEL.modelName)
@@ -103,6 +163,8 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (Platform.OS === 'web') return
     if (llm.isReady) {
+      setModelFailure(null)
+      modelBreadcrumb('model ready', { modelName: MODEL.modelName })
       console.log('[Model] ready -> configuring system prompt')
       console.log('[Model] loaded file:', MODEL.modelSource)
       llm.configure({
@@ -114,34 +176,130 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   }, [llm.isReady])
 
   useEffect(() => {
-    if (llm.downloadProgress > 0) {
-      console.log('[Model] download_progress:', Math.round(llm.downloadProgress * 100) + '%')
+    const progress = llm.downloadProgress
+    if (progress > 0) {
+      // Only a real advance resets the stall clock — a repeated value is a freeze.
+      if (progress > lastProgressValueRef.current) {
+        lastProgressAtRef.current = Date.now()
+      }
+      if (progress >= 1 && reached100AtRef.current === 0) {
+        reached100AtRef.current = Date.now()
+        modelBreadcrumb('download complete, loading into RAM')
+      }
+      lastProgressValueRef.current = progress
+      const pct = Math.round(progress * 100)
+      if (pct !== lastLoggedPctRef.current) {
+        lastLoggedPctRef.current = pct
+        console.log('[Model] download_progress:', pct + '%')
+      }
     }
   }, [llm.downloadProgress])
 
+  // Classify thrown errors into a named failure and report loudly.
   useEffect(() => {
-    if (llm.error) {
-      console.error('[Model] error:', llm.error)
+    if (!llm.error) return
+    const phase = currentPhase()
+    const progress = progressRef.current
+    const type = classifyModelError(llm.error.message, phase, progress)
+    const failure: ModelFailure = {
+      type,
+      message: llm.error.message ?? 'unknown error',
+      phase,
+      progress,
     }
+    reportModelFailure(failure, telemetryCtxRef.current)
+    setModelFailure(failure)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [llm.error])
 
+  // Watchdog for the two failures executorch never throws: a frozen download
+  // and a download that completes but never becomes ready. Runs only while a
+  // download is in flight and no failure has been recorded yet.
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    if (!modelOptedIn || llm.isReady || modelFailure) return
+
+    const id = setInterval(() => {
+      const now = Date.now()
+      const progress = progressRef.current
+
+      if (progress >= 1) {
+        const waited = now - reached100AtRef.current
+        if (reached100AtRef.current > 0 && waited > LOAD_TIMEOUT_MS) {
+          const failure: ModelFailure = {
+            type: 'load-timeout',
+            message: `bytes at 100% but isReady never flipped after ${Math.round(waited / 1000)}s`,
+            phase: 'loading',
+            progress,
+          }
+          reportModelFailure(failure, telemetryCtxRef.current)
+          setModelFailure(failure)
+        }
+      } else if (progress > 0) {
+        const idle = now - lastProgressAtRef.current
+        if (idle > STALL_MS) {
+          const failure: ModelFailure = {
+            type: 'download-stalled',
+            message: `no progress for ${Math.round(idle / 1000)}s (frozen at ${Math.round(progress * 100)}%)`,
+            phase: 'downloading',
+            progress,
+          }
+          reportModelFailure(failure, telemetryCtxRef.current)
+          setModelFailure(failure)
+        }
+      }
+    }, WATCHDOG_INTERVAL_MS)
+
+    return () => clearInterval(id)
+  }, [modelOptedIn, llm.isReady, modelFailure])
+
   const optIn = async () => {
+    resetDownloadTracking()
+
+    let freeBytes: number | undefined
     try {
-      const freeBytes = await FileSystem.getFreeDiskStorageAsync()
+      freeBytes = await FileSystem.getFreeDiskStorageAsync()
       if (freeBytes < MODEL.minFreeBytes) {
         const freeGB = (freeBytes / GB).toFixed(2)
         const requiredGB = (MODEL.minFreeBytes / GB).toFixed(1)
-        console.log(`[Model] opt_in blocked: ${freeGB} GB free, need ${requiredGB} GB`)
         Alert.alert(
           'Espacio insuficiente',
           `Para descargar el modelo IA necesitas al menos ${requiredGB} GB libres. Tienes ${freeGB} GB disponibles. Libera espacio en tu dispositivo e intenta de nuevo.`,
           [{ text: 'OK' }]
         )
+        const failure: ModelFailure = {
+          type: 'precheck-disk',
+          message: `${freeGB} GB free, need ${requiredGB} GB`,
+          phase: 'precheck',
+          progress: 0,
+        }
+        reportModelFailure(failure, { ...telemetryCtxRef.current, freeBytes })
         return
       }
     } catch (e) {
-      console.warn('[Model] could not check free disk space, proceeding anyway:', e)
+      modelBreadcrumb('disk-space check failed, proceeding anyway', { error: String(e) })
     }
+
+    // Observe (don't block) the network type — a 2.5 GB pull over cellular is a
+    // top cause of failures. Captured into telemetry context for every report.
+    let networkType: string | undefined
+    try {
+      const net = await Network.getNetworkStateAsync()
+      networkType = net.type
+      if (net.type === Network.NetworkStateType.CELLULAR) {
+        modelBreadcrumb('precheck: starting download over cellular', { networkType })
+      }
+    } catch {
+      /* network type is best-effort context only */
+    }
+
+    telemetryCtxRef.current = {
+      modelName: MODEL.modelName,
+      totalRAMBytes: totalRAM,
+      networkType,
+      freeBytes,
+    }
+    modelBreadcrumb('opt-in: starting download', { modelName: MODEL.modelName, networkType, freeBytes })
 
     await AsyncStorage.setItem(MODEL_OPT_IN_KEY, 'true')
     setModelOptedIn(true)
@@ -149,7 +307,8 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   }
 
   const retryDownload = async () => {
-    console.log('[Model] retrying download — cleaning partial files first')
+    modelBreadcrumb('retry: cleaning partial files and restarting download')
+    resetDownloadTracking()
     setModelOptedIn(false)
     await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -202,9 +361,10 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     downloadProgress: llm.downloadProgress,
     modelReady: llm.isReady,
     modelError: llm.error,
+    modelFailure,
     modelMode,
     setModelMode,
-  }), [llm, modelOptedIn, modelMode])
+  }), [llm, modelOptedIn, modelMode, modelFailure])
 
   return (
     <ModelContext.Provider value={value}>

@@ -22,6 +22,7 @@ interface ModelContextValue {
   downloadProgress: number
   modelReady: boolean
   modelError: WebModelError | null
+  modelFailure: null
   modelMode: 'online' | 'offline' | null
   setModelMode: (mode: 'online' | 'offline') => void
 }
@@ -49,6 +50,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     downloadProgress: 0,
     modelReady: false,
     modelError: null,
+    modelFailure: null,
     modelMode,
     setModelMode,
   }), [modelMode])

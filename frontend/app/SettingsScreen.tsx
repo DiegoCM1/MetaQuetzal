@@ -6,12 +6,13 @@ import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { track } from "../utils/analytics";
 import { useModel } from "./ai/_context/ModelContext";
+import { MODEL_FAILURE_LABEL } from "./ai/_services/modelTelemetry";
 import { useAuth } from "../features/auth/AuthContext";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
 export default function SettingsScreen() {
   const router = useRouter();
-  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel();
+  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelFailure } = useModel();
   const { signOut, deleteAccount } = useAuth();
 
   const handleDeleteAccount = () => {
@@ -117,7 +118,7 @@ export default function SettingsScreen() {
           }}
         /> */}
 
-        {modelOptedIn && !modelReady && !modelError && (
+        {modelOptedIn && !modelReady && !modelFailure && (
           <OptionCard
             icon="cloud-download-outline"
             title="Descargando modelo IA..."
@@ -129,10 +130,11 @@ export default function SettingsScreen() {
           />
         )}
 
-        {modelOptedIn && modelError && (
+        {modelOptedIn && modelFailure && (
           <OptionCard
             icon="alert-circle-outline"
-            title="Error al descargar IA offline — reintentar"
+            title={`${MODEL_FAILURE_LABEL[modelFailure.type]} — reintentar`}
+            subtitle={modelFailure.message}
             onPress={retryDownload}
             danger
           />
