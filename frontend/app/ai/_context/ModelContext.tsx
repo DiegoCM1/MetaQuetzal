@@ -38,36 +38,29 @@ const totalRAM = Device.totalMemory ?? 0
 
 const R2 = 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev'
 
-// TEMPORARY (download-hardening): force the 1B model on EVERY device, regardless
-// of RAM. The 1B (~1 GB) downloads and loads far faster than the 2.55 GB 3B, so it
-// lets us reproduce and catch download failures in minutes, and removes the RAM/OOM
-// risk of a 2.55 GB resident model on borderline (6–7 GB) devices while we make the
-// download path reliable. Once the download is proven solid, RESTORE the RAM-based
-// selection below (3B for >= 6 GB devices, 1B otherwise).
-//
-// PREVIOUS — RESTORE THIS LATER:
-// export const MODEL = totalRAM >= 6 * GB
-//   ? {
-//       modelName: 'llama-3.2-3b-spinquant' as const,
-//       modelSource: `${R2}/llama32_3b_instruct_spinquant.pte`,
-//       tokenizerSource: `${R2}/tokenizer.json`,
-//       tokenizerConfigSource: `${R2}/tokenizer_config.json`,
-//       minFreeBytes: 2.5 * GB,
-//     }
-//   : {
-//       modelName: 'llama-3.2-1b-spinquant' as const,
-//       modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
-//       tokenizerSource: `${R2}/tokenizer.json`,
-//       tokenizerConfigSource: `${R2}/tokenizer_config.json`,
-//       minFreeBytes: 1 * GB,
-//     }
-export const MODEL = {
-  modelName: 'llama-3.2-1b-spinquant' as const,
-  modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
-  tokenizerSource: `${R2}/tokenizer.json`,
-  tokenizerConfigSource: `${R2}/tokenizer_config.json`,
-  minFreeBytes: 1 * GB,
-}
+// The 3B (2.55 GB) is only safe on genuinely high-end devices. The old 6 GB gate
+// was too low: a 7.3 GB device OOM'd on it (Java-heap, during download/retry churn),
+// and even a clean load of a 2.55 GB resident model is risky on mid-RAM phones.
+// So we reserve the 3B for flagship-class RAM (>= 12 GB) — well clear of the 7.3 GB
+// failure point — and give every other device the 1B (~1 GB), which downloads and
+// loads reliably across the board. Tune this single threshold to re-balance.
+const HIGH_END_RAM_FOR_3B = 12 * GB
+
+export const MODEL = totalRAM >= HIGH_END_RAM_FOR_3B
+  ? {
+      modelName: 'llama-3.2-3b-spinquant' as const,
+      modelSource: `${R2}/llama32_3b_instruct_spinquant.pte`,
+      tokenizerSource: `${R2}/tokenizer.json`,
+      tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+      minFreeBytes: 2.5 * GB,
+    }
+  : {
+      modelName: 'llama-3.2-1b-spinquant' as const,
+      modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
+      tokenizerSource: `${R2}/tokenizer.json`,
+      tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+      minFreeBytes: 1 * GB,
+    }
 
 type ModelMode = 'online' | 'offline' | null
 
@@ -211,8 +204,11 @@ export function ModelProvider({ children }: { children: ReactNode }) {
 
   /** Forcefully restart the download — only called from a MANUAL retry, by which
    *  point the old task is genuinely dead (a 90s stall or a load failure), so
-   *  cancelFetching won't collide. `deletePartial` wipes a corrupt file so the
-   *  re-fetch starts clean; otherwise the partial is kept and the fetch resumes. */
+   *  cancelFetching won't collide. NOTE: this always RESTARTS FROM 0% — the
+   *  library only resumes a partial via explicit pause/resume, and a fresh fetch
+   *  ignores the cached partial. `deletePartial` additionally wipes the completed
+   *  (but corrupt) final file so the re-fetch re-downloads instead of reloading it.
+   *  True resume-from-partial is the separate imperative-control work. */
   const restartDownload = async ({ deletePartial }: { deletePartial: boolean }) => {
     setModelOptedIn(false)
 
@@ -427,9 +423,10 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   }
 
   const retryDownload = async () => {
-    // A corrupt file must be wiped; anything else resumes from the partial.
+    // A corrupt final file must be wiped so we re-download; every retry restarts
+    // from 0% either way (the library can't resume a partial via a fresh fetch).
     const needsClean = modelFailure?.type === 'load-corrupt'
-    modelBreadcrumb(needsClean ? 'manual retry: clean restart' : 'manual retry: resume from partial')
+    modelBreadcrumb(needsClean ? 'manual retry: wipe corrupt file + restart' : 'manual retry: restarting download')
     setReconnecting(false)
     resetModelFailureReporting()
     await restartDownload({ deletePartial: needsClean })
