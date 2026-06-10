@@ -16,18 +16,20 @@ import {
   type ModelTelemetryContext,
 } from '../_services/modelTelemetry'
 
-// Watchdog thresholds. A stall (frozen bytes) and a slow load-into-RAM are the
-// two failures executorch never reports as errors — these turn them loud.
-const STALL_MS = 30_000 // no download progress for 30s while < 100% => stalled
+// Watchdog thresholds. A genuinely dead download (frozen bytes) and a slow
+// load-into-RAM are the two failures executorch never reports as errors.
+// STALL_MS is deliberately long: a brief blip the stream survives recovers well
+// inside it, so only a TRULY dead download (no bytes for 90s) trips it.
+const STALL_MS = 90_000 // no download progress for 90s while < 100% => dead
 const LOAD_TIMEOUT_MS = 120_000 // bytes done but not ready after 2 min => load-timeout
 const WATCHDOG_INTERVAL_MS = 5_000
 
-// Transient download faults resume from the partial file on disk, so we absorb
-// them with exponential-backoff auto-retry instead of surfacing a failure. Each
-// backoff stays under STALL_MS so the watchdog can't double-fire mid-retry.
-const TRANSIENT_FAILURES: ModelFailureType[] = ['download-network', 'download-stalled']
-const MAX_AUTO_RETRIES = 4 // delays: 2s, 4s, 8s, 16s — all < STALL_MS
-const RETRY_BASE_MS = 2_000
+// A `download-network` error is ambiguous: the stream may have survived the blip
+// (progress keeps flowing) or truly died. We never restart on it — that collides
+// with a still-live download ("Already downloading this file"). We show a soft
+// "reconnecting" hint and trust PROGRESS: if bytes resume it was a blip; if not,
+// the long-stall watchdog surfaces it as a real failure.
+const TRANSIENT_FAILURES: ModelFailureType[] = ['download-network']
 
 export const MODEL_OPT_IN_KEY = '@blueye_model_opted_in'
 
@@ -36,23 +38,59 @@ const totalRAM = Device.totalMemory ?? 0
 
 const R2 = 'https://pub-c8297f0a04ba41a89d571ea9b4cd93d3.r2.dev'
 
-export const MODEL = totalRAM >= 6 * GB
-  ? {
-      modelName: 'llama-3.2-3b-spinquant' as const,
-      modelSource: `${R2}/llama32_3b_instruct_spinquant.pte`,
-      tokenizerSource: `${R2}/tokenizer.json`,
-      tokenizerConfigSource: `${R2}/tokenizer_config.json`,
-      minFreeBytes: 2.5 * GB,
-    }
-  : {
-      modelName: 'llama-3.2-1b-spinquant' as const,
-      modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
-      tokenizerSource: `${R2}/tokenizer.json`,
-      tokenizerConfigSource: `${R2}/tokenizer_config.json`,
-      minFreeBytes: 1 * GB,
-    }
+// TEMPORARY (download-hardening): force the 1B model on EVERY device, regardless
+// of RAM. The 1B (~1 GB) downloads and loads far faster than the 2.55 GB 3B, so it
+// lets us reproduce and catch download failures in minutes, and removes the RAM/OOM
+// risk of a 2.55 GB resident model on borderline (6–7 GB) devices while we make the
+// download path reliable. Once the download is proven solid, RESTORE the RAM-based
+// selection below (3B for >= 6 GB devices, 1B otherwise).
+//
+// PREVIOUS — RESTORE THIS LATER:
+// export const MODEL = totalRAM >= 6 * GB
+//   ? {
+//       modelName: 'llama-3.2-3b-spinquant' as const,
+//       modelSource: `${R2}/llama32_3b_instruct_spinquant.pte`,
+//       tokenizerSource: `${R2}/tokenizer.json`,
+//       tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+//       minFreeBytes: 2.5 * GB,
+//     }
+//   : {
+//       modelName: 'llama-3.2-1b-spinquant' as const,
+//       modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
+//       tokenizerSource: `${R2}/tokenizer.json`,
+//       tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+//       minFreeBytes: 1 * GB,
+//     }
+export const MODEL = {
+  modelName: 'llama-3.2-1b-spinquant' as const,
+  modelSource: `${R2}/llama32_1b_instruct_spinquant.pte`,
+  tokenizerSource: `${R2}/tokenizer.json`,
+  tokenizerConfigSource: `${R2}/tokenizer_config.json`,
+  minFreeBytes: 1 * GB,
+}
 
 type ModelMode = 'online' | 'offline' | null
+
+/**
+ * The single lifecycle status the whole UI renders from. Derived once from the
+ * raw executorch signals + our failure/reconnect flags, so every screen reads
+ * one source of truth instead of re-deriving the phase from scattered booleans.
+ *   idle         → not opted in
+ *   checking     → opted in, no bytes yet (precheck / connecting)
+ *   downloading  → bytes flowing (0 < progress < 1)
+ *   reconnecting → a network blip mid-download; bytes paused, stream may resume
+ *   loading      → bytes done (progress ≥ 1), mapping the model into RAM
+ *   ready        → model loaded and usable
+ *   failed       → a real, surfaced failure (see modelFailure for the message)
+ */
+export type ModelStatus =
+  | 'idle'
+  | 'checking'
+  | 'downloading'
+  | 'reconnecting'
+  | 'loading'
+  | 'ready'
+  | 'failed'
 
 type BasicModelError = {
   message?: string
@@ -76,8 +114,10 @@ interface ModelContextValue {
   modelError: BasicModelError
   /** Named, classified failure (incl. silent stalls). Drives the UI + telemetry. */
   modelFailure: ModelFailure | null
-  /** >0 while auto-retrying a transient download fault (drives a soft UI state). */
-  retryAttempt: number
+  /** True during a transient network blip — a soft "reconnecting" UI hint. */
+  reconnecting: boolean
+  /** Single derived lifecycle status — the UI renders one card per value. */
+  modelStatus: ModelStatus
   modelMode: ModelMode
   setModelMode: (mode: 'online' | 'offline') => void
 }
@@ -131,14 +171,12 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   // so the logs stay readable and the download *rate* is visible.
   const lastLoggedPctRef = useRef(-1)
 
-  // Auto-retry bookkeeping. retryAttempt drives the UI; the ref mirrors it so the
-  // progress effect can read it; retryCount is the budget; the timer holds the
-  // pending resume so we can cancel it on success/opt-out/unmount.
-  const [retryAttempt, setRetryAttempt] = useState(0)
-  const retryAttemptRef = useRef(0)
-  retryAttemptRef.current = retryAttempt
-  const retryCountRef = useRef(0)
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The native fetcher self-heals network blips, so we don't restart on them —
+  // we just flag "reconnecting" for a soft UI hint and let the download continue.
+  // The progress effect clears it when bytes resume. (Ref mirrors it for effects.)
+  const [reconnecting, setReconnecting] = useState(false)
+  const reconnectingRef = useRef(false)
+  reconnectingRef.current = reconnecting
 
   // Context attached to every failure report (captured at opt-in time).
   const telemetryCtxRef = useRef<ModelTelemetryContext>({
@@ -154,13 +192,6 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     return 'downloading'
   }
 
-  const clearRetryTimer = () => {
-    if (retryTimerRef.current) {
-      clearTimeout(retryTimerRef.current)
-      retryTimerRef.current = null
-    }
-  }
-
   /** Reset progress clocks. The partial file on disk is left untouched so the
    *  next fetch can resume from it. */
   const resetProgressTracking = () => {
@@ -170,73 +201,61 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     lastLoggedPctRef.current = -1
   }
 
-  /** Full reset before a brand-new download (fresh opt-in): clears progress,
-   *  the failure-report de-dupe, and the auto-retry budget. */
+  /** Full reset before a brand-new download (fresh opt-in or manual retry). */
   const resetDownloadTracking = () => {
-    clearRetryTimer()
     resetModelFailureReporting()
     setModelFailure(null)
-    retryCountRef.current = 0
-    setRetryAttempt(0)
+    setReconnecting(false)
     resetProgressTracking()
   }
 
-  /** Re-trigger the executorch download by toggling preventLoad. The partial
-   *  file is KEPT (so the fetch resumes) unless `deletePartial` — a corrupt
-   *  file must be wiped, a dropped connection must not. */
+  /** Forcefully restart the download — only called from a MANUAL retry, by which
+   *  point the old task is genuinely dead (a 90s stall or a load failure), so
+   *  cancelFetching won't collide. `deletePartial` wipes a corrupt file so the
+   *  re-fetch starts clean; otherwise the partial is kept and the fetch resumes. */
   const restartDownload = async ({ deletePartial }: { deletePartial: boolean }) => {
     setModelOptedIn(false)
-    await new Promise(resolve => setTimeout(resolve, 100))
 
-    if (deletePartial && Platform.OS !== 'web') {
+    if (Platform.OS !== 'web') {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { ExpoResourceFetcher } = require('react-native-executorch-expo-resource-fetcher')
+      const sources = [MODEL.modelSource, MODEL.tokenizerSource, MODEL.tokenizerConfigSource]
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { ExpoResourceFetcher } = require('react-native-executorch-expo-resource-fetcher')
-        await ExpoResourceFetcher.deleteResources(
-          MODEL.modelSource,
-          MODEL.tokenizerSource,
-          MODEL.tokenizerConfigSource,
-        )
-        modelBreadcrumb('cleared partial files for clean restart')
+        await ExpoResourceFetcher.cancelFetching(...sources)
+        if (deletePartial) {
+          await ExpoResourceFetcher.deleteResources(...sources)
+          modelBreadcrumb('cancelled + cleared partial files for clean restart')
+        } else {
+          modelBreadcrumb('cancelled in-flight download before restart')
+        }
       } catch (e) {
-        modelBreadcrumb('deleteResources failed (file may not exist)', { error: String(e) })
+        modelBreadcrumb('cancel/delete failed (file may not exist)', { error: String(e) })
       }
     }
 
+    // Let the native task fully settle before re-triggering.
+    await new Promise(resolve => setTimeout(resolve, 400))
     resetProgressTracking()
     setModelFailure(null)
     setModelOptedIn(true)
   }
 
-  /** Route a detected fault. Transient faults (network drop, stall) resume from
-   *  the partial file, so we auto-retry them with backoff and never show an
-   *  error. Anything else — or a transient fault that outlived the retry budget
-   *  — is a real failure: report it to Sentry and surface it to the user. */
+  /** Route a detected fault. A `download-network` blip is ambiguous — the stream
+   *  often survives it — so we never restart on it (that collides with a live
+   *  download). We show a soft "reconnecting" hint and let PROGRESS be the judge:
+   *  if bytes resume it was a blip; if not, the long-stall watchdog escalates it.
+   *  Everything else (long stall, corrupt, oom) is a real failure: report + surface. */
   const handleFault = (failure: ModelFailure) => {
-    const transient = TRANSIENT_FAILURES.includes(failure.type)
-
-    if (transient && retryCountRef.current < MAX_AUTO_RETRIES) {
-      retryCountRef.current += 1
-      const attempt = retryCountRef.current
-      const delay = Math.min(RETRY_BASE_MS * 2 ** (attempt - 1), STALL_MS - 5_000)
-      modelBreadcrumb('download fault — scheduling auto-retry (resume)', {
+    if (TRANSIENT_FAILURES.includes(failure.type)) {
+      modelBreadcrumb('network blip — letting the download ride (trusting progress)', {
         type: failure.type,
-        attempt,
-        delayMs: delay,
         progressPct: Math.round(failure.progress * 100),
       })
-      setModelFailure(null)
-      setRetryAttempt(attempt)
-      clearRetryTimer()
-      retryTimerRef.current = setTimeout(() => {
-        retryTimerRef.current = null
-        restartDownload({ deletePartial: false })
-      }, delay)
+      setReconnecting(true)
       return
     }
 
-    // Non-transient, or out of auto-retries: a failure that survived recovery.
-    setRetryAttempt(0)
+    setReconnecting(false)
     reportModelFailure(failure, telemetryCtxRef.current)
     setModelFailure(failure)
   }
@@ -259,9 +278,7 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (Platform.OS === 'web') return
     if (llm.isReady) {
-      clearRetryTimer()
-      retryCountRef.current = 0
-      setRetryAttempt(0)
+      setReconnecting(false)
       setModelFailure(null)
       modelBreadcrumb('model ready', { modelName: MODEL.modelName })
       console.log('[Model] ready -> configuring system prompt')
@@ -280,10 +297,10 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       // Only a real advance resets the stall clock — a repeated value is a freeze.
       if (progress > lastProgressValueRef.current) {
         lastProgressAtRef.current = Date.now()
-        // Bytes moving again after a scheduled retry = the fault healed.
-        if (retryAttemptRef.current > 0) {
-          modelBreadcrumb('download resumed after fault', { progressPct: Math.round(progress * 100) })
-          setRetryAttempt(0)
+        // Bytes moving again after a blip = the stream survived; clear the hint.
+        if (reconnectingRef.current) {
+          modelBreadcrumb('download resumed after network blip', { progressPct: Math.round(progress * 100) })
+          setReconnecting(false)
         }
       }
       if (progress >= 1 && reached100AtRef.current === 0) {
@@ -413,16 +430,12 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     // A corrupt file must be wiped; anything else resumes from the partial.
     const needsClean = modelFailure?.type === 'load-corrupt'
     modelBreadcrumb(needsClean ? 'manual retry: clean restart' : 'manual retry: resume from partial')
-    // A user-initiated retry earns a fresh auto-retry budget.
-    clearRetryTimer()
-    retryCountRef.current = 0
-    setRetryAttempt(0)
+    setReconnecting(false)
     resetModelFailureReporting()
     await restartDownload({ deletePartial: needsClean })
   }
 
   const optOut = async () => {
-    clearRetryTimer()
     if (Platform.OS !== 'web') {
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -443,8 +456,22 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     console.log('[Model] opt_in -> false')
   }
 
-  // Cancel any pending resume if the provider unmounts.
-  useEffect(() => clearRetryTimer, [])
+  // Derive the one lifecycle status from the raw signals. Order = priority:
+  // terminal states (ready/failed) win, then the transient blip overlay, then
+  // the byte-driven phases, falling back to "checking" once opted in.
+  const modelStatus: ModelStatus = !modelOptedIn
+    ? 'idle'
+    : llm.isReady
+      ? 'ready'
+      : modelFailure
+        ? 'failed'
+        : reconnecting
+          ? 'reconnecting'
+          : llm.downloadProgress >= 1
+            ? 'loading'
+            : llm.downloadProgress > 0
+              ? 'downloading'
+              : 'checking'
 
   const value = useMemo<ModelContextValue>(() => ({
     llm,
@@ -456,10 +483,11 @@ export function ModelProvider({ children }: { children: ReactNode }) {
     modelReady: llm.isReady,
     modelError: llm.error,
     modelFailure,
-    retryAttempt,
+    reconnecting,
+    modelStatus,
     modelMode,
     setModelMode,
-  }), [llm, modelOptedIn, modelMode, modelFailure, retryAttempt])
+  }), [llm, modelOptedIn, modelMode, modelFailure, reconnecting, modelStatus])
 
   return (
     <ModelContext.Provider value={value}>
