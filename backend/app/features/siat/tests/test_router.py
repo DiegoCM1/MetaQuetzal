@@ -614,6 +614,7 @@ def test_inject_cyclone_success():
     assert body["cyclones_found"] == 1
 
 
+@pytest.mark.skip(reason="TEMP VIDEO QA ONLY: whitelist removed on this branch — DO NOT MERGE TO DEV")
 def test_inject_cyclone_non_admin_403():
     """Usuario no admin → 403."""
     with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
@@ -712,6 +713,7 @@ def test_inject_smn_alert_success():
     assert body["notifications_sent"] == 1
 
 
+@pytest.mark.skip(reason="TEMP VIDEO QA ONLY: whitelist removed on this branch — DO NOT MERGE TO DEV")
 def test_inject_smn_alert_non_admin_403():
     """No admin → 403."""
     with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):

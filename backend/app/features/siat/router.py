@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 from app.core.config import settings
 from app.core.database import get_db
 from app.features.siat.schemas import (
@@ -43,14 +47,12 @@ async def siat_inject_cyclone(
     Insert a fake cyclone and immediately run a full SIAT cycle end-to-end.
     Dev/staging only — requires Firebase auth + admin email allowlist.
     """
-    admin_emails = [
-        e.strip().lower()
-        for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
-        if e.strip()
-    ]
-    user_email = (current_user.get("email") or "").lower()
-    if not admin_emails or user_email not in admin_emails:
-        raise HTTPException(status_code=403, detail="Not authorized.")
+    # ============================================================
+    # TEMP VIDEO QA ONLY — DO NOT MERGE TO DEV — DO NOT DEPLOY TO PRODUCTION
+    # Firebase auth is still required via get_current_user above.
+    # Whitelist (NOTIFICATION_TEST_ADMIN_EMAILS) intentionally skipped for video recording.
+    # ============================================================
+    logger.warning("TEMP VIDEO QA ONLY: /siat/inject-cyclone accessed by uid=%s", current_user.get("uid"))
 
     db_user = await get_user_by_firebase_uid(db, current_user.get("uid"))
     if db_user is None:
@@ -91,14 +93,13 @@ async def siat_inject_smn_alert(
     Insert a national test alert and immediately process it via the SMN geocercado path.
     Dev/staging only — requires Firebase auth + admin email allowlist.
     """
-    admin_emails = [
-        e.strip().lower()
-        for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
-        if e.strip()
-    ]
-    user_email = (current_user.get("email") or "").lower()
-    if not admin_emails or user_email not in admin_emails:
-        raise HTTPException(status_code=403, detail="Not authorized.")
+    # ============================================================
+    # TEMP VIDEO QA ONLY — DO NOT MERGE TO DEV — DO NOT DEPLOY TO PRODUCTION
+    # Firebase auth is still required via get_current_user above.
+    # Whitelist (NOTIFICATION_TEST_ADMIN_EMAILS) intentionally skipped for video recording.
+    # Note: this endpoint sends to ALL eligible staging users (national alert, no distance filter).
+    # ============================================================
+    logger.warning("TEMP VIDEO QA ONLY: /siat/inject-smn-alert accessed by uid=%s", current_user.get("uid"))
     return await inject_smn_test_alert(db, body.level, body.title, body.short)
 
 

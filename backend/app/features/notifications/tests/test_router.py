@@ -82,6 +82,7 @@ def test_test_notif_no_auth():
     assert r.status_code == 422
 
 
+@pytest.mark.skip(reason="TEMP VIDEO QA ONLY: whitelist removed on this branch — DO NOT MERGE TO DEV")
 def test_test_notif_not_configured():
     """Empty allowlist → 403 even for a valid user."""
     with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ""):
@@ -95,6 +96,7 @@ def test_test_notif_not_configured():
     assert "not configured" in r.json()["detail"].lower()
 
 
+@pytest.mark.skip(reason="TEMP VIDEO QA ONLY: whitelist removed on this branch — DO NOT MERGE TO DEV")
 def test_test_notif_user_not_admin():
     """Authenticated user whose email is not in the allowlist → 403."""
     with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):

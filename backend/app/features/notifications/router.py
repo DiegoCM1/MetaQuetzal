@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 from app.features.notifications.service import push_token, send_all_notifications, send_targeted_notification
 from app.features.notifications.schemas import (
     NotificationSend, NotificationResponse, PushTokenCreate,
@@ -79,17 +83,12 @@ async def send_test_notification(
     current_user: dict = Depends(get_current_user),
 ):
     """Send a test notification to all devices. Requires Firebase auth + admin email allowlist."""
-    admin_emails = [
-        e.strip().lower()
-        for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
-        if e.strip()
-    ]
-    if not admin_emails:
-        raise HTTPException(status_code=403, detail="Test notifications not configured.")
-
-    user_email = (current_user.get("email") or "").lower()
-    if user_email not in admin_emails:
-        raise HTTPException(status_code=403, detail="Not authorized to send test notifications.")
+    # ============================================================
+    # TEMP VIDEO QA ONLY — DO NOT MERGE TO DEV — DO NOT DEPLOY TO PRODUCTION
+    # Firebase auth is still required via get_current_user above.
+    # Whitelist (NOTIFICATION_TEST_ADMIN_EMAILS) intentionally skipped for video recording.
+    # ============================================================
+    logger.warning("TEMP VIDEO QA ONLY: /notifications/test accessed by uid=%s", current_user.get("uid"))
 
     payload = _TEST_PAYLOADS[body.type]
     try:
