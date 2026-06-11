@@ -18,6 +18,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
+import { syncLocationToBackend } from "../../utils/locationSync";
 import { toast } from "sonner-native";
 import {
   canReportFromLocation,
@@ -199,6 +200,7 @@ export default function WeatherMapNativewind() {
         setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
         setCurrentCoords({ latitude: coords.latitude, longitude: coords.longitude });
         mapRef.current?.animateToRegion(userRegion, 1000);
+        syncLocationToBackend(coords.latitude, coords.longitude);
       } catch (error) {
         console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
       }

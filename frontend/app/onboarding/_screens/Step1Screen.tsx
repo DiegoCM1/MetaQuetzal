@@ -10,6 +10,7 @@ import { useOnboarding } from '../_context/OnboardingContext';
 import { validateStep1 } from '../_validation';
 import { MEXICO_STATES } from '../_types';
 import { track } from '../../../utils/analytics';
+import { syncLocationToBackend } from '../../../utils/locationSync';
 import { colors } from '../../../utils/theme';
 
 export const Step1Screen: React.FC = () => {
@@ -77,6 +78,7 @@ export const Step1Screen: React.FC = () => {
 
         updateMultipleFields(updates);
 
+        syncLocationToBackend(location.coords.latitude, location.coords.longitude);
         track('onboarding_location_used', {
           state: address.region,
           hasPostalCode: !!address.postalCode,
