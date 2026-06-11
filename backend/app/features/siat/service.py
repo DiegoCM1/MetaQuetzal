@@ -300,12 +300,11 @@ _SMN_RADIUS_KM = 500.0
 
 
 async def _get_pending_smn_alerts(db: AsyncSession) -> list:
+    # Includes national alerts (lat/lon NULL) — these are handled without radius filtering
     result = await db.execute(text("""
         SELECT id, title, short, level, lat, lon
         FROM alerts
-        WHERE lat IS NOT NULL
-          AND lon IS NOT NULL
-          AND notified_at IS NULL
+        WHERE notified_at IS NULL
           AND timestamp > NOW() - INTERVAL '35 minutes'
         ORDER BY timestamp DESC
     """))
@@ -322,11 +321,13 @@ async def _mark_alert_notified(db: AsyncSession, alert_id) -> None:
 async def _push_smn_for_alert(
     db: AsyncSession, alert: dict, users: list
 ) -> int:
+    is_national = alert["lat"] is None or alert["lon"] is None
     affected_user_ids = []
     for user in users:
-        dist = haversine_km(alert["lat"], alert["lon"], user["lat"], user["lon"])
-        if dist > _SMN_RADIUS_KM:
-            continue
+        if not is_national:
+            dist = haversine_km(alert["lat"], alert["lon"], user["lat"], user["lon"])
+            if dist > _SMN_RADIUS_KM:
+                continue
         prefs = await get_preferences(db, user["id"])
         if prefs["siat_enabled"] and alert["level"] >= prefs["min_siat_level"]:
             if is_within_quiet_hours(prefs) and alert["level"] < _QUIET_HOURS_OVERRIDE_LEVEL:
@@ -399,11 +400,62 @@ async def _notify_smn_alerts(db: AsyncSession, users: list) -> int:
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
-async def run_cycle(db: AsyncSession) -> dict:
+async def reset_user_siat_state(db: AsyncSession, user_id: int) -> None:
+    """Delete all SIAT state for a user so the next injection evaluates from scratch."""
+    await db.execute(
+        text("DELETE FROM user_alert_states WHERE user_id = :uid"),
+        {"uid": user_id},
+    )
+    await db.commit()
+
+
+async def inject_smn_test_alert(
+    db: AsyncSession, level: int, title: str, short: str
+) -> dict:
+    """Insert a national test alert and immediately process it via the SMN notify path."""
+    result = await db.execute(
+        text("""
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations)
+            VALUES (:level, 0, :title, :short, NULL, NULL, '[]', '[]')
+            RETURNING id
+        """),
+        {"level": level, "title": title, "short": short},
+    )
+    alert_id = str(result.mappings().first()["id"])
+    await db.commit()
+
+    users = await _get_users_with_location(db)
+    notifications_sent = await _notify_smn_alerts(db, users)
+    return {"alert_id": alert_id, "users_evaluated": len(users), "notifications_sent": notifications_sent}
+
+
+async def inject_and_run_cycle(db: AsyncSession, req) -> dict:
+    """Insert a fake cyclone into cyclone_events and immediately run a full SIAT cycle."""
+    fake_cyclone: dict = {
+        "source": "FAKE",
+        "name": req.name,
+        "status": "HU",
+        "lat": req.lat,
+        "lon": req.lon,
+        "wind_kmh": req.wind_kmh,
+        "pressure": None,
+        "movement_direction": req.movement_direction,
+        "movement_speed_kmh": req.movement_speed_kmh,
+        "advisory_time": datetime.now(timezone.utc),
+        "raw_payload": {},
+    }
+    cyclone_event_id = await _save_cyclone(db, fake_cyclone)
+    result = await run_cycle(db, extra_cyclones=[fake_cyclone])
+    return {**result, "cyclone_event_id": cyclone_event_id, "cyclone_name": req.name}
+
+
+async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) -> dict:
     logger.info("SIAT run-cycle started")
 
     users = await _get_users_with_location(db)
     cyclones = await fetch_active_cyclones()
+    if extra_cyclones:
+        cyclones = cyclones + extra_cyclones
 
     logger.info("SIAT run-cycle: %d cyclone(s), %d user(s) with location", len(cyclones), len(users))
 

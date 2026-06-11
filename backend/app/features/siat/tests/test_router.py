@@ -9,6 +9,13 @@ client = TestClient(app)
 
 TEST_API_KEY = "test-siat-api-key"
 API_KEY_HEADERS = {"X-Api-Key": TEST_API_KEY}
+AUTH_HEADERS = {"Authorization": "Bearer faketoken"}
+ADMIN_EMAIL = "admin@blueye.mx"
+NON_ADMIN_EMAIL = "user@blueye.mx"
+
+
+def _mock_auth_email(email: str):
+    return patch("app.core.auth.auth.verify_id_token", return_value={"uid": "test-uid", "email": email})
 
 
 @pytest.fixture(autouse=True)
@@ -571,6 +578,226 @@ async def test_smn_quiet_hours_suppresses_push():
 
     assert total == 0
     mock_mark.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/siat/inject-cyclone — router tests
+# ---------------------------------------------------------------------------
+
+_INJECT_RESULT = {
+    "cyclones_found": 1,
+    "users_evaluated": 1,
+    "notifications_sent": 1,
+    "assessments": [],
+    "cyclone_event_id": 42,
+    "cyclone_name": "FALSO-1",
+}
+
+_FAKE_CYCLONE_BODY = {"name": "FALSO-1", "lat": 21.0, "lon": -98.0}
+
+
+def test_inject_cyclone_success():
+    """Admin user con ubicación → 200 con cyclone_event_id y cyclone_name."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=_FAKE_DB_USER_WITH_LOC):
+                with patch(f"{_ROUTER}.inject_and_run_cycle", new_callable=AsyncMock, return_value=_INJECT_RESULT):
+                    r = client.post(
+                        "/api/v1/siat/inject-cyclone",
+                        json=_FAKE_CYCLONE_BODY,
+                        headers=AUTH_HEADERS,
+                    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["cyclone_event_id"] == 42
+    assert body["cyclone_name"] == "FALSO-1"
+    assert body["cyclones_found"] == 1
+
+
+def test_inject_cyclone_non_admin_403():
+    """Usuario no admin → 403."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(NON_ADMIN_EMAIL):
+            r = client.post(
+                "/api/v1/siat/inject-cyclone",
+                json=_FAKE_CYCLONE_BODY,
+                headers=AUTH_HEADERS,
+            )
+    assert r.status_code == 403
+
+
+def test_inject_cyclone_no_auth_422():
+    """Sin Authorization header → 422 (FastAPI header validation)."""
+    r = client.post("/api/v1/siat/inject-cyclone", json=_FAKE_CYCLONE_BODY)
+    assert r.status_code == 422
+
+
+def test_inject_cyclone_missing_lat_lon_422():
+    """Body sin lat/lon → 422 (Pydantic validation)."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            r = client.post(
+                "/api/v1/siat/inject-cyclone",
+                json={"name": "FALSO-1"},
+                headers=AUTH_HEADERS,
+            )
+    assert r.status_code == 422
+
+
+_FAKE_DB_USER_WITH_LOC = {"id": 1, "firebase_uid": "test-uid", "lat": 19.43, "lon": -99.13}
+_FAKE_DB_USER_NO_LOC   = {"id": 1, "firebase_uid": "test-uid", "lat": None, "lon": None}
+
+
+def test_inject_cyclone_user_no_location_422():
+    """Usuario sin lat/lon en DB → 422 con mensaje explícito."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=_FAKE_DB_USER_NO_LOC):
+                r = client.post(
+                    "/api/v1/siat/inject-cyclone",
+                    json=_FAKE_CYCLONE_BODY,
+                    headers=AUTH_HEADERS,
+                )
+    assert r.status_code == 422
+    assert "ubicación" in r.json()["detail"].lower()
+
+
+def test_inject_cyclone_with_location_calls_service():
+    """Usuario con ubicación → delega a inject_and_run_cycle."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=_FAKE_DB_USER_WITH_LOC):
+                with patch(f"{_ROUTER}.inject_and_run_cycle", new_callable=AsyncMock, return_value=_INJECT_RESULT) as mock_inject:
+                    r = client.post(
+                        "/api/v1/siat/inject-cyclone",
+                        json=_FAKE_CYCLONE_BODY,
+                        headers=AUTH_HEADERS,
+                    )
+    assert r.status_code == 200
+    mock_inject.assert_awaited_once()
+
+
+def test_reset_state_success():
+    """Usuario autenticado → 200 y mensaje de confirmación."""
+    with _mock_auth_email(ADMIN_EMAIL):
+        with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=_FAKE_DB_USER_WITH_LOC):
+            with patch(f"{_ROUTER}.reset_user_siat_state", new_callable=AsyncMock, return_value=None):
+                r = client.post("/api/v1/siat/reset-state", headers=AUTH_HEADERS)
+    assert r.status_code == 200
+    assert r.json()["user_id"] == 1
+
+
+def test_reset_state_no_profile_404():
+    """Usuario sin perfil en DB → 404."""
+    with _mock_auth_email(ADMIN_EMAIL):
+        with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=None):
+            r = client.post("/api/v1/siat/reset-state", headers=AUTH_HEADERS)
+    assert r.status_code == 404
+
+
+def test_inject_smn_alert_success():
+    """Admin → 200 con alert_id y notifications_sent."""
+    smn_result = {"alert_id": "uuid-test-123", "users_evaluated": 2, "notifications_sent": 1}
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(f"{_ROUTER}.inject_smn_test_alert", new_callable=AsyncMock, return_value=smn_result):
+                r = client.post(
+                    "/api/v1/siat/inject-smn-alert",
+                    json={"level": 3},
+                    headers=AUTH_HEADERS,
+                )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["alert_id"] == "uuid-test-123"
+    assert body["notifications_sent"] == 1
+
+
+def test_inject_smn_alert_non_admin_403():
+    """No admin → 403."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(NON_ADMIN_EMAIL):
+            r = client.post("/api/v1/siat/inject-smn-alert", json={"level": 3}, headers=AUTH_HEADERS)
+    assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# run_cycle() acepta extra_cyclones — service-level test
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_cycle_with_extra_cyclones():
+    """Extra cyclones pasados a run_cycle se evalúan aunque NHC no devuelva ninguno."""
+    from app.features.siat.service import run_cycle
+
+    fake_cyclone = {
+        "source": "FAKE",
+        "name": "FALSO-1",
+        "status": "HU",
+        "lat": 21.0,
+        "lon": -98.0,
+        "wind_kmh": 160.0,
+        "movement_speed_kmh": 20.0,
+    }
+    prefs = {"siat_enabled": True, "min_siat_level": 2, "map_events_enabled": True}
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    with patch(f"{_SVC}.fetch_active_cyclones", new_callable=AsyncMock, return_value=[]), \
+         patch(f"{_SVC}._get_users_with_location", new_callable=AsyncMock, return_value=[_FAKE_USER]), \
+         patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, return_value=99), \
+         patch(f"{_SVC}.evaluate_user", return_value=_ASSESSMENT_LEVEL_2), \
+         patch(f"{_SVC}._get_user_state", new_callable=AsyncMock, return_value={"current_level": 1}), \
+         patch(f"{_SVC}._save_assessment", new_callable=AsyncMock), \
+         patch(f"{_SVC}._upsert_user_state", new_callable=AsyncMock), \
+         patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=prefs), \
+         patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
+         patch(f"{_SVC}._push_per_user", new_callable=AsyncMock, return_value=1), \
+         patch(f"{_SVC}._mark_notified", new_callable=AsyncMock), \
+         patch(f"{_SVC}._notify_smn_alerts", new_callable=AsyncMock, return_value=0):
+        result = await run_cycle(db, extra_cyclones=[fake_cyclone])
+
+    assert result["cyclones_found"] == 1   # NHC=0, extra=1
+    assert len(result["assessments"]) == 1
+    assert result["notifications_sent"] == 1
+
+
+@pytest.mark.asyncio
+async def test_smn_national_alert_no_coords_notifies_all_eligible_users():
+    """Alerta nacional (lat/lon NULL) → sin filtro de distancia → todos los usuarios elegibles reciben push."""
+    from app.features.siat.service import _notify_smn_alerts
+
+    national_alert = {
+        "id": "alert-national-1",
+        "title": "SMN Aviso #300",
+        "short": "Lluvias intensas en todo el país",
+        "level": 3,
+        "lat": None,
+        "lon": None,
+    }
+    prefs = {"siat_enabled": True, "min_siat_level": 2, "map_events_enabled": True}
+    db = MagicMock()
+
+    with patch(f"{_SVC}._get_pending_smn_alerts", new_callable=AsyncMock, return_value=[national_alert]), \
+         patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=prefs), \
+         patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
+         patch(f"{_SVC}._mark_alert_notified", new_callable=AsyncMock) as mock_mark, \
+         patch(f"{_SVC}.messaging") as mock_messaging:
+
+        fake_response = MagicMock()
+        fake_response.success_count = 1
+        fake_response.failure_count = 0
+        fake_response.responses = [MagicMock(success=True)]
+        mock_messaging.send_each_for_multicast.return_value = fake_response
+        mock_messaging.MulticastMessage = MagicMock()
+        mock_messaging.Notification = MagicMock()
+        mock_messaging.AndroidConfig = MagicMock()
+        mock_messaging.APNSConfig = MagicMock()
+
+        # _FAKE_USER_FAR is > 500 km away — but national alert must still reach them
+        total = await _notify_smn_alerts(db, [_FAKE_USER_FAR])
+
+    assert total == 1
+    mock_mark.assert_called_once()
 
 
 @pytest.mark.asyncio

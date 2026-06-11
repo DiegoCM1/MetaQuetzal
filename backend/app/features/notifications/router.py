@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.features.notifications.service import push_token, send_all_notifications
+from app.features.notifications.service import push_token, send_all_notifications, send_targeted_notification
 from app.features.notifications.schemas import (
     NotificationSend, NotificationResponse, PushTokenCreate,
     NotificationTestType, NotificationTestRequest,
@@ -18,6 +18,11 @@ _TEST_PAYLOADS: dict[str, dict] = {
         "title": "Alerta SIAT-CT Verde [PRUEBA]",
         "body": "Ciclón de prueba | Distancia: ~200 km | ETA: ~36h",
         "data": {"siat_level": "2", "siat_color": "VERDE"},
+    },
+    "hurricane_l3": {
+        "title": "Alerta SIAT-CT Amarillo [PRUEBA]",
+        "body": "Ciclón de prueba | Distancia: ~120 km | ETA: ~18h",
+        "data": {"siat_level": "3", "siat_color": "AMARILLO"},
     },
     "hurricane_l4": {
         "title": "Alerta SIAT-CT Naranja [PRUEBA]",
@@ -88,6 +93,11 @@ async def send_test_notification(
 
     payload = _TEST_PAYLOADS[body.type]
     try:
+        if body.only_me:
+            db_user = await get_user_by_firebase_uid(db, current_user.get("uid"))
+            if db_user is None:
+                raise HTTPException(status_code=404, detail="User profile not found. Call POST /api/v1/users/me first.")
+            return await send_targeted_notification(db, db_user["id"], payload["title"], payload["body"], payload["data"])
         return await send_all_notifications(db, payload["title"], payload["body"], payload["data"])
     except HTTPException:
         raise

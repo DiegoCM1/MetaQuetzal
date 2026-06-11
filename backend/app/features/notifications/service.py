@@ -57,6 +57,39 @@ async def get_tokens_for_users(db: AsyncSession, user_ids: list[int]) -> dict[in
 
 
 
+async def send_targeted_notification(
+    db: AsyncSession, user_id: int, title: str, body: str, data: dict[str, str]
+):
+    """Send a push notification only to the tokens belonging to a specific user."""
+    from fastapi import HTTPException  # local import avoids circular on module load
+
+    token_map = await get_tokens_for_users(db, [user_id])
+    tokens = token_map.get(user_id, [])
+    if not tokens:
+        raise HTTPException(status_code=404, detail="No tokens registered for this user")
+
+    message = messaging.MulticastMessage(
+        notification=messaging.Notification(title=title, body=body),
+        data=data or {},
+        tokens=tokens,
+    )
+    try:
+        response = await _send_multicast_with_retry(message)
+    except Exception as exc:
+        logger.error("send_targeted_notification Firebase failed after retries: %s", exc, exc_info=True)
+        raise
+
+    invalid_tokens = [tokens[i] for i, r in enumerate(response.responses) if not r.success]
+    if invalid_tokens:
+        await db.execute(
+            text("DELETE FROM device_tokens WHERE token = ANY(:tokens)"),
+            {"tokens": invalid_tokens},
+        )
+        await db.commit()
+
+    return {"success_count": response.success_count, "failure_count": response.failure_count}
+
+
 async def send_all_notifications(db: AsyncSession, title:str, body:str, data:dict[str, str]):
     # Query to db to get all tokens
     result = await db.execute(text("SELECT token FROM device_tokens"))

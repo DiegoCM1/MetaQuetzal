@@ -15,6 +15,8 @@ from app.features.sos_contacts.router import router as sos_contacts_router
 from app.features.sos_invite.router import router as sos_invite_router
 from app.features.sos_trigger.router import router as sos_trigger_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
+from app.features.alerts.providers.smn import fetch_latest_bulletin
+from app.features.alerts.service import persist_smn_bulletin_if_new
 import app.core.firebase
 import asyncio
 import logging
@@ -158,6 +160,14 @@ async def _siat_background_loop():
     while True:
         try:
             async with AsyncSessionLocal() as db:
+                bulletin = await fetch_latest_bulletin()
+                if bulletin:
+                    inserted = await persist_smn_bulletin_if_new(db, bulletin)
+                    if inserted:
+                        logger.info(
+                            "SMN: new bulletin persisted — '%s'",
+                            (bulletin.get("headline") or "")[:60],
+                        )
                 result = await run_cycle(db)
                 logger.info(
                     "SIAT background cycle: cyclones=%d users=%d notif=%d",
