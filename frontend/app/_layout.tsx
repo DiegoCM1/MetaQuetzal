@@ -27,6 +27,7 @@ import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
 import * as Sentry from '@sentry/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -224,7 +225,19 @@ export default Sentry.wrap(function Layout() {
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
-      const data = initial?.notification?.request?.content?.data as NotificationData | undefined
+      if (!initial) return;
+
+      // Deduplicate: skip if this notification was already handled (prevents stale
+      // notifications from being re-processed on hot reload or subsequent app mounts)
+      const notifId = initial.notification.request.identifier;
+      const LAST_COLD_KEY = '@BluEye:last_cold_start_notif';
+      try {
+        const lastProcessed = await AsyncStorage.getItem(LAST_COLD_KEY);
+        if (lastProcessed === notifId) return;
+        await AsyncStorage.setItem(LAST_COLD_KEY, notifId);
+      } catch { /* AsyncStorage unavailable — proceed */ }
+
+      const data = initial.notification.request.content.data as NotificationData | undefined
       if (!data) return
 
       const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
