@@ -106,6 +106,87 @@ def test_alerts_active_smn_failure_does_not_break():
 # GET /api/v1/alerts/weather/mx
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# persist_smn_bulletin_if_new — service-level tests (no HTTP)
+# ---------------------------------------------------------------------------
+
+_SVC_ALERTS = "app.features.alerts.service"
+
+
+def _make_bulletin(aviso_num=42, headline="FRENTE FRÍO NÚMERO 15", summary="Lluvias moderadas."):
+    return {"aviso_num": aviso_num, "headline": headline, "summary": summary, "source": "SMN/CONAGUA"}
+
+
+import pytest
+from unittest.mock import MagicMock, AsyncMock
+
+
+@pytest.mark.asyncio
+async def test_persist_smn_new_bulletin_returns_true():
+    """Boletín nuevo → se inserta y retorna True."""
+    from app.features.alerts.service import persist_smn_bulletin_if_new
+
+    db = MagicMock()
+    db.commit = AsyncMock()
+    # Primera consulta (dedup) devuelve vacío; la segunda es el INSERT
+    db.execute = AsyncMock(side_effect=[
+        MagicMock(**{"mappings.return_value.first.return_value": None}),  # dedup miss
+        MagicMock(),  # INSERT
+    ])
+
+    result = await persist_smn_bulletin_if_new(db, _make_bulletin())
+
+    assert result is True
+    db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_persist_smn_existing_bulletin_returns_false():
+    """Boletín ya registrado → no inserta y retorna False."""
+    from app.features.alerts.service import persist_smn_bulletin_if_new
+
+    db = MagicMock()
+    db.commit = AsyncMock()
+    db.execute = AsyncMock(return_value=MagicMock(
+        **{"mappings.return_value.first.return_value": {"id": "existing-uuid"}}
+    ))
+
+    result = await persist_smn_bulletin_if_new(db, _make_bulletin())
+
+    assert result is False
+    db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_persist_smn_no_aviso_num_uses_headline_dedup():
+    """Sin aviso_num → title usa el headline como clave de dedup."""
+    from app.features.alerts.service import persist_smn_bulletin_if_new
+
+    bulletin = {"aviso_num": None, "headline": "CANAL DE BAJA PRESIÓN", "summary": "Nublados."}
+    db = MagicMock()
+    db.commit = AsyncMock()
+    db.execute = AsyncMock(side_effect=[
+        MagicMock(**{"mappings.return_value.first.return_value": None}),
+        MagicMock(),
+    ])
+
+    result = await persist_smn_bulletin_if_new(db, bulletin)
+    assert result is True
+    # Verify the INSERT was called (second execute call)
+    assert db.execute.await_count == 2
+
+
+def test_smn_headline_to_level_keywords():
+    """Keywords de severidad mapean al nivel correcto."""
+    from app.features.alerts.service import _smn_headline_to_level
+
+    assert _smn_headline_to_level("CONDICIONES EXTREMAS EN EL NORTE") == 5
+    assert _smn_headline_to_level("LLUVIA SEVERA PREVISTA") == 4
+    assert _smn_headline_to_level("TORMENTA TROPICAL ALBERTO") == 3
+    assert _smn_headline_to_level("FRENTE FRÍO NÚMERO 15") == 2  # default VERDE
+    assert _smn_headline_to_level("") == 2
+
+
 def test_weather_mx_partial_failure_returns_200():
     """If one OpenWeather point raises an exception, remaining points are returned (no 502)."""
     good_data = {

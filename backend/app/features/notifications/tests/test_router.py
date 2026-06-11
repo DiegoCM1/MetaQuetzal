@@ -138,6 +138,76 @@ def test_test_notif_invalid_type():
     assert r.status_code == 422
 
 
+def test_test_notif_only_me_success():
+    """only_me=True → llama send_targeted_notification, no send_all_notifications."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(
+                "app.features.notifications.router.get_user_by_firebase_uid",
+                new_callable=AsyncMock,
+                return_value=FAKE_DB_USER,
+            ):
+                with patch(
+                    "app.features.notifications.router.send_targeted_notification",
+                    new_callable=AsyncMock,
+                    return_value={"success_count": 1, "failure_count": 0},
+                ) as mock_targeted:
+                    with patch(
+                        "app.features.notifications.router.send_all_notifications",
+                        new_callable=AsyncMock,
+                    ) as mock_all:
+                        r = client.post(
+                            "/api/v1/notifications/test",
+                            json={"type": "generic", "only_me": True},
+                            headers=AUTH_HEADERS,
+                        )
+    assert r.status_code == 200
+    assert r.json()["success_count"] == 1
+    mock_targeted.assert_awaited_once()
+    mock_all.assert_not_awaited()
+
+
+def test_test_notif_only_me_user_not_found():
+    """only_me=True pero el perfil no existe en DB → 404."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(
+                "app.features.notifications.router.get_user_by_firebase_uid",
+                new_callable=AsyncMock,
+                return_value=None,
+            ):
+                r = client.post(
+                    "/api/v1/notifications/test",
+                    json={"type": "generic", "only_me": True},
+                    headers=AUTH_HEADERS,
+                )
+    assert r.status_code == 404
+
+
+def test_test_notif_broadcast_when_only_me_false():
+    """only_me=False (default) → llama send_all_notifications, no send_targeted_notification."""
+    with patch.object(settings, "NOTIFICATION_TEST_ADMIN_EMAILS", ADMIN_EMAIL):
+        with _mock_auth_email(ADMIN_EMAIL):
+            with patch(
+                "app.features.notifications.router.send_all_notifications",
+                new_callable=AsyncMock,
+                return_value={"success_count": 5, "failure_count": 0},
+            ) as mock_all:
+                with patch(
+                    "app.features.notifications.router.send_targeted_notification",
+                    new_callable=AsyncMock,
+                ) as mock_targeted:
+                    r = client.post(
+                        "/api/v1/notifications/test",
+                        json={"type": "hurricane_l2"},
+                        headers=AUTH_HEADERS,
+                    )
+    assert r.status_code == 200
+    assert r.json()["success_count"] == 5
+    mock_all.assert_awaited_once()
+    mock_targeted.assert_not_awaited()
+
+
 def test_send_all_firebase_failure_returns_503():
     """Si Firebase falla en send_all_notifications, el endpoint retorna 503 en lugar de 500."""
     with patch(

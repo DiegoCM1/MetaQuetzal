@@ -17,6 +17,7 @@ class PushTokenCreate(BaseModel):
 
 class NotificationTestType(str, Enum):
     hurricane_l2 = "hurricane_l2"
+    hurricane_l3 = "hurricane_l3"
     hurricane_l4 = "hurricane_l4"
     sos_test     = "sos_test"
     generic      = "generic"
@@ -24,4 +25,5 @@ class NotificationTestType(str, Enum):
 
 class NotificationTestRequest(BaseModel):
     type: NotificationTestType
+    only_me: bool = False  # True → push solo al dispositivo del usuario autenticado
 
