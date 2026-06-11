@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Switch, Al
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { toast } from 'sonner-native';
+import * as Location from 'expo-location';
 import { colors } from '../utils/theme';
 import { authFetch } from '../utils/api';
 import { API_BASE_URL } from '../utils/config';
@@ -62,6 +63,32 @@ export default function NotificationTestScreen() {
 
   const [resetLoading, setResetLoading] = useState(false);
   const [smnLoading, setSmnLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const saveLocation = async () => {
+    if (locationLoading) return;
+    setLocationLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        toast.error('Permiso denegado', { description: 'Activa la ubicación en Configuración → Permisos.' });
+        return;
+      }
+      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const res = await authFetch(`${API_BASE_URL}/api/v1/users/me/location`, {
+        method: 'PATCH',
+        body: JSON.stringify({ lat: coords.latitude, lon: coords.longitude }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success('Ubicación guardada', {
+        description: `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
+      });
+    } catch (e) {
+      toast.error('Error al guardar ubicación', { description: String(e) });
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   const confirmBroadcast = (): Promise<boolean> =>
     new Promise(resolve =>
@@ -228,6 +255,28 @@ export default function NotificationTestScreen() {
             )}
           </TouchableOpacity>
         ))}
+
+        {/* Guardar ubicación GPS — requerida para inject-cyclone */}
+        <Text className="text-base font-poppins-semibold text-white mt-4 mb-1">
+          Mi ubicación
+        </Text>
+        <Text className="text-xs font-poppins text-white/50 mb-4">
+          Requerida para que el motor SIAT evalúe tu distancia al ciclón.
+        </Text>
+        <TouchableOpacity
+          onPress={saveLocation}
+          disabled={locationLoading}
+          className="flex-row items-center mb-6 rounded-2xl px-5 py-4"
+          style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+        >
+          {locationLoading
+            ? <ActivityIndicator size="small" color="white" style={{ marginRight: 12 }} />
+            : <MaterialCommunityIcons name="crosshairs-gps" size={22} color="white" style={{ marginRight: 12 }} />}
+          <View className="flex-1">
+            <Text className="font-poppins-semibold text-sm text-white">Guardar mi ubicación actual</Text>
+            <Text className="font-poppins text-xs text-white/50">GPS → backend · necesario para inject-cyclone</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Sección: inyección de ciclón falso */}
         <Text className="text-base font-poppins-semibold text-white mt-4 mb-1">
