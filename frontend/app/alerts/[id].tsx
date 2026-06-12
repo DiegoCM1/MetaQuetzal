@@ -259,6 +259,7 @@ export default function AlertDetailsScreen() {
             style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
             activeOpacity={0.7}
             onPress={() => {
+              console.log('[QA_NAV] alert detail → mapa | alertId:', alert.id, '| level:', alert.level);
               track("details_map_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
               router.push("/(tabs)/MapScreen");
             }}
