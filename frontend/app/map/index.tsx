@@ -65,10 +65,14 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
   lat, lon, title, level,
 }: { lat: number; lon: number; title?: string; level?: number }) {
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  console.log('[QA_MAP] HurricaneMarker render | lat:', lat, '| lon:', lon, '| tracksViewChanges:', tracksViewChanges);
   return (
     <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges}>
       <View
-        onLayout={() => setTracksViewChanges(false)}
+        onLayout={() => {
+          console.log('[QA_MAP] HurricaneMarker onLayout → tracksViewChanges false');
+          setTracksViewChanges(false);
+        }}
         style={{ backgroundColor: LEVEL_COLORS[level ?? 3], borderRadius: 24, padding: 8, borderWidth: 2, borderColor: 'white' }}
       >
         <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
@@ -205,6 +209,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
 
   useEffect(() => {
     if (focusLat == null || focusLon == null) return;
+    console.log('[QA_MAP] focus useEffect fired | focusLat:', focusLat, '| focusLon:', focusLon);
     const focusRegion = {
       latitude: focusLat,
       longitude: focusLon,
@@ -247,7 +252,16 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
         setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
         setCurrentCoords({ latitude: coords.latitude, longitude: coords.longitude });
         syncLocationToBackend(coords.latitude, coords.longitude);
-        if (focusLat == null || focusLon == null) {
+        if (focusLat != null && focusLon != null) {
+          console.log('[QA_MAP] GPS resolved with focus — fitToCoordinates | cyclone:', focusLat, focusLon, '| user:', coords.latitude, coords.longitude);
+          mapRef.current?.fitToCoordinates(
+            [
+              { latitude: focusLat, longitude: focusLon },
+              { latitude: coords.latitude, longitude: coords.longitude },
+            ],
+            { edgePadding: { top: 80, right: 60, bottom: 120, left: 60 }, animated: true }
+          );
+        } else {
           setRegion(userRegion);
           mapRef.current?.animateToRegion(userRegion, 1000);
         }

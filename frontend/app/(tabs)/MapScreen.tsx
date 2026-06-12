@@ -14,6 +14,8 @@ const MapScreen = () => {
   const focusLat = alertLat ? parseFloat(alertLat) : undefined;
   const focusLon = alertLon ? parseFloat(alertLon) : undefined;
 
+  console.log('[QA_MAP] MapScreen params | alertLat:', alertLat, '| alertLon:', alertLon, '| focusLat:', focusLat, '| focusLon:', focusLon);
+
   return (
     <>
       <StatusBar style="light" translucent={false} />
