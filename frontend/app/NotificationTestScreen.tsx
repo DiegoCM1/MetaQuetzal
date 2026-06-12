@@ -80,21 +80,26 @@ export default function NotificationTestScreen() {
     setCycloneLoadingIndex(index);
     try {
       const preset = CYCLONE_PRESETS[index];
+      console.log('[SIAT] inject-cyclone →', preset.body.name, preset.body);
       const res = await authFetch(`${API_BASE_URL}/api/v1/siat/inject-cyclone`, {
         method: 'POST',
         body: JSON.stringify(preset.body),
       });
+      console.log('[SIAT] inject-cyclone status:', res.status);
       if (res.status === 403) {
+        console.warn('[SIAT] inject-cyclone 403 — sin acceso');
         toast.error('Sin acceso', { description: 'Pide que agreguen tu email a NOTIFICATION_TEST_ADMIN_EMAILS en backend/.env' });
         return;
       }
       if (res.status === 422) {
         const err = await res.json().catch(() => ({}));
+        console.warn('[SIAT] inject-cyclone 422 — sin ubicación:', err.detail);
         toast.error('Sin ubicación registrada', { description: err.detail || 'Configura tu ubicación en el perfil antes de inyectar.' });
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      console.log('[SIAT] inject-cyclone OK — users_evaluated:', data.users_evaluated, 'notifications_sent:', data.notifications_sent, 'assessments:', data.assessments);
       const firstAssessment = data.assessments?.[0];
       const detail = firstAssessment
         ? `${data.users_evaluated} eval. · Nivel ${firstAssessment.siat_level} ${firstAssessment.siat_color} · ${firstAssessment.distance_km?.toFixed(0)} km`
@@ -104,6 +109,7 @@ export default function NotificationTestScreen() {
         : `Sin push · ${detail} · (revisa quiet hours o nivel mínimo)`;
       toast.success(`Ciclón inyectado · ${preset.label}`, { description: notifDesc });
     } catch (e) {
+      console.error('[SIAT] inject-cyclone error:', e);
       toast.error('Error al inyectar ciclón', { description: String(e) });
     } finally {
       setCycloneLoadingIndex(null);
@@ -114,10 +120,14 @@ export default function NotificationTestScreen() {
     if (resetLoading) return;
     setResetLoading(true);
     try {
+      console.log('[SIAT] reset-state →');
       const res = await authFetch(`${API_BASE_URL}/api/v1/siat/reset-state`, { method: 'POST' });
+      console.log('[SIAT] reset-state status:', res.status);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      console.log('[SIAT] reset-state OK');
       toast.success('Estado SIAT reiniciado', { description: 'La siguiente inyección evaluará desde nivel 0.' });
     } catch (e) {
+      console.error('[SIAT] reset-state error:', e);
       toast.error('Error al reiniciar', { description: String(e) });
     } finally {
       setResetLoading(false);
@@ -128,21 +138,26 @@ export default function NotificationTestScreen() {
     if (smnLoading) return;
     setSmnLoading(true);
     try {
+      console.log('[SMN] inject-smn-alert → level 3');
       const res = await authFetch(`${API_BASE_URL}/api/v1/siat/inject-smn-alert`, {
         method: 'POST',
         body: JSON.stringify({ level: 3, title: 'SMN: Alerta Meteorológica de Prueba [TEST]', short: 'Prueba de alerta nacional SMN/CONAGUA generada por el equipo BluEye.' }),
       });
+      console.log('[SMN] inject-smn-alert status:', res.status);
       if (res.status === 403) {
+        console.warn('[SMN] inject-smn-alert 403 — sin acceso');
         toast.error('Sin acceso', { description: 'Pide que agreguen tu email a NOTIFICATION_TEST_ADMIN_EMAILS en backend/.env' });
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      console.log('[SMN] inject-smn-alert OK — notifications_sent:', data.notifications_sent, 'users_evaluated:', data.users_evaluated);
       const desc = data.notifications_sent > 0
         ? `Push enviado a ${data.notifications_sent} dispositivo(s) · ${data.users_evaluated} usuario(s) evaluados`
         : `${data.users_evaluated} usuario(s) evaluados · sin push (revisa prefs)`;
       toast.success('Alerta SMN inyectada', { description: desc });
     } catch (e) {
+      console.error('[SMN] inject-smn-alert error:', e);
       toast.error('Error al inyectar alerta SMN', { description: String(e) });
     } finally {
       setSmnLoading(false);
@@ -153,20 +168,26 @@ export default function NotificationTestScreen() {
     if (loadingIndex !== null) return;
     if (!onlyMe && !(await confirmBroadcast())) return;
     setLoadingIndex(index);
+    const btn = BUTTONS[index];
+    console.log('[NotifTest] sendTest →', btn.type, '| only_me:', onlyMe);
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/notifications/test`, {
         method: 'POST',
-        body: JSON.stringify({ type: BUTTONS[index].type, only_me: onlyMe }),
+        body: JSON.stringify({ type: btn.type, only_me: onlyMe }),
       });
+      console.log('[NotifTest] sendTest status:', res.status);
       if (res.status === 403) {
+        console.warn('[NotifTest] sendTest 403 — sin acceso');
         toast.error('Sin acceso', { description: 'Pide que agreguen tu email a NOTIFICATION_TEST_ADMIN_EMAILS en backend/.env' });
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      console.log('[NotifTest] sendTest OK — success_count:', data.success_count, 'failure_count:', data.failure_count);
       const desc = onlyMe ? 'Solo tu dispositivo' : `${data.success_count} dispositivo(s)`;
       toast.success('Enviado', { description: desc });
     } catch (e) {
+      console.error('[NotifTest] sendTest error:', e);
       toast.error('Error al enviar', { description: String(e) });
     } finally {
       setLoadingIndex(null);
