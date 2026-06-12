@@ -61,6 +61,27 @@ const LEVEL_COLORS: Record<number, string> = {
   5: '#F44336',
 }
 
+const HurricaneMarker = React.memo(function HurricaneMarker({
+  lat, lon, title, level,
+}: { lat: number; lon: number; title?: string; level?: number }) {
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  return (
+    <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges}>
+      <View
+        onLayout={() => setTracksViewChanges(false)}
+        style={{ backgroundColor: LEVEL_COLORS[level ?? 3], borderRadius: 24, padding: 8, borderWidth: 2, borderColor: 'white' }}
+      >
+        <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
+      </View>
+      <Callout>
+        <View style={{ padding: 8, maxWidth: 200 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{title ?? 'Alerta'}</Text>
+        </View>
+      </Callout>
+    </Marker>
+  );
+});
+
 const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
   // Custom-image markers must redraw their native bitmap once on load, then STOP.
   // While tracksViewChanges is true the hit area is unstable and Android drops taps,
@@ -611,22 +632,12 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
         ))}
 
         {focusLat != null && focusLon != null && (
-          <Marker coordinate={{ latitude: focusLat, longitude: focusLon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-            <View style={{
-              backgroundColor: LEVEL_COLORS[focusLevel ?? 3],
-              borderRadius: 24,
-              padding: 8,
-              borderWidth: 2,
-              borderColor: 'white',
-            }}>
-              <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
-            </View>
-            <Callout>
-              <View style={{ padding: 8, maxWidth: 200 }}>
-                <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{focusTitle ?? 'Alerta'}</Text>
-              </View>
-            </Callout>
-          </Marker>
+          <HurricaneMarker
+            lat={focusLat}
+            lon={focusLon}
+            title={focusTitle}
+            level={focusLevel}
+          />
         )}
       </MapView>
 
