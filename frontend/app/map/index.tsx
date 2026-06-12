@@ -16,7 +16,7 @@ import {
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import MapView, { UrlTile, PROVIDER_GOOGLE, Marker, Callout } from "react-native-maps";
+import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { syncLocationToBackend } from "../../utils/locationSync";
 import { toast } from "sonner-native";
@@ -65,23 +65,16 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
   lat, lon, title, level,
 }: { lat: number; lon: number; title?: string; level?: number }) {
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
-  console.log('[QA_MAP] HurricaneMarker render | lat:', lat, '| lon:', lon, '| tracksViewChanges:', tracksViewChanges);
+  console.log('[QA_MAP] HurricaneMarker render | lat:', lat, '| lon:', lon);
+  const color = LEVEL_COLORS[level ?? 3];
   return (
-    <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges}>
+    <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges} title={title}>
       <View
-        onLayout={() => {
-          console.log('[QA_MAP] HurricaneMarker onLayout → tracksViewChanges false');
-          setTracksViewChanges(false);
-        }}
-        style={{ backgroundColor: LEVEL_COLORS[level ?? 3], borderRadius: 24, padding: 8, borderWidth: 2, borderColor: 'white' }}
+        onLayout={() => setTimeout(() => setTracksViewChanges(false), 300)}
+        style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color, borderWidth: 2, borderColor: 'white', alignItems: 'center', justifyContent: 'center' }}
       >
         <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
       </View>
-      <Callout>
-        <View style={{ padding: 8, maxWidth: 200 }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{title ?? 'Alerta'}</Text>
-        </View>
-      </Callout>
     </Marker>
   );
 });
@@ -119,7 +112,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
   const [showClouds, setShowClouds] = useState(false);
   const [showEvents, setShowEvents] = useState(true);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
-  const mapRef = useRef(null);
+  const mapRef = useRef<MapView>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const [zones, setZones] = useState<Zone[]>([]);
@@ -210,14 +203,13 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
   useEffect(() => {
     if (focusLat == null || focusLon == null) return;
     console.log('[QA_MAP] focus useEffect fired | focusLat:', focusLat, '| focusLon:', focusLon);
-    const focusRegion = {
+    // Don't update region state — recenter button must always go to user location
+    mapRef.current?.animateToRegion({
       latitude: focusLat,
       longitude: focusLon,
       latitudeDelta: 3,
       longitudeDelta: 3,
-    };
-    setRegion(focusRegion);
-    mapRef.current?.animateToRegion(focusRegion, 800);
+    }, 800);
   }, [focusLat, focusLon]);
 
   useEffect(() => {
@@ -252,6 +244,8 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
         setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
         setCurrentCoords({ latitude: coords.latitude, longitude: coords.longitude });
         syncLocationToBackend(coords.latitude, coords.longitude);
+        // Always update region to user location — recenter button depends on this
+        setRegion(userRegion);
         if (focusLat != null && focusLon != null) {
           console.log('[QA_MAP] GPS resolved with focus — fitToCoordinates | cyclone:', focusLat, focusLon, '| user:', coords.latitude, coords.longitude);
           mapRef.current?.fitToCoordinates(
@@ -262,7 +256,6 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
             { edgePadding: { top: 80, right: 60, bottom: 120, left: 60 }, animated: true }
           );
         } else {
-          setRegion(userRegion);
           mapRef.current?.animateToRegion(userRegion, 1000);
         }
       } catch (error) {
