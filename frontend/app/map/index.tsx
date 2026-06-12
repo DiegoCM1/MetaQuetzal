@@ -16,7 +16,7 @@ import {
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
+import MapView, { UrlTile, PROVIDER_GOOGLE, Marker, Callout } from "react-native-maps";
 import * as Location from "expo-location";
 import { syncLocationToBackend } from "../../utils/locationSync";
 import { toast } from "sonner-native";
@@ -46,6 +46,21 @@ const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
 
+interface MapProps {
+  focusLat?: number;
+  focusLon?: number;
+  focusTitle?: string;
+  focusLevel?: number;
+}
+
+const LEVEL_COLORS: Record<number, string> = {
+  1: '#4CAF50',
+  2: '#4CAF50',
+  3: '#FFC107',
+  4: '#FF9800',
+  5: '#F44336',
+}
+
 const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
   // Custom-image markers must redraw their native bitmap once on load, then STOP.
   // While tracksViewChanges is true the hit area is unstable and Android drops taps,
@@ -72,7 +87,7 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
   );
 });
 
-export default function WeatherMapNativewind() {
+export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel }: MapProps = {}) {
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
@@ -166,6 +181,18 @@ export default function WeatherMapNativewind() {
     });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => {
+    if (focusLat == null || focusLon == null) return;
+    const focusRegion = {
+      latitude: focusLat,
+      longitude: focusLon,
+      latitudeDelta: 3,
+      longitudeDelta: 3,
+    };
+    setRegion(focusRegion);
+    mapRef.current?.animateToRegion(focusRegion, 800);
+  }, [focusLat, focusLon]);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -580,6 +607,25 @@ export default function WeatherMapNativewind() {
         {showEvents && zones.map((zone) => (
           <ZoneMarker key={zone.id} zone={zone} onPress={() => handleCirclePress(zone)} />
         ))}
+
+        {focusLat != null && focusLon != null && (
+          <Marker coordinate={{ latitude: focusLat, longitude: focusLon }} anchor={{ x: 0.5, y: 0.5 }}>
+            <View style={{
+              backgroundColor: LEVEL_COLORS[focusLevel ?? 3],
+              borderRadius: 24,
+              padding: 8,
+              borderWidth: 2,
+              borderColor: 'white',
+            }}>
+              <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
+            </View>
+            <Callout>
+              <View style={{ padding: 8, maxWidth: 200 }}>
+                <Text style={{ fontWeight: 'bold', fontSize: 13 }}>{focusTitle ?? 'Alerta'}</Text>
+              </View>
+            </Callout>
+          </Marker>
+        )}
       </MapView>
 
       {/* Layer selector */}
