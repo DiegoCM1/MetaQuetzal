@@ -175,7 +175,6 @@ export default Sentry.wrap(function Layout() {
       const data = rawData as NotificationData
       const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
       console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos)
-      if (!id && !isFullScreen && !isSos) return
 
       await initAnalytics();
       track("push_open", {
@@ -196,6 +195,9 @@ export default Sentry.wrap(function Layout() {
       } else if (id) {
         console.log('[QA_NAV] tap → alert detail | alertId:', id)
         router.push({ pathname: "/alerts/[id]", params: { id } });
+      } else {
+        console.log('[QA_NAV] tap → alerts list (no alertId)')
+        router.push("/alerts");
       }
     });
 
