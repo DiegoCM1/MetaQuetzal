@@ -174,6 +174,7 @@ export default Sentry.wrap(function Layout() {
     const tapSub = addNotificationResponseListener(async (rawData) => {
       const data = rawData as NotificationData
       const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
+      console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos)
       if (!id && !isFullScreen && !isSos) return
 
       await initAnalytics();
@@ -190,8 +191,10 @@ export default Sentry.wrap(function Layout() {
         return;
       }
       if (isFullScreen) {
+        console.log('[QA_NAV] tap → AlarmScreen | alertId:', id ?? 'none', '| category:', params.category)
         router.push({ pathname: "AlarmScreen", params });
       } else if (id) {
+        console.log('[QA_NAV] tap → alert detail | alertId:', id)
         router.push({ pathname: "/alerts/[id]", params: { id } });
       }
     });
@@ -201,8 +204,10 @@ export default Sentry.wrap(function Layout() {
       const rawData = notification.request.content.data as NotificationData
       const content = notification.request.content
       const { isFullScreen, isSos, senderName, params } = resolveNotifPayload(rawData, content)
+      console.log('[QA_NOTIF] received foreground | fullScreen:', isFullScreen, '| sos:', isSos, '| category:', params.category)
       if (isFullScreen && !alarmActiveRef.current) {
         alarmActiveRef.current = true
+        console.log('[QA_NAV] received → AlarmScreen | category:', params.category, '| alertId:', params.alertId ?? 'none')
         router.push({ pathname: "AlarmScreen", params })
         // Liberar el guard después de un debounce para cubrir multi-push
         setTimeout(() => { alarmActiveRef.current = false }, 5000)
