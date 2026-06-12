@@ -22,6 +22,9 @@ class Settings(BaseSettings):
 
     # Dev-only bypasses
     DEV_BYPASS_MAP_EVENTS_AUTH: bool = False
+    # When true, any authenticated Firebase user can call the notification test endpoints.
+    # Set to true in Railway staging. Never set in production.
+    DEV_BYPASS_NOTIF_TEST_AUTH: bool = False
 
     # Notification test tool — comma-separated emails allowed to call POST /api/v1/notifications/test.
     # Empty string disables the endpoint for everyone (production default).
