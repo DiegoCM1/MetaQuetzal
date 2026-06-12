@@ -79,17 +79,17 @@ async def send_test_notification(
     current_user: dict = Depends(get_current_user),
 ):
     """Send a test notification to all devices. Requires Firebase auth + admin email allowlist."""
-    admin_emails = [
-        e.strip().lower()
-        for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
-        if e.strip()
-    ]
-    if not admin_emails:
-        raise HTTPException(status_code=403, detail="Test notifications not configured.")
-
-    user_email = (current_user.get("email") or "").lower()
-    if user_email not in admin_emails:
-        raise HTTPException(status_code=403, detail="Not authorized to send test notifications.")
+    if not settings.DEV_BYPASS_NOTIF_TEST_AUTH:
+        admin_emails = [
+            e.strip().lower()
+            for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
+            if e.strip()
+        ]
+        if not admin_emails:
+            raise HTTPException(status_code=403, detail="Test notifications not configured.")
+        user_email = (current_user.get("email") or "").lower()
+        if user_email not in admin_emails:
+            raise HTTPException(status_code=403, detail="Not authorized to send test notifications.")
 
     payload = _TEST_PAYLOADS[body.type]
     try:
