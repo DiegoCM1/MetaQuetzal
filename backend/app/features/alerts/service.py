@@ -39,7 +39,16 @@ async def persist_smn_bulletin_if_new(db: AsyncSession, bulletin: dict) -> bool:
             {"title": title},
         )
 
-    if existing.mappings().first():
+    existing_row = existing.mappings().first()
+    if existing_row:
+        pdf_url = bulletin.get("pdf_url")
+        if pdf_url:
+            await db.execute(
+                text("UPDATE alerts SET pdf_url = :pdf_url WHERE id = :id AND pdf_url IS NULL"),
+                {"pdf_url": pdf_url, "id": existing_row["id"]},
+            )
+            await db.commit()
+            logger.debug("SMN bulletin pdf_url backfilled: '%s'", title)
         logger.debug("SMN bulletin already persisted: '%s'", title)
         return False
 
