@@ -31,6 +31,8 @@ interface AlertData {
   recommendations?: string[];
   factors?: string[];
   pdf_url?: string;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 function SectionPill({ title, color }: { title: string; color: string }) {
@@ -259,9 +261,15 @@ export default function AlertDetailsScreen() {
             style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
             activeOpacity={0.7}
             onPress={() => {
-              console.log('[QA_NAV] alert detail → mapa | alertId:', alert.id, '| level:', alert.level);
+              console.log('[QA_NAV] alert detail → mapa | alertId:', alert.id, '| level:', alert.level, '| hasCoords:', alert.lat != null);
               track("details_map_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
-              router.push("/(tabs)/MapScreen");
+              const params: Record<string, string> = {
+                alertTitle: alert.title,
+                alertLevel: String(alert.level),
+              };
+              if (alert.lat != null) params.alertLat = String(alert.lat);
+              if (alert.lon != null) params.alertLon = String(alert.lon);
+              router.push({ pathname: "/(tabs)/MapScreen", params });
             }}
           >
             <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold }}>Ver en mapa</Text>
