@@ -223,11 +223,13 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
           longitudeDelta: 0.1,
         };
 
-        setRegion(userRegion);
         setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
         setCurrentCoords({ latitude: coords.latitude, longitude: coords.longitude });
-        mapRef.current?.animateToRegion(userRegion, 1000);
         syncLocationToBackend(coords.latitude, coords.longitude);
+        if (focusLat == null || focusLon == null) {
+          setRegion(userRegion);
+          mapRef.current?.animateToRegion(userRegion, 1000);
+        }
       } catch (error) {
         console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
       }
@@ -609,7 +611,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
         ))}
 
         {focusLat != null && focusLon != null && (
-          <Marker coordinate={{ latitude: focusLat, longitude: focusLon }} anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker coordinate={{ latitude: focusLat, longitude: focusLon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
             <View style={{
               backgroundColor: LEVEL_COLORS[focusLevel ?? 3],
               borderRadius: 24,
