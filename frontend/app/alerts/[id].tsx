@@ -261,7 +261,7 @@ export default function AlertDetailsScreen() {
             style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
             activeOpacity={0.7}
             onPress={() => {
-              console.log('[QA_NAV] alert detail → mapa | alertId:', alert.id, '| level:', alert.level, '| hasCoords:', alert.lat != null);
+              console.log('[QA_NAV] alert detail → mapa | alertId:', alert.id, '| level:', alert.level, '| lat:', alert.lat, '| lon:', alert.lon);
               track("details_map_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
               const params: Record<string, string> = {
                 alertTitle: alert.title,

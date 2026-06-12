@@ -70,7 +70,10 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
   return (
     <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges} title={title}>
       <View
-        onLayout={() => setTimeout(() => setTracksViewChanges(false), 300)}
+        onLayout={() => {
+          console.log('[QA_MAP] HurricaneMarker onLayout → tracksViewChanges false en 300ms');
+          setTimeout(() => setTracksViewChanges(false), 300);
+        }}
         style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color, borderWidth: 2, borderColor: 'white', alignItems: 'center', justifyContent: 'center' }}
       >
         <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
