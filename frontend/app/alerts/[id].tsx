@@ -30,6 +30,7 @@ interface AlertData {
   score?: number;
   recommendations?: string[];
   factors?: string[];
+  pdf_url?: string;
 }
 
 function SectionPill({ title, color }: { title: string; color: string }) {
@@ -58,12 +59,17 @@ export default function AlertDetailsScreen() {
   const [aiLoading, setAiLoading] = useState(false);
 
   const handleOpenBoletin = async () => {
-    const url = "https://preparados.gob.mx/SIAT-CT/";
+    const url = alert?.pdf_url ?? "https://preparados.gob.mx/SIAT-CT/";
+    console.log('[QA_LINK] boletin tap | alertId:', id, '| alertTitle:', alert?.title, '| url:', url);
     try {
       const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) await Linking.openURL(url);
+      console.log('[QA_LINK] canOpenURL:', canOpen);
+      if (canOpen) {
+        await Linking.openURL(url);
+        console.log('[QA_LINK] openURL called OK');
+      }
     } catch (err) {
-      console.error("Error opening URL:", err);
+      console.error('[QA_LINK] openURL error:', err);
     }
   };
 
@@ -79,7 +85,10 @@ export default function AlertDetailsScreen() {
           throw Object.assign(new Error("Error"), { status: res.status });
         }
         const data = await res.json();
-        if (live) setAlert(data);
+        if (live) {
+          console.log('[QA_ALERTS] detail loaded | id:', id, '| level:', data.level, '| title:', data.title);
+          setAlert(data);
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         const isAuthError = msg === 'Not authenticated'

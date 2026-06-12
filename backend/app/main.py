@@ -66,6 +66,9 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
                 updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
+        await conn.execute(text(
+            "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS pdf_url TEXT"
+        ))
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS notification_preferences (

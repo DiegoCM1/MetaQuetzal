@@ -22,6 +22,7 @@ class AlertDetail(BaseModel):
     lon: float | None = None
     factors: list
     recommendations: list
+    pdf_url: str | None = None
 
 
 class AlertCreate(BaseModel):
