@@ -114,6 +114,7 @@ export function setForegroundNotificationHandler() {
   Notifications.addNotificationReceivedListener((notif) => {
     const { title, body } = notif.request.content;
     const data = notif.request.content.data;
+    console.log('[QA_NOTIF] foreground toast | title:', title ?? 'none', '| alertId:', data?.alertId ?? 'none');
     toast(title ?? '', { description: body ?? undefined });
     track("push_received_foreground", {
       alertId: data?.alertId ? String(data.alertId) : undefined,
