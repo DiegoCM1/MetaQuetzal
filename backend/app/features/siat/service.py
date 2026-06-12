@@ -242,6 +242,31 @@ async def _mark_notified(db: AsyncSession, user_id: int, level: int) -> None:
     )
 
 
+async def _upsert_cyclone_alert(
+    db: AsyncSession, cyclone: dict, assessment: dict
+) -> str:
+    """Create an alerts record for a SIAT cyclone escalation. Returns the alert UUID."""
+    level = assessment["siat_level"]
+    color = assessment["siat_color"]
+    label = _COLOR_LABELS.get(color, color)
+    title = f"Ciclón {cyclone['name']} — SIAT-CT {label}"
+    short = (assessment.get("reason") or f"Ciclón a {assessment.get('distance_km', '?'):.0f} km")[:500]
+    result = await db.execute(
+        text("""
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations)
+            VALUES (:level, 0, :title, :short, :lat, :lon, '[]', '[]')
+            RETURNING id
+        """),
+        {
+            "level": level, "title": title, "short": short,
+            "lat": cyclone["lat"], "lon": cyclone["lon"],
+        },
+    )
+    alert_id = str(result.mappings().first()["id"])
+    logger.info("Cyclone alert created: id=%s level=%d title='%s'", alert_id, level, title)
+    return alert_id
+
+
 # ---------------------------------------------------------------------------
 # Push notification — per-user (not broadcast)
 # ---------------------------------------------------------------------------
@@ -262,16 +287,28 @@ async def _push_per_user(
             logger.debug("user_id=%d has no registered tokens, skipping push", user_id)
             continue
 
+        level = assessment["siat_level"]
         label = _COLOR_LABELS.get(assessment["siat_color"], assessment["siat_color"])
+        title = f"Alerta SIAT-CT {label}"
+        body = assessment["reason"]
+        alert_id = assessment.get("alert_id")
+
+        data: dict[str, str] = {
+            "siat_level": str(level),
+            "siat_color": assessment["siat_color"],
+            "alertTitle": title,
+            "alertMessage": body,
+        }
+        if alert_id:
+            data["alertId"] = alert_id
+        if level >= 4:
+            data["fullScreen"] = "true"
+
         msg = messaging.MulticastMessage(
-            notification=messaging.Notification(
-                title=f"Alerta SIAT-CT {label}",
-                body=assessment["reason"],
-            ),
-            data={
-                "siat_level": str(assessment["siat_level"]),
-                "siat_color": assessment["siat_color"],
-            },
+            notification=messaging.Notification(title=title, body=body),
+            data=data,
+            android=messaging.AndroidConfig(priority="high"),
+            apns=messaging.APNSConfig(headers={"apns-priority": "10"}),
             tokens=tokens,
         )
 
@@ -342,20 +379,20 @@ async def _push_smn_for_alert(
     if not all_tokens:
         return 0
 
+    smn_title = f"Nueva alerta — {alert['title']}"
+    smn_body = alert["short"] or ""
     msg = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=f"Nueva alerta — {alert['title']}",
-            body=alert["short"],
-        ),
+        notification=messaging.Notification(title=smn_title, body=smn_body),
         data={
             "alert_id": str(alert["id"]),
+            "alertId": str(alert["id"]),
             "level": str(alert["level"]),
             "siat_level": str(alert["level"]),
+            "alertTitle": smn_title,
+            "alertMessage": smn_body,
         },
         android=messaging.AndroidConfig(priority="high"),
-        apns=messaging.APNSConfig(
-            headers={"apns-priority": "10"},
-        ),
+        apns=messaging.APNSConfig(headers={"apns-priority": "10"}),
         tokens=all_tokens,
     )
 
@@ -461,10 +498,12 @@ async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) 
 
     all_assessments: list[dict] = []
     escalations: dict[int, dict] = {}  # user_id → highest assessment this cycle
+    cyclone_map: dict[int, dict] = {}  # cyclone_id → cyclone data (for alert creation)
 
     for cyclone in (cyclones if users else []):
         try:
             cyclone_id = await _save_cyclone(db, cyclone)
+            cyclone_map[cyclone_id] = cyclone
             logger.info("Cyclone saved: id=%d name=%s status=%s", cyclone_id, cyclone["name"], cyclone["status"])
         except Exception as exc:
             logger.error("Failed to save cyclone %s: %s", cyclone.get("name"), exc, exc_info=True)
@@ -507,7 +546,7 @@ async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) 
                         else:
                             prev = escalations.get(user["id"])
                             if prev is None or new_level > prev["siat_level"]:
-                                escalations[user["id"]] = assessment
+                                escalations[user["id"]] = {**assessment, "cyclone_id": cyclone_id}
                                 logger.info(
                                     "Escalation queued: user_id=%d %s→%s (%s)",
                                     user["id"], old_level, new_level, assessment["siat_color"],
@@ -529,6 +568,16 @@ async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) 
 
     notifications_sent = 0
     if escalations:
+        # Create one alerts record per unique cyclone that triggered escalations
+        cyclone_alert_ids: dict[int, str] = {}
+        for assessment in escalations.values():
+            cid = assessment["cyclone_id"]
+            if cid not in cyclone_alert_ids:
+                cyclone = cyclone_map[cid]
+                cyclone_alert_ids[cid] = await _upsert_cyclone_alert(db, cyclone, assessment)
+        for assessment in escalations.values():
+            assessment["alert_id"] = cyclone_alert_ids.get(assessment["cyclone_id"])
+
         token_map = await get_tokens_for_users(db, list(escalations.keys()))
         notifications_sent = await _push_per_user(escalations, token_map)
         for user_id, assessment in escalations.items():

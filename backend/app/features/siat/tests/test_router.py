@@ -304,6 +304,7 @@ def _base_run_cycle_patches(assessment, prefs, push_return=0):
         patch(f"{_SVC}._push_per_user", new_callable=AsyncMock, return_value=push_return),
         patch(f"{_SVC}._mark_notified", new_callable=AsyncMock, return_value=None),
         patch(f"{_SVC}._notify_smn_alerts", new_callable=AsyncMock, return_value=0),
+        patch(f"{_SVC}._upsert_cyclone_alert", new_callable=AsyncMock, return_value="test-alert-uuid"),
     ]
 
 
@@ -318,7 +319,7 @@ async def test_run_cycle_respects_siat_disabled():
 
     patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_3, prefs, push_return=0)
     with patches[0], patches[1], patches[2], patches[3], patches[4], \
-         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11]:
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], patches[12]:
         result = await run_cycle(db)
 
     assert result["notifications_sent"] == 0
@@ -335,7 +336,7 @@ async def test_run_cycle_respects_min_siat_level():
 
     patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_2, prefs, push_return=0)
     with patches[0], patches[1], patches[2], patches[3], patches[4], \
-         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11]:
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], patches[12]:
         result = await run_cycle(db)
 
     assert result["notifications_sent"] == 0
@@ -352,7 +353,7 @@ async def test_run_cycle_sends_push_when_prefs_allow():
 
     patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_2, prefs, push_return=1)
     with patches[0], patches[1], patches[2], patches[3], patches[4], \
-         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11]:
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], patches[12]:
         result = await run_cycle(db)
 
     assert result["notifications_sent"] == 1
@@ -520,7 +521,7 @@ async def test_siat_quiet_hours_suppresses_push():
 
     patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_3, _QUIET_PREFS, push_return=0)
     with patches[0], patches[1], patches[2], patches[3], patches[4], \
-         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], patches[12], \
          patch(f"{_SVC}.is_within_quiet_hours", return_value=True):
         result = await run_cycle(db)
 
@@ -537,7 +538,7 @@ async def test_siat_quiet_hours_allows_push_outside_range():
 
     patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_3, _QUIET_PREFS, push_return=1)
     with patches[0], patches[1], patches[2], patches[3], patches[4], \
-         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], patches[12], \
          patch(f"{_SVC}.is_within_quiet_hours", return_value=False):
         result = await run_cycle(db)
 
@@ -554,7 +555,7 @@ async def test_siat_level5_overrides_quiet_hours():
 
     patches = _base_run_cycle_patches(_ASSESSMENT_LEVEL_5, _QUIET_PREFS, push_return=1)
     with patches[0], patches[1], patches[2], patches[3], patches[4], \
-         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], \
+         patches[5], patches[6], patches[7], patches[8], patches[9], patches[10], patches[11], patches[12], \
          patch(f"{_SVC}.is_within_quiet_hours", return_value=True):
         result = await run_cycle(db)
 
@@ -753,7 +754,8 @@ async def test_run_cycle_with_extra_cyclones():
          patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
          patch(f"{_SVC}._push_per_user", new_callable=AsyncMock, return_value=1), \
          patch(f"{_SVC}._mark_notified", new_callable=AsyncMock), \
-         patch(f"{_SVC}._notify_smn_alerts", new_callable=AsyncMock, return_value=0):
+         patch(f"{_SVC}._notify_smn_alerts", new_callable=AsyncMock, return_value=0), \
+         patch(f"{_SVC}._upsert_cyclone_alert", new_callable=AsyncMock, return_value="test-alert-uuid"):
         result = await run_cycle(db, extra_cyclones=[fake_cyclone])
 
     assert result["cyclones_found"] == 1   # NHC=0, extra=1
