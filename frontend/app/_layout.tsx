@@ -171,9 +171,9 @@ export default Sentry.wrap(function Layout() {
     setForegroundNotificationHandler();
 
     // Tap en notificación (background → foreground, o foreground tap)
-    const tapSub = addNotificationResponseListener(async (rawData) => {
+    const tapSub = addNotificationResponseListener(async (rawData, content) => {
       const data = rawData as NotificationData
-      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
+      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
       console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos)
       if (!id && !isFullScreen && !isSos) return
 
@@ -244,8 +244,9 @@ export default Sentry.wrap(function Layout() {
 
       const data = initial.notification.request.content.data as NotificationData | undefined
       if (!data) return
+      const { title: coldTitle, body: coldBody } = initial.notification.request.content
 
-      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data)
+      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
       if (!id && !isFullScreen && !isSos) return
 
       await initAnalytics();
