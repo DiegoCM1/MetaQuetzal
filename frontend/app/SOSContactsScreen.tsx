@@ -23,6 +23,13 @@ interface SOSContact {
   created_at: string; updated_at: string;
 }
 
+interface WhoHasMeItem {
+  name: string;
+  relationship: string | null;
+  owner_display_name: string | null;
+  created_at: string;
+}
+
 export default function SOSContactsScreen() {
   const router = useRouter();
   const [contacts, setContacts]             = useState<SOSContact[]>([]);
@@ -36,6 +43,7 @@ export default function SOSContactsScreen() {
   const [relVal, setRelVal]                 = useState("");
   const [formError, setFormError]           = useState<string | null>(null);
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
+  const [whoHasMe, setWhoHasMe]             = useState<WhoHasMeItem[]>([]);
 
   useEffect(() => {
     let live = true;
@@ -45,6 +53,13 @@ export default function SOSContactsScreen() {
       .catch(() => { if (live) setFetchError(true); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    authFetch(`${API_BASE_URL}/api/v1/sos-contacts/who-has-me`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: WhoHasMeItem[]) => setWhoHasMe(data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -147,6 +162,25 @@ export default function SOSContactsScreen() {
     </SafeAreaView>
   );
 
+  const whoHasMeSection = whoHasMe.length > 0 ? (
+    <View style={{ paddingBottom: 24, paddingHorizontal: 16 }}>
+      <Text style={s.sectionTitle}>Soy contacto SOS de</Text>
+      {whoHasMe.map((item, idx) => (
+        <View key={idx} style={s.whoRow}>
+          <MaterialCommunityIcons name="shield-account-outline" size={32} color={colors.brandCyan} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.contactName}>
+              {item.owner_display_name ?? item.name}
+            </Text>
+            {item.relationship
+              ? <Text style={s.contactRel}>{item.relationship}</Text>
+              : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  ) : null;
+
   return (
     <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
       <ScreenHeader title="Contactos SOS" />
@@ -170,22 +204,33 @@ export default function SOSContactsScreen() {
       )}
 
       {contacts.length === 0 ? (
-        <View style={s.centered}><View style={s.card}>
-          <MaterialCommunityIcons name="account-heart-outline" size={48} color={colors.brandCyan} />
-          <Text style={[s.title, { marginTop: 12, marginBottom: 6 }]}>Sin contactos SOS</Text>
-          <Text style={[s.bodyText, { textAlign: "center", marginBottom: 20 }]}>
-            Agrega personas de confianza que recibirán tu alerta en caso de emergencia.
-          </Text>
-          <TouchableOpacity style={s.cyanButton} onPress={openCreate}>
-            <Text style={s.cyanButtonText}>Agregar contacto</Text>
-          </TouchableOpacity>
-        </View></View>
+        <FlatList
+          data={[]}
+          renderItem={null}
+          ListEmptyComponent={
+            <View style={[s.centered, { paddingTop: 40 }]}>
+              <View style={s.card}>
+                <MaterialCommunityIcons name="account-heart-outline" size={48} color={colors.brandCyan} />
+                <Text style={[s.title, { marginTop: 12, marginBottom: 6 }]}>Sin contactos SOS</Text>
+                <Text style={[s.bodyText, { textAlign: "center", marginBottom: 20 }]}>
+                  Agrega personas de confianza que recibirán tu alerta en caso de emergencia.
+                </Text>
+                <TouchableOpacity style={s.cyanButton} onPress={openCreate}>
+                  <Text style={s.cyanButtonText}>Agregar contacto</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          }
+          ListFooterComponent={whoHasMeSection}
+          contentContainerStyle={{ flexGrow: 1 }}
+        />
       ) : (
         <View style={{ flex: 1 }}>
           <FlatList
             data={contacts}
             keyExtractor={item => String(item.id)}
             contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
+            ListFooterComponent={whoHasMeSection}
             renderItem={({ item }) => (
               <View style={s.contactRow}>
                 <MaterialCommunityIcons name="account-circle-outline" size={36} color={colors.brandCyan} />
@@ -273,7 +318,7 @@ export default function SOSContactsScreen() {
 }
 
 const s = StyleSheet.create({
-  centered:     { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
+  centered:     { justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
   card:         { backgroundColor: "rgba(10,28,50,0.6)", borderRadius: 16, borderWidth: 1,
                   borderColor: "rgba(255,255,255,0.1)", padding: 24, width: "100%", alignItems: "center" },
   title:        { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 17 },
@@ -281,8 +326,13 @@ const s = StyleSheet.create({
   cyanButton:   { backgroundColor: colors.brandCyan, borderRadius: 12,
                   paddingVertical: 13, paddingHorizontal: 24, alignItems: "center" },
   cyanButtonText: { color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+  sectionTitle: { color: "rgba(255,255,255,0.5)", fontFamily: fonts.poppins, fontSize: 12,
+                  letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8, marginTop: 16 },
   contactRow:   { backgroundColor: "rgba(10,28,50,0.6)", borderRadius: 14, borderWidth: 1,
                   borderColor: "rgba(255,255,255,0.08)", marginHorizontal: 16, marginBottom: 10,
+                  padding: 14, flexDirection: "row", alignItems: "center" },
+  whoRow:       { backgroundColor: "rgba(10,28,50,0.4)", borderRadius: 14, borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.06)", marginBottom: 10,
                   padding: 14, flexDirection: "row", alignItems: "center" },
   contactName:  { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
   contactPhone: { color: "rgba(255,255,255,0.6)", fontFamily: fonts.poppins, fontSize: 13, marginTop: 2 },

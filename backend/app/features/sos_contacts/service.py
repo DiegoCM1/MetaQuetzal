@@ -78,6 +78,21 @@ async def delete_sos_contact(db: AsyncSession, contact_id: int, user_id: int) ->
     await _raise_not_found_or_forbidden(db, contact_id, user_id)
 
 
+async def get_who_has_me(db: AsyncSession, user_id: int) -> list[dict]:
+    result = await db.execute(
+        text("""
+            SELECT sc.name, sc.relationship, sc.created_at,
+                   u.display_name AS owner_display_name
+            FROM sos_contacts sc
+            JOIN users u ON u.id = sc.user_id
+            WHERE sc.linked_user_id = :user_id AND sc.link_status = 'linked'
+            ORDER BY sc.created_at ASC
+        """),
+        {"user_id": user_id},
+    )
+    return [dict(row) for row in result.mappings().all()]
+
+
 async def _get_contact_owned_by(db: AsyncSession, contact_id: int, user_id: int) -> dict:
     result = await db.execute(
         text("""

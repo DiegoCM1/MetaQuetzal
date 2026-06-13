@@ -24,7 +24,7 @@ async def register_or_get_profile(
 ):
     """Create or update user profile from Firebase token. Idempotent."""
     firebase_uid = user.get("uid")
-    return await upsert_user(db, firebase_uid)
+    return await upsert_user(db, firebase_uid, display_name=user.get("name"), email=user.get("email"))
 
 
 @router.get("/api/v1/users/me", response_model=UserProfile)
