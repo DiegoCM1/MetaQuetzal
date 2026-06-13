@@ -23,7 +23,8 @@ import {
 import * as Notifications from "expo-notifications";
 import { Toaster, toast } from "sonner-native";
 import { initAnalytics, track, flush } from "../utils/analytics"
-import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue";
+import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue"
+import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
 import * as Sentry from '@sentry/react-native';
@@ -192,6 +193,7 @@ export default Sentry.wrap(function Layout() {
 
       if (isSosInvite && inviteToken) {
         console.log('[QA_NAV] tap → sos-invite | token:', inviteToken)
+        AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
         router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
         return;
       }
@@ -227,6 +229,8 @@ export default Sentry.wrap(function Layout() {
         return;
       }
       if (isSosInvite && inviteToken) {
+        console.log('[QA_SOS_INVITE] foreground received | saving token:', inviteToken)
+        AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
         toast(`Invitación SOS de ${inviterDisplayName}`, {
           description: 'Toca para aceptar la invitación.',
           action: {
@@ -282,6 +286,7 @@ export default Sentry.wrap(function Layout() {
 
       if (isSosInvite && inviteToken) {
         console.log('[QA_NAV] cold start → sos-invite | token:', inviteToken)
+        AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
         router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
         return;
       }

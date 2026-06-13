@@ -7,10 +7,13 @@ import {
 import { toast } from "sonner-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import ScreenHeader from "../components/ScreenHeader";
 import { authFetch } from "../utils/api";
 import { API_BASE_URL } from "../utils/config";
 import { colors, fonts } from "../utils/theme";
+import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
 
 interface SOSContact {
   id: number; user_id: number; name: string; phone: string;
@@ -21,6 +24,7 @@ interface SOSContact {
 }
 
 export default function SOSContactsScreen() {
+  const router = useRouter();
   const [contacts, setContacts]             = useState<SOSContact[]>([]);
   const [loading, setLoading]               = useState(true);
   const [fetchError, setFetchError]         = useState(false);
@@ -31,6 +35,7 @@ export default function SOSContactsScreen() {
   const [phoneVal, setPhoneVal]             = useState("");
   const [relVal, setRelVal]                 = useState("");
   const [formError, setFormError]           = useState<string | null>(null);
+  const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -40,6 +45,15 @@ export default function SOSContactsScreen() {
       .catch(() => { if (live) setFetchError(true); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PENDING_SOS_INVITE_KEY)
+      .then(token => {
+        console.log('[QA_SOS_INVITE] SOSContactsScreen check pending | token:', token ?? 'none');
+        setPendingInviteToken(token);
+      })
+      .catch(() => {});
   }, []);
 
   function openCreate() {
@@ -136,6 +150,24 @@ export default function SOSContactsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
       <ScreenHeader title="Contactos SOS" />
+
+      {pendingInviteToken && (
+        <TouchableOpacity
+          style={s.inviteBanner}
+          onPress={() => {
+            console.log('[QA_SOS_INVITE] banner tap → sos-invite | token:', pendingInviteToken);
+            router.push({ pathname: "/sos-invite/[token]", params: { token: pendingInviteToken } });
+          }}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="shield-account-outline" size={22} color="#030810" />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={s.inviteBannerTitle}>Tienes una invitación SOS pendiente</Text>
+            <Text style={s.inviteBannerSub}>Toca para ver y aceptar</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#030810" />
+        </TouchableOpacity>
+      )}
 
       {contacts.length === 0 ? (
         <View style={s.centered}><View style={s.card}>
@@ -274,6 +306,11 @@ const s = StyleSheet.create({
   cancelButton: { flex: 1, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
                   borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   cancelText:   { color: "rgba(255,255,255,0.7)", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
-  linkedBadge:  { color: colors.brandGreen, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
-  pendingBadge: { color: colors.brandYellow, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
+  linkedBadge:      { color: colors.brandGreen, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
+  pendingBadge:     { color: colors.brandYellow, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
+  inviteBanner:     { backgroundColor: colors.brandCyan, borderRadius: 14, marginHorizontal: 16,
+                      marginTop: 12, marginBottom: 4, padding: 14, flexDirection: "row",
+                      alignItems: "center" },
+  inviteBannerTitle:{ color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 14 },
+  inviteBannerSub:  { color: "#030810", fontFamily: fonts.poppins, fontSize: 12, opacity: 0.7, marginTop: 1 },
 });
