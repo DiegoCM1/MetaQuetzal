@@ -14,7 +14,7 @@ FAKE_DB_USER = {"id": 42, "firebase_uid": "firebase-test-uid", "lat": None, "lon
                 "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc)}
 
 _exp = datetime.now(timezone.utc) + timedelta(hours=72)
-INVITE_RESP   = {"share_url": "blueeye://sos-invite/abc123", "expires_at": _exp}
+INVITE_RESP   = {"share_url": "blueye://sos-invite/abc123", "expires_at": _exp}
 PREVIEW_RESP  = {"inviter_display_name": "Boro", "contact_name": "Mamá", "expires_at": _exp}
 ACCEPT_RESP   = {"inviter_display_name": "Boro", "contact_name": "Mamá"}
 
@@ -40,7 +40,7 @@ def test_create_invite_201():
          _mock_svc("app.features.sos_invite.router.create_invite", rv=INVITE_RESP):
         r = client.post("/api/v1/sos-contacts/1/invite", headers=AUTH_HEADERS)
     assert r.status_code == 201
-    assert r.json()["share_url"].startswith("blueeye://sos-invite/")
+    assert r.json()["share_url"].startswith("blueye://sos-invite/")
     assert "expires_at" in r.json()
 
 
