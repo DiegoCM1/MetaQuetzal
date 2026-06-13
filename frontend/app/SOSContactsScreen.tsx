@@ -4,6 +4,7 @@ import {
   View, Text, FlatList, Modal, TextInput, TouchableOpacity,
   Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Share,
 } from "react-native";
+import { toast } from "sonner-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
@@ -98,11 +99,17 @@ export default function SOSContactsScreen() {
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/${c.id}/invite`, { method: "POST" });
       if (!res.ok) throw new Error();
-      const { share_url } = await res.json();
+      const { share_url, push_sent } = await res.json();
       setContacts(prev => prev.map(x => x.id === c.id ? { ...x, link_status: "invite_sent" } : x));
-      await Share.share({
-        message: `Te invito a ser mi contacto SOS de emergencia en BluEye.\nToca aquí para aceptar: ${share_url}`,
-      });
+      if (push_sent) {
+        toast.success("Notificación enviada", {
+          description: `${c.name} recibirá una notificación para aceptar la invitación.`,
+        });
+      } else {
+        await Share.share({
+          message: `Te invito a ser mi contacto SOS de emergencia en BluEye.\nToca aquí para aceptar: ${share_url}`,
+        });
+      }
     } catch {
       Alert.alert("Error", "No se pudo generar la invitación. Intenta de nuevo.");
     }

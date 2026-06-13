@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class InviteCreateResponse(BaseModel):
     share_url: str
     expires_at: datetime
+    push_sent: bool = False
 
 
 class InvitePreviewResponse(BaseModel):
