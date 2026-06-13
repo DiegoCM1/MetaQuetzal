@@ -4,10 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.features.users.service import get_user_by_firebase_uid
-from app.features.sos_contacts.schemas import SOSContactCreate, SOSContactResponse, SOSContactUpdate
+from app.features.sos_contacts.schemas import SOSContactCreate, SOSContactResponse, SOSContactUpdate, WhoHasMeItem
 from app.features.sos_contacts.service import (
     create_sos_contact,
     delete_sos_contact,
+    get_who_has_me,
     list_sos_contacts,
     update_sos_contact,
 )
@@ -39,6 +40,15 @@ async def post_sos_contact(
 ):
     user_id = await _get_user_id(db, user)
     return await create_sos_contact(db, user_id, body)
+
+
+@router.get("/api/v1/sos-contacts/who-has-me", response_model=list[WhoHasMeItem])
+async def get_who_has_me_route(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    user_id = await _get_user_id(db, user)
+    return await get_who_has_me(db, user_id)
 
 
 @router.patch("/api/v1/sos-contacts/{contact_id}", response_model=SOSContactResponse)

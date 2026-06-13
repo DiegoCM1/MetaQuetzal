@@ -410,6 +410,10 @@ export default Sentry.wrap(function Layout() {
                       name="subscription"
                       options={{ headerShown: false }}
                     />
+                    <Stack.Screen
+                      name="profile"
+                      options={{ headerShown: false }}
+                    />
                   </Stack>
                   <Toaster />
                   </LinearGradient>

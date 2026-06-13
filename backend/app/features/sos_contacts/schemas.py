@@ -24,3 +24,10 @@ class SOSContactResponse(BaseModel):
     link_status: str
     created_at: datetime
     updated_at: datetime
+
+
+class WhoHasMeItem(BaseModel):
+    name: str
+    relationship: str | None
+    owner_display_name: str | None
+    created_at: datetime

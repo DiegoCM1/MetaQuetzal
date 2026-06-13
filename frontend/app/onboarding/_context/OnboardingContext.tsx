@@ -3,10 +3,13 @@ import { useRouter } from 'expo-router';
 import type { OnboardingData, OnboardingContextValue } from '../_types';
 import { saveOnboardingData } from '../_services/onboardingService';
 import { track } from '../../../utils/analytics';
+import { authFetch } from '../../../utils/api';
+import { API_BASE_URL } from '../../../utils/config';
 
 const initialData: OnboardingData = {
   firstName: '',
   lastName: '',
+  phone: '',
   address1: '',
   address2: '',
   zipCode: '',
@@ -33,6 +36,12 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
   const submitOnboarding = async () => {
     try {
       await saveOnboardingData(data);
+      if (data.phone?.trim()) {
+        authFetch(`${API_BASE_URL}/api/v1/users/me/phone`, {
+          method: 'PATCH',
+          body: JSON.stringify({ phone: data.phone.trim() }),
+        }).catch(() => {});
+      }
       track('onboarding_completed', {
         nervousness_level: data.nervousnessLevel,
         age_range: data.age,

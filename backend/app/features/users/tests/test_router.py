@@ -11,6 +11,8 @@ AUTH_HEADERS = {"Authorization": "Bearer faketoken"}
 FAKE_PROFILE = {
     "id": 1,
     "firebase_uid": "firebase-test-uid",
+    "display_name": None,
+    "email": None,
     "phone": None,
     "lat": None,
     "lon": None,

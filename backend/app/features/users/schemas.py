@@ -5,6 +5,8 @@ from datetime import datetime
 class UserProfile(BaseModel):
     id: int
     firebase_uid: str
+    display_name: str | None
+    email: str | None
     phone: str | None
     lat: float | None
     lon: float | None

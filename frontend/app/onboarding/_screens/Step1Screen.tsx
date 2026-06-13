@@ -160,8 +160,19 @@ export const Step1Screen: React.FC = () => {
           </View>
         </View>
 
+        <FormInput
+          label="Teléfono (opcional)"
+          value={data.phone ?? ''}
+          onChangeText={(value) => updateField('phone', value)}
+          placeholder="+52 999 123 4567"
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
+          maxLength={30}
+        />
+
         <Text className="text-xs text-white/60 mt-1">
-          Usaremos tu nombre para personalizar las alertas
+          Usaremos tu nombre para personalizar las alertas. El teléfono permite recibir invitaciones SOS.
         </Text>
       </View>
 
