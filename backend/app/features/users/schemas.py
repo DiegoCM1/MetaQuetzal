@@ -5,6 +5,7 @@ from datetime import datetime
 class UserProfile(BaseModel):
     id: int
     firebase_uid: str
+    phone: str | None
     lat: float | None
     lon: float | None
     created_at: datetime
@@ -14,3 +15,7 @@ class UserProfile(BaseModel):
 class UserLocationUpdate(BaseModel):
     lat: float
     lon: float
+
+
+class PhoneUpdate(BaseModel):
+    phone: str

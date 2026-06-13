@@ -14,7 +14,7 @@ FAKE_DB_USER = {"id": 42, "firebase_uid": "firebase-test-uid", "lat": None, "lon
                 "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc)}
 
 _exp = datetime.now(timezone.utc) + timedelta(hours=72)
-INVITE_RESP   = {"share_url": "blueye://sos-invite/abc123", "expires_at": _exp}
+INVITE_RESP   = {"share_url": "blueye://sos-invite/abc123", "expires_at": _exp, "push_sent": False}
 PREVIEW_RESP  = {"inviter_display_name": "Boro", "contact_name": "Mamá", "expires_at": _exp}
 ACCEPT_RESP   = {"inviter_display_name": "Boro", "contact_name": "Mamá"}
 

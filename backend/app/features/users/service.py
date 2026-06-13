@@ -25,6 +25,19 @@ async def upsert_user(db: AsyncSession, firebase_uid: str) -> dict:
     return result.mappings().first()
 
 
+async def update_user_phone(db: AsyncSession, firebase_uid: str, phone: str) -> dict | None:
+    result = await db.execute(
+        text("""
+            UPDATE users SET phone = :phone, updated_at = NOW()
+            WHERE firebase_uid = :uid
+            RETURNING id, firebase_uid, phone, lat, lon, created_at, updated_at
+        """),
+        {"uid": firebase_uid, "phone": phone},
+    )
+    await db.commit()
+    return result.mappings().first()
+
+
 async def update_user_location(db: AsyncSession, firebase_uid: str, lat: float, lon: float) -> dict | None:
     result = await db.execute(
         text("""

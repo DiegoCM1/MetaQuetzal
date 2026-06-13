@@ -69,6 +69,9 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS pdf_url TEXT"
         ))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)"
+        ))
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS notification_preferences (

@@ -70,6 +70,8 @@ interface NotificationData {
   sender_name?: string
   lat?: string
   lon?: string
+  invite_token?: string
+  inviter_display_name?: string
 }
 
 function resolveNotifPayload(
@@ -80,6 +82,7 @@ function resolveNotifPayload(
   const levelNum = Number(data.level ?? data.siat_level ?? data.alertLevel ?? 0)
   const isFullScreen = data.fullScreen === 'true' || levelNum >= 4
   const isSos = data.category === 'sos'
+  const isSosInvite = data.category === 'sos_invite'
   const sosLat = parseFloat(data.lat ?? '')
   const sosLon = parseFloat(data.lon ?? '')
   const sosHasCoords = Number.isFinite(sosLat) && Number.isFinite(sosLon)
@@ -88,6 +91,9 @@ function resolveNotifPayload(
     levelNum,
     isFullScreen,
     isSos,
+    isSosInvite,
+    inviteToken: data.invite_token,
+    inviterDisplayName: data.inviter_display_name ?? 'Un usuario',
     senderName: data.sender_name ?? 'Un contacto',
     sosLat,
     sosLon,
@@ -173,17 +179,22 @@ export default Sentry.wrap(function Layout() {
     // Tap en notificación (background → foreground, o foreground tap)
     const tapSub = addNotificationResponseListener(async (rawData, content) => {
       const data = rawData as NotificationData
-      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
-      console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos)
+      const { id, isFullScreen, isSos, isSosInvite, inviteToken, inviterDisplayName, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
+      console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite)
 
       await initAnalytics();
       track("push_open", {
         alertId: id ? String(id) : undefined,
-        alertLevel: isSos ? undefined : (params.category ? Number(params.category) : undefined),
+        alertLevel: isSos || isSosInvite ? undefined : (params.category ? Number(params.category) : undefined),
         fullScreen: isFullScreen,
         origin: "listener",
       });
 
+      if (isSosInvite && inviteToken) {
+        console.log('[QA_NAV] tap → sos-invite | token:', inviteToken)
+        router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
+        return;
+      }
       if (isSos) {
         const coordsText = sosHasCoords ? `\nUbicación: ${sosLat.toFixed(5)}, ${sosLon.toFixed(5)}` : '';
         Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
@@ -205,14 +216,24 @@ export default Sentry.wrap(function Layout() {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       const rawData = notification.request.content.data as NotificationData
       const content = notification.request.content
-      const { isFullScreen, isSos, senderName, params } = resolveNotifPayload(rawData, content)
-      console.log('[QA_NOTIF] received foreground | fullScreen:', isFullScreen, '| sos:', isSos, '| category:', params.category)
+      const { isFullScreen, isSos, isSosInvite, inviteToken, inviterDisplayName, senderName, params } = resolveNotifPayload(rawData, content)
+      console.log('[QA_NOTIF] received foreground | fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| category:', params.category)
       if (isFullScreen && !alarmActiveRef.current) {
         alarmActiveRef.current = true
         console.log('[QA_NAV] received → AlarmScreen | category:', params.category, '| alertId:', params.alertId ?? 'none')
         router.push({ pathname: "AlarmScreen", params })
         // Liberar el guard después de un debounce para cubrir multi-push
         setTimeout(() => { alarmActiveRef.current = false }, 5000)
+        return;
+      }
+      if (isSosInvite && inviteToken) {
+        toast(`Invitación SOS de ${inviterDisplayName}`, {
+          description: 'Toca para aceptar la invitación.',
+          action: {
+            label: 'Ver',
+            onClick: () => router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } }),
+          },
+        });
         return;
       }
       if (isSos) {
@@ -248,17 +269,22 @@ export default Sentry.wrap(function Layout() {
       if (!data) return
       const { title: coldTitle, body: coldBody } = initial.notification.request.content
 
-      const { id, isFullScreen, isSos, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
-      if (!id && !isFullScreen && !isSos) return
+      const { id, isFullScreen, isSos, isSosInvite, inviteToken, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
+      if (!id && !isFullScreen && !isSos && !isSosInvite) return
 
       await initAnalytics();
       track("push_open", {
         alertId: id ? String(id) : undefined,
-        alertLevel: isSos ? undefined : (params.category ? Number(params.category) : undefined),
+        alertLevel: isSos || isSosInvite ? undefined : (params.category ? Number(params.category) : undefined),
         fullScreen: isFullScreen,
         origin: "initial",
       });
 
+      if (isSosInvite && inviteToken) {
+        console.log('[QA_NAV] cold start → sos-invite | token:', inviteToken)
+        router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
+        return;
+      }
       if (isSos) {
         const coordsText = sosHasCoords ? `\nUbicación: ${sosLat.toFixed(5)}, ${sosLon.toFixed(5)}` : '';
         Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
