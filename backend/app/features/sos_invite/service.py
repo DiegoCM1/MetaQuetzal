@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-DEEP_LINK_BASE = "blueeye://sos-invite"
+DEEP_LINK_BASE = "blueye://sos-invite"
 
 
 async def create_invite(
