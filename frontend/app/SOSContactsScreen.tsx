@@ -6,6 +6,7 @@ import {
   Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Share,
   AppState, DeviceEventEmitter,
 } from "react-native";
+import { Contact as PhoneContact, ContactField, requestPermissionsAsync as requestContactsPermission } from "expo-contacts";
 import { toast } from "sonner-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -50,6 +51,10 @@ export default function SOSContactsScreen() {
   const [formError, setFormError]           = useState<string | null>(null);
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
   const [pendingContactAdded, setPendingContactAdded] = useState<string | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [phoneContacts, setPhoneContacts] = useState<PhoneContact[]>([]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [whoHasMe, setWhoHasMe]             = useState<WhoHasMeItem[]>([]);
   const [addingReciprocal, setAddingReciprocal] = useState<number | null>(null);
 
@@ -145,6 +150,40 @@ export default function SOSContactsScreen() {
     setRelVal(c.relationship ?? ""); setFormError(null); setModalVisible(true);
   }
   function closeModal() { setModalVisible(false); setFormError(null); }
+
+  async function pickFromContacts() {
+    const { status } = await requestContactsPermission();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permiso denegado",
+        "BluEye necesita acceso a tus contactos. Habilítalo en Configuración.",
+      );
+      return;
+    }
+    setLoadingContacts(true);
+    try {
+      const fields = [ContactField.GIVEN_NAME, ContactField.FAMILY_NAME, ContactField.PHONES] as const;
+      const all = await PhoneContact.getAllDetails(fields);
+      const withPhone = all.filter(c => c.phones && c.phones.length > 0);
+      setPhoneContacts(withPhone as unknown as PhoneContact[]);
+      setContactSearch("");
+      setPickerVisible(true);
+    } catch {
+      Alert.alert("Error", "No se pudieron cargar los contactos. Intenta de nuevo.");
+    } finally {
+      setLoadingContacts(false);
+    }
+  }
+
+  function selectPhoneContact(contact: PhoneContact) {
+    const c = contact as unknown as { givenName?: string; familyName?: string; phones?: { number?: string }[] };
+    const fullName = [c.givenName, c.familyName].filter(Boolean).join(" ").trim();
+    const phone = (c.phones?.[0]?.number ?? "").replace(/\s/g, "");
+    setNameVal(fullName);
+    setPhoneVal(phone);
+    setPickerVisible(false);
+    setFormError(null);
+  }
 
   async function handleSave() {
     const n = nameVal.trim(), p = phoneVal.trim(), r = relVal.trim();
@@ -421,6 +460,21 @@ export default function SOSContactsScreen() {
               {editingContact ? "Editar contacto" : "Nuevo contacto SOS"}
             </Text>
 
+            {!editingContact && (
+              <TouchableOpacity
+                style={s.importButton}
+                onPress={pickFromContacts}
+                disabled={loadingContacts}
+              >
+                {loadingContacts
+                  ? <ActivityIndicator size="small" color={colors.brandCyan} />
+                  : <MaterialCommunityIcons name="contacts-outline" size={18} color={colors.brandCyan} />}
+                <Text style={s.importButtonText}>
+                  {loadingContacts ? "Cargando contactos…" : "Importar desde mis contactos"}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <Text style={s.inputLabel}>Nombre *</Text>
             <TextInput style={s.input} placeholder="Ej. Mamá"
               placeholderTextColor="rgba(255,255,255,0.3)" value={nameVal} maxLength={100}
@@ -451,6 +505,66 @@ export default function SOSContactsScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+      {/* Contact picker modal */}
+      <Modal visible={pickerVisible} animationType="slide" transparent onRequestClose={() => setPickerVisible(false)}>
+        <View style={s.overlay}>
+          <View style={[s.modalCard, { flex: 0, maxHeight: "80%" }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+              <Text style={[s.modalTitle, { flex: 1, marginBottom: 0 }]}>Seleccionar contacto</Text>
+              <TouchableOpacity onPress={() => setPickerVisible(false)} hitSlop={10}>
+                <MaterialCommunityIcons name="close" size={22} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={[s.input, { marginBottom: 8 }]}
+              placeholder="Buscar por nombre o teléfono…"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={contactSearch}
+              onChangeText={setContactSearch}
+              autoFocus
+              clearButtonMode="while-editing"
+            />
+
+            <FlatList
+              data={phoneContacts.filter(c => {
+                const raw = c as unknown as { givenName?: string; familyName?: string; phones?: { number?: string }[] };
+                const fullName = [raw.givenName, raw.familyName].filter(Boolean).join(" ").toLowerCase();
+                const q = contactSearch.toLowerCase();
+                if (!q) return true;
+                return fullName.includes(q) || raw.phones?.some(p => p.number?.includes(q));
+              })}
+              keyExtractor={(_, i) => String(i)}
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: 400 }}
+              renderItem={({ item }) => {
+                const raw = item as unknown as { givenName?: string; familyName?: string; phones?: { number?: string }[] };
+                const fullName = [raw.givenName, raw.familyName].filter(Boolean).join(" ").trim();
+                return (
+                  <TouchableOpacity
+                    style={s.pickerRow}
+                    onPress={() => selectPhoneContact(item)}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons name="account-outline" size={22} color={colors.brandCyan} style={{ marginRight: 10 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.pickerName}>{fullName || "Sin nombre"}</Text>
+                      {raw.phones?.slice(0, 2).map((p, i) => (
+                        <Text key={i} style={s.pickerPhone}>{p.number}</Text>
+                      ))}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <Text style={[s.bodyText, { textAlign: "center", marginTop: 20 }]}>
+                  {contactSearch ? "Sin resultados" : "No hay contactos con teléfono"}
+                </Text>
+              }
+            />
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -502,4 +616,12 @@ const s = StyleSheet.create({
                       alignItems: "center" },
   inviteBannerTitle:{ color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 14 },
   inviteBannerSub:  { color: "#030810", fontFamily: fonts.poppins, fontSize: 12, opacity: 0.7, marginTop: 1 },
+  importButton:     { flexDirection: "row", alignItems: "center", justifyContent: "center",
+                      borderWidth: 1, borderColor: colors.brandCyan, borderRadius: 10,
+                      paddingVertical: 10, paddingHorizontal: 14, marginBottom: 16, gap: 8 },
+  importButtonText: { color: colors.brandCyan, fontFamily: fonts.poppinsSemiBold, fontSize: 14 },
+  pickerRow:        { flexDirection: "row", alignItems: "center", paddingVertical: 12,
+                      borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)" },
+  pickerName:       { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 14 },
+  pickerPhone:      { color: "rgba(255,255,255,0.5)", fontFamily: fonts.poppins, fontSize: 13, marginTop: 1 },
 });
