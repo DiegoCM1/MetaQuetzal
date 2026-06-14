@@ -12,7 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { gradients } from "../utils/theme";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
-import { Alert, AppState, Platform, StatusBar as RNStatusBar } from "react-native";
+import { Alert, AppState, DeviceEventEmitter, Platform, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
   registerForPushNotificationsAsync,
@@ -84,6 +84,7 @@ function resolveNotifPayload(
   const isFullScreen = data.fullScreen === 'true' || levelNum >= 4
   const isSos = data.category === 'sos'
   const isSosInvite = data.category === 'sos_invite'
+  const isSosRejected = data.category === 'sos_rejected'
   const sosLat = parseFloat(data.lat ?? '')
   const sosLon = parseFloat(data.lon ?? '')
   const sosHasCoords = Number.isFinite(sosLat) && Number.isFinite(sosLon)
@@ -93,6 +94,7 @@ function resolveNotifPayload(
     isFullScreen,
     isSos,
     isSosInvite,
+    isSosRejected,
     inviteToken: data.invite_token,
     inviterDisplayName: data.inviter_display_name ?? 'Un usuario',
     senderName: data.sender_name ?? 'Un contacto',
@@ -180,8 +182,8 @@ export default Sentry.wrap(function Layout() {
     // Tap en notificación (background → foreground, o foreground tap)
     const tapSub = addNotificationResponseListener(async (rawData, content) => {
       const data = rawData as NotificationData
-      const { id, isFullScreen, isSos, isSosInvite, inviteToken, inviterDisplayName, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
-      console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite)
+      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, inviteToken, inviterDisplayName, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
+      console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| sosRejected:', isSosRejected)
 
       await initAnalytics();
       track("push_open", {
@@ -202,6 +204,11 @@ export default Sentry.wrap(function Layout() {
         Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
         return;
       }
+      if (isSosRejected) {
+        console.log('[QA_NAV] tap → SOSContactsScreen (rejected)')
+        router.push('/SOSContactsScreen');
+        return;
+      }
       if (isFullScreen) {
         console.log('[QA_NAV] tap → AlarmScreen | alertId:', id ?? 'none', '| category:', params.category)
         router.push({ pathname: "AlarmScreen", params });
@@ -218,8 +225,8 @@ export default Sentry.wrap(function Layout() {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       const rawData = notification.request.content.data as NotificationData
       const content = notification.request.content
-      const { isFullScreen, isSos, isSosInvite, inviteToken, inviterDisplayName, senderName, params } = resolveNotifPayload(rawData, content)
-      console.log('[QA_NOTIF] received foreground | fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| category:', params.category)
+      const { isFullScreen, isSos, isSosInvite, isSosRejected, inviteToken, inviterDisplayName, senderName, params } = resolveNotifPayload(rawData, content)
+      console.log('[QA_NOTIF] received foreground | fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| sosRejected:', isSosRejected, '| category:', params.category)
       if (isFullScreen && !alarmActiveRef.current) {
         alarmActiveRef.current = true
         console.log('[QA_NAV] received → AlarmScreen | category:', params.category, '| alertId:', params.alertId ?? 'none')
@@ -244,6 +251,14 @@ export default Sentry.wrap(function Layout() {
         toast.error(`SOS — ${senderName}`, {
           description: 'Necesita ayuda urgente. Revisa tu pantalla.',
         });
+        return;
+      }
+      if (isSosRejected) {
+        console.log('[QA_SOS_INVITE] foreground received | sos_rejected')
+        toast(content.title ?? 'Invitación SOS rechazada', {
+          description: content.body ?? undefined,
+        });
+        DeviceEventEmitter.emit('contacts:refresh');
       }
     });
 
@@ -273,8 +288,9 @@ export default Sentry.wrap(function Layout() {
       if (!data) return
       const { title: coldTitle, body: coldBody } = initial.notification.request.content
 
-      const { id, isFullScreen, isSos, isSosInvite, inviteToken, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
-      if (!id && !isFullScreen && !isSos && !isSosInvite) return
+      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, inviteToken, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
+      console.log('[QA_NAV] cold start | category:', data.category ?? 'none', '| type:', (data as Record<string,unknown>).type ?? 'none', '| isSosInvite:', isSosInvite, '| isSos:', isSos, '| isSosRejected:', isSosRejected, '| id:', id ?? 'none')
+      if (!id && !isFullScreen && !isSos && !isSosInvite && !isSosRejected) return
 
       await initAnalytics();
       track("push_open", {
@@ -293,6 +309,11 @@ export default Sentry.wrap(function Layout() {
       if (isSos) {
         const coordsText = sosHasCoords ? `\nUbicación: ${sosLat.toFixed(5)}, ${sosLon.toFixed(5)}` : '';
         Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
+        return;
+      }
+      if (isSosRejected) {
+        console.log('[QA_NAV] cold start → SOSContactsScreen (rejected)')
+        router.push('/SOSContactsScreen');
         return;
       }
       if (isFullScreen) {
