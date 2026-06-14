@@ -123,8 +123,8 @@ export default function SosInviteScreen() {
                 <Text style={s.highlight}>{preview.inviter_display_name}</Text>.
                 {"\nTe avisarán si necesitan ayuda urgente."}
               </Text>
-              <TouchableOpacity style={[s.acceptBtn, { marginTop: 20 }]} onPress={() => router.back()}>
-                <Text style={s.acceptTxt}>Cerrar</Text>
+              <TouchableOpacity style={s.closeBtn} onPress={() => router.back()}>
+                <Text style={s.closeTxt}>Cerrar</Text>
               </TouchableOpacity>
             </>
           )}
@@ -155,10 +155,14 @@ const s = StyleSheet.create({
   highlight:{ color: "white", fontFamily: fonts.poppinsSemiBold },
   sub:      { color: colors.brandCyan, fontFamily: fonts.poppins, fontSize: 12, marginTop: 10 },
   row:      { flexDirection: "row", gap: 12, marginTop: 24, width: "100%" },
-  cancelBtn:{ flex: 1, borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", borderRadius: 12,
-              paddingVertical: 14, alignItems: "center" },
-  cancelTxt:{ color: "rgba(255,255,255,0.7)", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+  cancelBtn:{ flex: 1, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.55)",
+              backgroundColor: "rgba(255,255,255,0.07)",
+              borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  cancelTxt:{ color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
   acceptBtn:{ flex: 1, backgroundColor: colors.brandCyan, borderRadius: 12,
               paddingVertical: 14, alignItems: "center" },
   acceptTxt:{ color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+  closeBtn: { width: "100%", backgroundColor: colors.brandCyan, borderRadius: 12,
+              paddingVertical: 14, alignItems: "center", marginTop: 20 },
+  closeTxt: { color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
 });
