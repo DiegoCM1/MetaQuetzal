@@ -116,7 +116,6 @@ async def _send_invite_push(
             priority="high",
             notification=messaging.AndroidNotification(
                 channel_id="sos_alerts",
-                notification_priority="PRIORITY_HIGH",
             ),
         ),
         tokens=tokens,
