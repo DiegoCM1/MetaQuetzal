@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.features.users.service import get_user_by_firebase_uid
 from app.features.sos_contacts.schemas import SOSContactCreate, SOSContactResponse, SOSContactUpdate, WhoHasMeItem
 from app.features.sos_contacts.service import (
+    add_reciprocal_contact,
     create_sos_contact,
     delete_sos_contact,
     get_who_has_me,
@@ -49,6 +50,16 @@ async def get_who_has_me_route(
 ):
     user_id = await _get_user_id(db, user)
     return await get_who_has_me(db, user_id)
+
+
+@router.post("/api/v1/sos-contacts/reciprocate/{owner_user_id}", response_model=SOSContactResponse, status_code=status.HTTP_201_CREATED)
+async def reciprocate_contact(
+    owner_user_id: int,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    user_id = await _get_user_id(db, user)
+    return await add_reciprocal_contact(db, user_id, owner_user_id)
 
 
 @router.patch("/api/v1/sos-contacts/{contact_id}", response_model=SOSContactResponse)
