@@ -134,6 +134,11 @@ export function setForegroundNotificationHandler() {
       return;
     }
 
+    if (data?.category === "sos_invite" || data?.category === "sos_rejected") {
+      console.log('[QA_NOTIF] skip toast for', data.category, '— handled by _layout.tsx');
+      return;
+    }
+
     console.log('[QA_NOTIF] foreground toast | title:', title ?? 'none', '| alertId:', data?.alertId ?? 'none');
     toast(title ?? '', { description: body ?? undefined });
     track("push_received_foreground", {
