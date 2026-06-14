@@ -90,6 +90,28 @@ async def send_targeted_notification(
     return {"success_count": response.success_count, "failure_count": response.failure_count}
 
 
+async def send_contacts_refresh_push(db: AsyncSession, user_ids: list[int]) -> None:
+    """Send a silent push so the recipients' contacts screen refreshes instantly."""
+    token_map = await get_tokens_for_users(db, user_ids)
+    tokens = [t for uid in user_ids for t in token_map.get(uid, [])]
+    if not tokens:
+        return
+    msg = messaging.MulticastMessage(
+        notification=messaging.Notification(title=" ", body=" "),
+        data={"type": "contacts_refresh"},
+        android=messaging.AndroidConfig(priority="high"),
+        tokens=tokens,
+    )
+    try:
+        response = await _send_multicast_with_retry(msg)
+        logger.info(
+            "contacts_refresh push → user_ids=%s tokens=%d success=%d",
+            user_ids, len(tokens), response.success_count,
+        )
+    except Exception as exc:
+        logger.error("contacts_refresh push failed: %s", exc)
+
+
 async def send_all_notifications(db: AsyncSession, title:str, body:str, data:dict[str, str]):
     # Query to db to get all tokens
     result = await db.execute(text("SELECT token FROM device_tokens"))

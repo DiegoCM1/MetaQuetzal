@@ -27,7 +27,10 @@ class SOSContactResponse(BaseModel):
 
 
 class WhoHasMeItem(BaseModel):
+    owner_user_id: int
     name: str
     relationship: str | None
     owner_display_name: str | None
+    owner_phone: str | None
+    already_my_contact: bool
     created_at: datetime
