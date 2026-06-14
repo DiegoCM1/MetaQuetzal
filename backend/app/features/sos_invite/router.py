@@ -5,7 +5,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.features.users.service import get_user_by_firebase_uid
 from app.features.sos_invite.schemas import InviteAcceptResponse, InviteCreateResponse, InvitePreviewResponse
-from app.features.sos_invite.service import accept_invite, create_invite, get_invite_preview
+from app.features.sos_invite.service import accept_invite, create_invite, get_invite_preview, reject_invite
 
 router = APIRouter()
 
@@ -51,3 +51,13 @@ async def accept_invitation(
 ):
     caller_id = await _resolve_user_id(db, user)
     return await accept_invite(db, token, caller_id)
+
+
+@router.post("/api/v1/sos-invitations/{token}/reject", status_code=204)
+async def reject_invitation(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    caller_id = await _resolve_user_id(db, user)
+    await reject_invite(db, token, caller_id)

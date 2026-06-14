@@ -6,7 +6,7 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry, send_contacts_refresh_push
+from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry, send_contacts_refresh_push, send_targeted_notification
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,13 @@ async def _send_invite_push(
             "inviter_display_name": inviter_display_name,
             "contact_name":         contact_name,
         },
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(
+                channel_id="sos_alerts",
+                notification_priority="PRIORITY_HIGH",
+            ),
+        ),
         tokens=tokens,
     )
     try:
@@ -195,3 +202,51 @@ async def accept_invite(db: AsyncSession, token: str, caller_user_id: int) -> di
         "inviter_display_name": row["inviter_display_name"] or "Un usuario de BluEye",
         "contact_name": row["contact_name"],
     }
+
+
+async def reject_invite(db: AsyncSession, token: str, caller_user_id: int) -> None:
+    result = await db.execute(
+        text("""
+            SELECT id, inviter_id, inviter_display_name, contact_id, contact_name,
+                   (expires_at > NOW()) AS is_valid,
+                   accepted_at, revoked_at
+            FROM sos_invitations WHERE token = :token
+        """),
+        {"token": token},
+    )
+    row = result.mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+    if not row["is_valid"] or row["revoked_at"] is not None:
+        raise HTTPException(status_code=410, detail="Invitation expired or revoked")
+    if row["accepted_at"] is not None:
+        raise HTTPException(status_code=409, detail="Invitation already accepted")
+    if int(row["inviter_id"]) == caller_user_id:
+        raise HTTPException(status_code=400, detail="Cannot reject your own invitation")
+
+    # Revert contact to unlinked so the inviter can re-send
+    await db.execute(
+        text("UPDATE sos_contacts SET link_status = 'unlinked' WHERE id = :id"),
+        {"id": row["contact_id"]},
+    )
+    # Invalidate the token (reuse revoked_at — same effect as expiry)
+    await db.execute(
+        text("UPDATE sos_invitations SET revoked_at = NOW() WHERE token = :token"),
+        {"token": token},
+    )
+    await db.commit()
+
+    # Notify the inviter: visible push + silent contacts refresh
+    inviter_id = int(row["inviter_id"])
+    contact_name = row["contact_name"] or "tu contacto"
+    try:
+        await send_targeted_notification(
+            db,
+            user_id=inviter_id,
+            title="Invitación SOS rechazada",
+            body=f"{contact_name} rechazó tu invitación SOS.",
+            data={"category": "sos_rejected"},
+        )
+    except Exception:
+        pass  # inviter may have no tokens; not critical
+    await send_contacts_refresh_push(db, [inviter_id])
