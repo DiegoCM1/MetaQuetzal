@@ -32,6 +32,11 @@ _TEST_PAYLOADS: dict[str, dict] = {
             "alertMessage": "Ciclón de prueba | Distancia: ~120 km | ETA: ~18h",
         },
     },
+    "hurricane_l3": {
+        "title": "Alerta SIAT-CT Amarillo [PRUEBA]",
+        "body": "Ciclón de prueba | Distancia: ~120 km | ETA: ~18h",
+        "data": {"siat_level": "3", "siat_color": "AMARILLO"},
+    },
     "hurricane_l4": {
         "title": "Alerta SIAT-CT Naranja [PRUEBA]",
         "body": "Ciclón de prueba | Distancia: ~50 km | ETA: ~8h",

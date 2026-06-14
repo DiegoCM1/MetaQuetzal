@@ -1,7 +1,7 @@
 // frontend/utils/pushNotifications.js
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import { Alert } from "react-native";
+import { Alert, DeviceEventEmitter } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from "./analytics";
@@ -114,6 +114,13 @@ export function setForegroundNotificationHandler() {
   Notifications.addNotificationReceivedListener((notif) => {
     const { title, body } = notif.request.content;
     const data = notif.request.content.data;
+
+    if (data?.type === "contacts_refresh") {
+      console.log('[QA_NOTIF] silent push contacts_refresh → emitting DeviceEventEmitter');
+      DeviceEventEmitter.emit('contacts:refresh');
+      return;
+    }
+
     console.log('[QA_NOTIF] foreground toast | title:', title ?? 'none', '| alertId:', data?.alertId ?? 'none');
     toast(title ?? '', { description: body ?? undefined });
     track("push_received_foreground", {
