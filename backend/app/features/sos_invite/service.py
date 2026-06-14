@@ -6,7 +6,7 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry
+from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry, send_contacts_refresh_push
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +187,9 @@ async def accept_invite(db: AsyncSession, token: str, caller_user_id: int) -> di
         {"user_id": caller_user_id, "token": token},
     )
     await db.commit()
+
+    # Notify both sides so their contacts screen refreshes instantly
+    await send_contacts_refresh_push(db, [int(row["inviter_id"]), caller_user_id])
 
     return {
         "inviter_display_name": row["inviter_display_name"] or "Un usuario de BluEye",

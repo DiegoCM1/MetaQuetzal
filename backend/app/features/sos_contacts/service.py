@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sos_contacts.schemas import SOSContactCreate, SOSContactUpdate
+from app.features.notifications.service import send_contacts_refresh_push
 
 
 async def list_sos_contacts(db: AsyncSession, user_id: int) -> list[dict]:
@@ -69,11 +70,14 @@ async def update_sos_contact(db: AsyncSession, contact_id: int, user_id: int, pa
 
 async def delete_sos_contact(db: AsyncSession, contact_id: int, user_id: int) -> None:
     result = await db.execute(
-        text("DELETE FROM sos_contacts WHERE id = :id AND user_id = :user_id RETURNING id"),
+        text("DELETE FROM sos_contacts WHERE id = :id AND user_id = :user_id RETURNING id, linked_user_id, link_status"),
         {"id": contact_id, "user_id": user_id},
     )
     await db.commit()
-    if result.fetchone():
+    row = result.mappings().first()
+    if row:
+        if row["link_status"] == "linked" and row["linked_user_id"]:
+            await send_contacts_refresh_push(db, [int(row["linked_user_id"])])
         return
     await _raise_not_found_or_forbidden(db, contact_id, user_id)
 
@@ -82,7 +86,13 @@ async def get_who_has_me(db: AsyncSession, user_id: int) -> list[dict]:
     result = await db.execute(
         text("""
             SELECT sc.name, sc.relationship, sc.created_at,
-                   u.display_name AS owner_display_name
+                   u.id AS owner_user_id,
+                   u.display_name AS owner_display_name,
+                   u.phone AS owner_phone,
+                   EXISTS (
+                       SELECT 1 FROM sos_contacts ec
+                       WHERE ec.user_id = :user_id AND ec.linked_user_id = u.id
+                   ) AS already_my_contact
             FROM sos_contacts sc
             JOIN users u ON u.id = sc.user_id
             WHERE sc.linked_user_id = :user_id AND sc.link_status = 'linked'
@@ -91,6 +101,44 @@ async def get_who_has_me(db: AsyncSession, user_id: int) -> list[dict]:
         {"user_id": user_id},
     )
     return [dict(row) for row in result.mappings().all()]
+
+
+async def add_reciprocal_contact(db: AsyncSession, current_user_id: int, owner_user_id: int) -> dict:
+    if current_user_id == owner_user_id:
+        raise HTTPException(status_code=400, detail="Cannot add yourself as a contact")
+
+    exists = await db.execute(
+        text("SELECT id FROM sos_contacts WHERE user_id = :uid AND linked_user_id = :linked"),
+        {"uid": current_user_id, "linked": owner_user_id},
+    )
+    if exists.mappings().first():
+        raise HTTPException(status_code=409, detail="Already have this user as a contact")
+
+    owner = await db.execute(
+        text("SELECT display_name, phone FROM users WHERE id = :id"),
+        {"id": owner_user_id},
+    )
+    owner_row = owner.mappings().first()
+    if not owner_row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    result = await db.execute(
+        text("""
+            INSERT INTO sos_contacts (user_id, name, phone, link_status, linked_user_id)
+            VALUES (:user_id, :name, :phone, 'linked', :linked_user_id)
+            RETURNING id, user_id, name, phone, relationship, linked_user_id, link_status, created_at, updated_at
+        """),
+        {
+            "user_id": current_user_id,
+            "name": owner_row["display_name"] or "Contacto SOS",
+            "phone": owner_row["phone"] or "",
+            "linked_user_id": owner_user_id,
+        },
+    )
+    await db.commit()
+    contact = dict(result.mappings().first())
+    await send_contacts_refresh_push(db, [owner_user_id])
+    return contact
 
 
 async def _get_contact_owned_by(db: AsyncSession, contact_id: int, user_id: int) -> dict:
