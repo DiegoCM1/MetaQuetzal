@@ -18,10 +18,11 @@ class AlertDetail(BaseModel):
     score: int
     title: str
     short: str
-    lat: float
-    lon: float
+    lat: float | None = None
+    lon: float | None = None
     factors: list
     recommendations: list
+    pdf_url: str | None = None
 
 
 class AlertCreate(BaseModel):

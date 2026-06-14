@@ -18,6 +18,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import * as Location from "expo-location";
+import { syncLocationToBackend } from "../../utils/locationSync";
 import { toast } from "sonner-native";
 import {
   canReportFromLocation,
@@ -45,6 +46,42 @@ const OWM_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
 
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name']
 
+interface MapProps {
+  focusLat?: number;
+  focusLon?: number;
+  focusTitle?: string;
+  focusLevel?: number;
+}
+
+const LEVEL_COLORS: Record<number, string> = {
+  1: '#4CAF50',
+  2: '#4CAF50',
+  3: '#FFC107',
+  4: '#FF9800',
+  5: '#F44336',
+}
+
+const HurricaneMarker = React.memo(function HurricaneMarker({
+  lat, lon, title, level,
+}: { lat: number; lon: number; title?: string; level?: number }) {
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  console.log('[QA_MAP] HurricaneMarker render | lat:', lat, '| lon:', lon);
+  const color = LEVEL_COLORS[level ?? 3];
+  return (
+    <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges} title={title}>
+      <View
+        onLayout={() => {
+          console.log('[QA_MAP] HurricaneMarker onLayout → tracksViewChanges false en 300ms');
+          setTimeout(() => setTracksViewChanges(false), 300);
+        }}
+        style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color, borderWidth: 2, borderColor: 'white', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
+      </View>
+    </Marker>
+  );
+});
+
 const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zone; onPress: () => void }) {
   // Custom-image markers must redraw their native bitmap once on load, then STOP.
   // While tracksViewChanges is true the hit area is unstable and Android drops taps,
@@ -71,14 +108,14 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
   );
 });
 
-export default function WeatherMapNativewind() {
+export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel }: MapProps = {}) {
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
   const [showClouds, setShowClouds] = useState(false);
   const [showEvents, setShowEvents] = useState(true);
   const [layerModalVisible, setLayerModalVisible] = useState(false);
-  const mapRef = useRef(null);
+  const mapRef = useRef<MapView>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const [zones, setZones] = useState<Zone[]>([]);
@@ -167,6 +204,18 @@ export default function WeatherMapNativewind() {
   }, []);
 
   useEffect(() => {
+    if (focusLat == null || focusLon == null) return;
+    console.log('[QA_MAP] focus useEffect fired | focusLat:', focusLat, '| focusLon:', focusLon);
+    // Don't update region state — recenter button must always go to user location
+    mapRef.current?.animateToRegion({
+      latitude: focusLat,
+      longitude: focusLon,
+      latitudeDelta: 3,
+      longitudeDelta: 3,
+    }, 800);
+  }, [focusLat, focusLon]);
+
+  useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
 
     (async () => {
@@ -195,10 +244,23 @@ export default function WeatherMapNativewind() {
           longitudeDelta: 0.1,
         };
 
-        setRegion(userRegion);
         setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
         setCurrentCoords({ latitude: coords.latitude, longitude: coords.longitude });
-        mapRef.current?.animateToRegion(userRegion, 1000);
+        syncLocationToBackend(coords.latitude, coords.longitude);
+        // Always update region to user location — recenter button depends on this
+        setRegion(userRegion);
+        if (focusLat != null && focusLon != null) {
+          console.log('[QA_MAP] GPS resolved with focus — fitToCoordinates | cyclone:', focusLat, focusLon, '| user:', coords.latitude, coords.longitude);
+          mapRef.current?.fitToCoordinates(
+            [
+              { latitude: focusLat, longitude: focusLon },
+              { latitude: coords.latitude, longitude: coords.longitude },
+            ],
+            { edgePadding: { top: 80, right: 60, bottom: 120, left: 60 }, animated: true }
+          );
+        } else {
+          mapRef.current?.animateToRegion(userRegion, 1000);
+        }
       } catch (error) {
         console.warn("⚠️ Could not get location (timeout or error), using default region:", error.message);
       }
@@ -578,6 +640,15 @@ export default function WeatherMapNativewind() {
         {showEvents && zones.map((zone) => (
           <ZoneMarker key={zone.id} zone={zone} onPress={() => handleCirclePress(zone)} />
         ))}
+
+        {focusLat != null && focusLon != null && (
+          <HurricaneMarker
+            lat={focusLat}
+            lon={focusLon}
+            title={focusTitle}
+            level={focusLevel}
+          />
+        )}
       </MapView>
 
       {/* Layer selector */}

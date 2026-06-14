@@ -4,12 +4,12 @@ import { Alert, Text, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { track } from "../utils/analytics";
 import { useModel } from "./ai/_context/ModelContext";
 import { MODEL_FAILURE_LABEL } from "./ai/_services/modelTelemetry";
 import { useAuth } from "../features/auth/AuthContext";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { modelStatus, optIn, optOut, retryDownload, downloadProgress, modelFailure } = useModel();
@@ -46,9 +46,6 @@ export default function SettingsScreen() {
       ]
     );
   };
-
-  const showComingSoon = () =>
-    Alert.alert("¡Próximamente!", "Esta opción estará disponible muy pronto.");
 
   const handleResetOnboarding = async () => {
     Alert.alert(
@@ -105,18 +102,7 @@ export default function SettingsScreen() {
           onPress={() => router.push('/NotificationPreferencesScreen')}
         />
 
-        {/* <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} /> */}
-
         <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
-
-        {/* <OptionCard
-          icon="alert-outline"
-          title="Ver Alerta de Emergencia"
-          onPress={() => {
-            track('demo_alarm_view');
-            router.push('/AlarmScreen');
-          }}
-        /> */}
 
         {/* AI offline model — one card per lifecycle status (single source of truth). */}
         {modelStatus === 'idle' && (
@@ -193,3 +179,4 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
+

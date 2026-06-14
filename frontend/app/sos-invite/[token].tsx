@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authFetch } from "../../utils/api";
 import { API_BASE_URL } from "../../utils/config";
 import { colors, fonts } from "../../utils/theme";
@@ -16,6 +17,8 @@ interface Preview {
   expires_at: string;
 }
 
+export const PENDING_SOS_INVITE_KEY = "@BluEye:pending_sos_invite";
+
 export default function SosInviteScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
@@ -24,22 +27,34 @@ export default function SosInviteScreen() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    if (!token) { setStage("error"); setErrorMsg("Enlace inválido."); return; }
-    fetch(`${API_BASE_URL}/api/v1/sos-invitations/preview/${token}`)
+    console.log('[QA_SOS_INVITE] screen mount | token:', token ?? 'MISSING');
+    if (!token) {
+      console.warn('[QA_SOS_INVITE] no token → error stage');
+      setStage("error"); setErrorMsg("Enlace inválido."); return;
+    }
+    const url = `${API_BASE_URL}/api/v1/sos-invitations/preview/${token}`;
+    console.log('[QA_SOS_INVITE] fetching preview | url:', url);
+    fetch(url)
       .then(r => {
+        console.log('[QA_SOS_INVITE] preview response | status:', r.status);
         if (r.status === 404) return Promise.reject("not_found");
         if (r.status === 410) return Promise.reject("expired");
         if (r.status === 409) return Promise.reject("already_used");
         if (!r.ok) return Promise.reject("unknown");
         return r.json();
       })
-      .then((data: Preview) => { setPreview(data); setStage("preview"); })
+      .then((data: Preview) => {
+        console.log('[QA_SOS_INVITE] preview OK | inviter:', data.inviter_display_name, '| contact:', data.contact_name);
+        setPreview(data); setStage("preview");
+      })
       .catch((reason: string) => {
+        console.warn('[QA_SOS_INVITE] preview failed | reason:', reason);
+        AsyncStorage.removeItem(PENDING_SOS_INVITE_KEY).catch(() => {});
         setStage("error");
         setErrorMsg(
-          reason === "expired"    ? "Este enlace expiró. Pídele a quien te invitó que genere uno nuevo." :
+          reason === "expired"      ? "Este enlace expiró. Pídele a quien te invitó que genere uno nuevo." :
           reason === "already_used" ? "Esta invitación ya fue aceptada anteriormente." :
-          reason === "not_found"  ? "Este enlace no existe o ya no es válido." :
+          reason === "not_found"    ? "Este enlace no existe o ya no es válido." :
           "No se pudo cargar la invitación. Comprueba tu conexión."
         );
       });
@@ -47,15 +62,20 @@ export default function SosInviteScreen() {
 
   async function handleAccept() {
     if (!token) return;
+    console.log('[QA_SOS_INVITE] accepting | token:', token);
     setStage("accepting");
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/sos-invitations/${token}/accept`, { method: "POST" });
+      console.log('[QA_SOS_INVITE] accept response | status:', res.status);
       if (res.status === 409) { setStage("error"); setErrorMsg("Esta invitación ya fue aceptada."); return; }
       if (res.status === 410) { setStage("error"); setErrorMsg("Este enlace expiró."); return; }
       if (res.status === 400) { setStage("error"); setErrorMsg("No puedes aceptar tu propia invitación."); return; }
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await AsyncStorage.removeItem(PENDING_SOS_INVITE_KEY);
+      console.log('[QA_SOS_INVITE] accepted OK → cleared pending token');
       setStage("success");
-    } catch {
+    } catch (e) {
+      console.error('[QA_SOS_INVITE] accept error:', e);
       setStage("error");
       setErrorMsg("No se pudo procesar la invitación. Comprueba tu conexión e inicia sesión.");
     }
@@ -80,7 +100,11 @@ export default function SosInviteScreen() {
               </Text>
               <Text style={s.sub}>Contacto guardado: {preview.contact_name}</Text>
               <View style={s.row}>
-                <TouchableOpacity style={s.cancelBtn} onPress={() => router.back()}>
+                <TouchableOpacity style={s.cancelBtn} onPress={() => {
+                  console.log('[QA_SOS_INVITE] user rejected invite | token:', token);
+                  AsyncStorage.removeItem(PENDING_SOS_INVITE_KEY).catch(() => {});
+                  router.back();
+                }}>
                   <Text style={s.cancelTxt}>Rechazar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.acceptBtn} onPress={handleAccept}>

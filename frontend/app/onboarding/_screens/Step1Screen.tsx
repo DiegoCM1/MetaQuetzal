@@ -10,6 +10,7 @@ import { useOnboarding } from '../_context/OnboardingContext';
 import { validateStep1 } from '../_validation';
 import { MEXICO_STATES } from '../_types';
 import { track } from '../../../utils/analytics';
+import { syncLocationToBackend } from '../../../utils/locationSync';
 import { colors } from '../../../utils/theme';
 
 export const Step1Screen: React.FC = () => {
@@ -77,6 +78,7 @@ export const Step1Screen: React.FC = () => {
 
         updateMultipleFields(updates);
 
+        syncLocationToBackend(location.coords.latitude, location.coords.longitude);
         track('onboarding_location_used', {
           state: address.region,
           hasPostalCode: !!address.postalCode,
@@ -158,8 +160,19 @@ export const Step1Screen: React.FC = () => {
           </View>
         </View>
 
+        <FormInput
+          label="Teléfono (opcional)"
+          value={data.phone ?? ''}
+          onChangeText={(value) => updateField('phone', value)}
+          placeholder="+52 999 123 4567"
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
+          maxLength={30}
+        />
+
         <Text className="text-xs text-white/60 mt-1">
-          Usaremos tu nombre para personalizar las alertas
+          Usaremos tu nombre para personalizar las alertas. El teléfono permite recibir invitaciones SOS.
         </Text>
       </View>
 

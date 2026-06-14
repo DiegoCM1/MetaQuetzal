@@ -17,7 +17,20 @@ _TEST_PAYLOADS: dict[str, dict] = {
     "hurricane_l2": {
         "title": "Alerta SIAT-CT Verde [PRUEBA]",
         "body": "Ciclón de prueba | Distancia: ~200 km | ETA: ~36h",
-        "data": {"siat_level": "2", "siat_color": "VERDE"},
+        "data": {
+            "siat_level": "2", "siat_color": "VERDE",
+            "alertTitle": "Alerta SIAT-CT Verde [PRUEBA]",
+            "alertMessage": "Ciclón de prueba | Distancia: ~200 km | ETA: ~36h",
+        },
+    },
+    "hurricane_l3": {
+        "title": "Alerta SIAT-CT Amarillo [PRUEBA]",
+        "body": "Ciclón de prueba | Distancia: ~120 km | ETA: ~18h",
+        "data": {
+            "siat_level": "3", "siat_color": "AMARILLO",
+            "alertTitle": "Alerta SIAT-CT Amarillo [PRUEBA]",
+            "alertMessage": "Ciclón de prueba | Distancia: ~120 km | ETA: ~18h",
+        },
     },
     "hurricane_l3": {
         "title": "Alerta SIAT-CT Amarillo [PRUEBA]",
@@ -27,18 +40,27 @@ _TEST_PAYLOADS: dict[str, dict] = {
     "hurricane_l4": {
         "title": "Alerta SIAT-CT Naranja [PRUEBA]",
         "body": "Ciclón de prueba | Distancia: ~50 km | ETA: ~8h",
-        "data": {"siat_level": "4", "siat_color": "NARANJA", "fullScreen": "true"},
+        "data": {
+            "siat_level": "4", "siat_color": "NARANJA", "fullScreen": "true",
+            "alertTitle": "Alerta SIAT-CT Naranja [PRUEBA]",
+            "alertMessage": "Ciclón de prueba | Distancia: ~50 km | ETA: ~8h",
+        },
     },
     "sos_test": {
         "title": "SOS — Equipo BluEye [PRUEBA]",
         "body": "Necesita ayuda urgente. Toca para ver su ubicación.",
-        "data": {"category": "sos", "sender_name": "Test BluEye",
-                 "lat": "19.43264", "lon": "-99.13318"},
+        "data": {
+            "category": "sos", "sender_name": "Test BluEye",
+            "lat": "19.43264", "lon": "-99.13318",
+        },
     },
     "generic": {
         "title": "Notificación de prueba [PRUEBA]",
         "body": "Esta es una notificación de prueba del equipo BluEye.",
-        "data": {},
+        "data": {
+            "alertTitle": "Notificación de prueba [PRUEBA]",
+            "alertMessage": "Esta es una notificación de prueba del equipo BluEye.",
+        },
     },
 }
 
@@ -79,17 +101,17 @@ async def send_test_notification(
     current_user: dict = Depends(get_current_user),
 ):
     """Send a test notification to all devices. Requires Firebase auth + admin email allowlist."""
-    admin_emails = [
-        e.strip().lower()
-        for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
-        if e.strip()
-    ]
-    if not admin_emails:
-        raise HTTPException(status_code=403, detail="Test notifications not configured.")
-
-    user_email = (current_user.get("email") or "").lower()
-    if user_email not in admin_emails:
-        raise HTTPException(status_code=403, detail="Not authorized to send test notifications.")
+    if not settings.DEV_BYPASS_NOTIF_TEST_AUTH:
+        admin_emails = [
+            e.strip().lower()
+            for e in settings.NOTIFICATION_TEST_ADMIN_EMAILS.split(",")
+            if e.strip()
+        ]
+        if not admin_emails:
+            raise HTTPException(status_code=403, detail="Test notifications not configured.")
+        user_email = (current_user.get("email") or "").lower()
+        if user_email not in admin_emails:
+            raise HTTPException(status_code=403, detail="Not authorized to send test notifications.")
 
     payload = _TEST_PAYLOADS[body.type]
     try:

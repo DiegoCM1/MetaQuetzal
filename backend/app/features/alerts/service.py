@@ -39,19 +39,29 @@ async def persist_smn_bulletin_if_new(db: AsyncSession, bulletin: dict) -> bool:
             {"title": title},
         )
 
-    if existing.mappings().first():
+    existing_row = existing.mappings().first()
+    if existing_row:
+        pdf_url = bulletin.get("pdf_url")
+        if pdf_url:
+            await db.execute(
+                text("UPDATE alerts SET pdf_url = :pdf_url WHERE id = :id AND pdf_url IS NULL"),
+                {"pdf_url": pdf_url, "id": existing_row["id"]},
+            )
+            await db.commit()
+            logger.debug("SMN bulletin pdf_url backfilled: '%s'", title)
         logger.debug("SMN bulletin already persisted: '%s'", title)
         return False
 
     level = _smn_headline_to_level(bulletin.get("headline") or "")
     short = (bulletin.get("summary") or bulletin.get("headline") or "Boletín del SMN/CONAGUA")[:500]
 
+    pdf_url = bulletin.get("pdf_url")
     await db.execute(
         text("""
-            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations)
-            VALUES (:level, 0, :title, :short, NULL, NULL, '[]', '[]')
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations, pdf_url)
+            VALUES (:level, 0, :title, :short, NULL, NULL, '[]', '[]', :pdf_url)
         """),
-        {"level": level, "title": title, "short": short},
+        {"level": level, "title": title, "short": short, "pdf_url": pdf_url},
     )
     await db.commit()
     logger.info("SMN bulletin persisted: level=%d title='%s'", level, title)

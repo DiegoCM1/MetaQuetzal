@@ -1,10 +1,16 @@
+import logging
 import secrets
 
 from fastapi import HTTPException
+from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-DEEP_LINK_BASE = "blueeye://sos-invite"
+from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry
+
+logger = logging.getLogger(__name__)
+
+DEEP_LINK_BASE = "blueye://sos-invite"
 
 
 async def create_invite(
@@ -14,7 +20,12 @@ async def create_invite(
     contact_id: int,
 ) -> dict:
     contact = await db.execute(
-        text("SELECT name, link_status, user_id FROM sos_contacts WHERE id = :id"),
+        text("""
+            SELECT sc.name, sc.link_status, sc.user_id, sc.phone, u.id AS invitee_user_id
+            FROM sos_contacts sc
+            LEFT JOIN users u ON u.phone = sc.phone
+            WHERE sc.id = :id
+        """),
         {"id": contact_id},
     )
     row = contact.mappings().first()
@@ -58,10 +69,61 @@ async def create_invite(
     await db.commit()
 
     inv = result.mappings().first()
+    invite_token = inv["token"]
+
+    push_sent = False
+    invitee_user_id = row["invitee_user_id"]
+    if invitee_user_id is not None:
+        push_sent = await _send_invite_push(
+            db,
+            invitee_user_id=int(invitee_user_id),
+            inviter_display_name=inviter_display_name or "Un usuario de BluEye",
+            contact_name=row["name"],
+            invite_token=invite_token,
+        )
+
     return {
-        "share_url": f"{DEEP_LINK_BASE}/{inv['token']}",
+        "share_url": f"{DEEP_LINK_BASE}/{invite_token}",
         "expires_at": inv["expires_at"],
+        "push_sent": push_sent,
     }
+
+
+async def _send_invite_push(
+    db: AsyncSession,
+    invitee_user_id: int,
+    inviter_display_name: str,
+    contact_name: str,
+    invite_token: str,
+) -> bool:
+    token_map = await get_tokens_for_users(db, [invitee_user_id])
+    tokens = token_map.get(invitee_user_id, [])
+    if not tokens:
+        return False
+
+    msg = messaging.MulticastMessage(
+        notification=messaging.Notification(
+            title=f"Invitación SOS de {inviter_display_name}",
+            body=f"Te invitan a ser contacto SOS de {inviter_display_name} en BluEye.",
+        ),
+        data={
+            "category":             "sos_invite",
+            "invite_token":         invite_token,
+            "inviter_display_name": inviter_display_name,
+            "contact_name":         contact_name,
+        },
+        tokens=tokens,
+    )
+    try:
+        response = await _send_multicast_with_retry(msg)
+        logger.info(
+            "SOS invite push → invitee_user_id=%d tokens=%d success=%d failure=%d",
+            invitee_user_id, len(tokens), response.success_count, response.failure_count,
+        )
+        return response.success_count > 0
+    except Exception as exc:
+        logger.error("SOS invite push failed invitee_user_id=%d: %s", invitee_user_id, exc)
+        return False
 
 
 async def get_invite_preview(db: AsyncSession, token: str) -> dict:

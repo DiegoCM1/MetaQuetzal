@@ -4,12 +4,16 @@ import {
   View, Text, FlatList, Modal, TextInput, TouchableOpacity,
   Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Share,
 } from "react-native";
+import { toast } from "sonner-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import ScreenHeader from "../components/ScreenHeader";
 import { authFetch } from "../utils/api";
 import { API_BASE_URL } from "../utils/config";
 import { colors, fonts } from "../utils/theme";
+import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
 
 interface SOSContact {
   id: number; user_id: number; name: string; phone: string;
@@ -19,7 +23,15 @@ interface SOSContact {
   created_at: string; updated_at: string;
 }
 
+interface WhoHasMeItem {
+  name: string;
+  relationship: string | null;
+  owner_display_name: string | null;
+  created_at: string;
+}
+
 export default function SOSContactsScreen() {
+  const router = useRouter();
   const [contacts, setContacts]             = useState<SOSContact[]>([]);
   const [loading, setLoading]               = useState(true);
   const [fetchError, setFetchError]         = useState(false);
@@ -30,6 +42,8 @@ export default function SOSContactsScreen() {
   const [phoneVal, setPhoneVal]             = useState("");
   const [relVal, setRelVal]                 = useState("");
   const [formError, setFormError]           = useState<string | null>(null);
+  const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
+  const [whoHasMe, setWhoHasMe]             = useState<WhoHasMeItem[]>([]);
 
   useEffect(() => {
     let live = true;
@@ -39,6 +53,22 @@ export default function SOSContactsScreen() {
       .catch(() => { if (live) setFetchError(true); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
+  }, []);
+
+  useEffect(() => {
+    authFetch(`${API_BASE_URL}/api/v1/sos-contacts/who-has-me`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((data: WhoHasMeItem[]) => setWhoHasMe(data))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PENDING_SOS_INVITE_KEY)
+      .then(token => {
+        console.log('[QA_SOS_INVITE] SOSContactsScreen check pending | token:', token ?? 'none');
+        setPendingInviteToken(token);
+      })
+      .catch(() => {});
   }, []);
 
   function openCreate() {
@@ -98,11 +128,17 @@ export default function SOSContactsScreen() {
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/${c.id}/invite`, { method: "POST" });
       if (!res.ok) throw new Error();
-      const { share_url } = await res.json();
+      const { share_url, push_sent } = await res.json();
       setContacts(prev => prev.map(x => x.id === c.id ? { ...x, link_status: "invite_sent" } : x));
-      await Share.share({
-        message: `Te invito a ser mi contacto SOS de emergencia en BluEye.\nToca aquí para aceptar: ${share_url}`,
-      });
+      if (push_sent) {
+        toast.success("Notificación enviada", {
+          description: `${c.name} recibirá una notificación para aceptar la invitación.`,
+        });
+      } else {
+        await Share.share({
+          message: `Te invito a ser mi contacto SOS de emergencia en BluEye.\nToca aquí para aceptar: ${share_url}`,
+        });
+      }
     } catch {
       Alert.alert("Error", "No se pudo generar la invitación. Intenta de nuevo.");
     }
@@ -126,27 +162,75 @@ export default function SOSContactsScreen() {
     </SafeAreaView>
   );
 
+  const whoHasMeSection = whoHasMe.length > 0 ? (
+    <View style={{ paddingBottom: 24, paddingHorizontal: 16 }}>
+      <Text style={s.sectionTitle}>Soy contacto SOS de</Text>
+      {whoHasMe.map((item, idx) => (
+        <View key={idx} style={s.whoRow}>
+          <MaterialCommunityIcons name="shield-account-outline" size={32} color={colors.brandCyan} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={s.contactName}>
+              {item.owner_display_name ?? item.name}
+            </Text>
+            {item.relationship
+              ? <Text style={s.contactRel}>{item.relationship}</Text>
+              : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  ) : null;
+
   return (
     <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
       <ScreenHeader title="Contactos SOS" />
 
+      {pendingInviteToken && (
+        <TouchableOpacity
+          style={s.inviteBanner}
+          onPress={() => {
+            console.log('[QA_SOS_INVITE] banner tap → sos-invite | token:', pendingInviteToken);
+            router.push({ pathname: "/sos-invite/[token]", params: { token: pendingInviteToken } });
+          }}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="shield-account-outline" size={22} color="#030810" />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={s.inviteBannerTitle}>Tienes una invitación SOS pendiente</Text>
+            <Text style={s.inviteBannerSub}>Toca para ver y aceptar</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color="#030810" />
+        </TouchableOpacity>
+      )}
+
       {contacts.length === 0 ? (
-        <View style={s.centered}><View style={s.card}>
-          <MaterialCommunityIcons name="account-heart-outline" size={48} color={colors.brandCyan} />
-          <Text style={[s.title, { marginTop: 12, marginBottom: 6 }]}>Sin contactos SOS</Text>
-          <Text style={[s.bodyText, { textAlign: "center", marginBottom: 20 }]}>
-            Agrega personas de confianza que recibirán tu alerta en caso de emergencia.
-          </Text>
-          <TouchableOpacity style={s.cyanButton} onPress={openCreate}>
-            <Text style={s.cyanButtonText}>Agregar contacto</Text>
-          </TouchableOpacity>
-        </View></View>
+        <FlatList
+          data={[]}
+          renderItem={null}
+          ListEmptyComponent={
+            <View style={[s.centered, { paddingTop: 40 }]}>
+              <View style={s.card}>
+                <MaterialCommunityIcons name="account-heart-outline" size={48} color={colors.brandCyan} />
+                <Text style={[s.title, { marginTop: 12, marginBottom: 6 }]}>Sin contactos SOS</Text>
+                <Text style={[s.bodyText, { textAlign: "center", marginBottom: 20 }]}>
+                  Agrega personas de confianza que recibirán tu alerta en caso de emergencia.
+                </Text>
+                <TouchableOpacity style={s.cyanButton} onPress={openCreate}>
+                  <Text style={s.cyanButtonText}>Agregar contacto</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          }
+          ListFooterComponent={whoHasMeSection}
+          contentContainerStyle={{ flexGrow: 1 }}
+        />
       ) : (
         <View style={{ flex: 1 }}>
           <FlatList
             data={contacts}
             keyExtractor={item => String(item.id)}
             contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
+            ListFooterComponent={whoHasMeSection}
             renderItem={({ item }) => (
               <View style={s.contactRow}>
                 <MaterialCommunityIcons name="account-circle-outline" size={36} color={colors.brandCyan} />
@@ -234,7 +318,7 @@ export default function SOSContactsScreen() {
 }
 
 const s = StyleSheet.create({
-  centered:     { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
+  centered:     { justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
   card:         { backgroundColor: "rgba(10,28,50,0.6)", borderRadius: 16, borderWidth: 1,
                   borderColor: "rgba(255,255,255,0.1)", padding: 24, width: "100%", alignItems: "center" },
   title:        { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 17 },
@@ -242,8 +326,13 @@ const s = StyleSheet.create({
   cyanButton:   { backgroundColor: colors.brandCyan, borderRadius: 12,
                   paddingVertical: 13, paddingHorizontal: 24, alignItems: "center" },
   cyanButtonText: { color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+  sectionTitle: { color: "rgba(255,255,255,0.5)", fontFamily: fonts.poppins, fontSize: 12,
+                  letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8, marginTop: 16 },
   contactRow:   { backgroundColor: "rgba(10,28,50,0.6)", borderRadius: 14, borderWidth: 1,
                   borderColor: "rgba(255,255,255,0.08)", marginHorizontal: 16, marginBottom: 10,
+                  padding: 14, flexDirection: "row", alignItems: "center" },
+  whoRow:       { backgroundColor: "rgba(10,28,50,0.4)", borderRadius: 14, borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.06)", marginBottom: 10,
                   padding: 14, flexDirection: "row", alignItems: "center" },
   contactName:  { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
   contactPhone: { color: "rgba(255,255,255,0.6)", fontFamily: fonts.poppins, fontSize: 13, marginTop: 2 },
@@ -267,6 +356,11 @@ const s = StyleSheet.create({
   cancelButton: { flex: 1, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
                   borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   cancelText:   { color: "rgba(255,255,255,0.7)", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
-  linkedBadge:  { color: colors.brandGreen, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
-  pendingBadge: { color: colors.brandYellow, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
+  linkedBadge:      { color: colors.brandGreen, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
+  pendingBadge:     { color: colors.brandYellow, fontFamily: fonts.poppins, fontSize: 11, marginTop: 2 },
+  inviteBanner:     { backgroundColor: colors.brandCyan, borderRadius: 14, marginHorizontal: 16,
+                      marginTop: 12, marginBottom: 4, padding: 14, flexDirection: "row",
+                      alignItems: "center" },
+  inviteBannerTitle:{ color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 14 },
+  inviteBannerSub:  { color: "#030810", fontFamily: fonts.poppins, fontSize: 12, opacity: 0.7, marginTop: 1 },
 });
