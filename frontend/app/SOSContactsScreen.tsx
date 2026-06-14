@@ -1,8 +1,10 @@
 import "../global.css";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View, Text, FlatList, Modal, TextInput, TouchableOpacity,
   Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Share,
+  AppState, DeviceEventEmitter,
 } from "react-native";
 import { toast } from "sonner-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,9 +26,12 @@ interface SOSContact {
 }
 
 interface WhoHasMeItem {
+  owner_user_id: number;
   name: string;
   relationship: string | null;
   owner_display_name: string | null;
+  owner_phone: string | null;
+  already_my_contact: boolean;
   created_at: string;
 }
 
@@ -44,31 +49,82 @@ export default function SOSContactsScreen() {
   const [formError, setFormError]           = useState<string | null>(null);
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
   const [whoHasMe, setWhoHasMe]             = useState<WhoHasMeItem[]>([]);
+  const [addingReciprocal, setAddingReciprocal] = useState<number | null>(null);
 
+  const fetchAllRef = useRef<() => void>(() => {});
+
+  // Silent push → instant refresh without waiting for 15s poll
   useEffect(() => {
-    let live = true;
-    authFetch(`${API_BASE_URL}/api/v1/sos-contacts`)
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then((data: SOSContact[]) => { if (live) setContacts(data); })
-      .catch(() => { if (live) setFetchError(true); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
+    const sub = DeviceEventEmitter.addListener('contacts:refresh', () => {
+      console.log('[QA_SOS] DeviceEventEmitter contacts:refresh → instant refetch');
+      fetchAllRef.current();
+    });
+    return () => sub.remove();
   }, []);
 
-  useEffect(() => {
-    authFetch(`${API_BASE_URL}/api/v1/sos-contacts/who-has-me`)
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then((data: WhoHasMeItem[]) => setWhoHasMe(data))
-      .catch(() => {});
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let live = true;
+      let isFirst = true;
 
+      function fetchAll() {
+        if (!live) return;
+        console.log('[QA_SOS] poll → refetching contacts + who-has-me + pending token');
+
+        AsyncStorage.getItem(PENDING_SOS_INVITE_KEY)
+          .then(token => {
+            console.log('[QA_SOS_INVITE] SOSContactsScreen check pending | token:', token ?? 'none');
+            if (live) setPendingInviteToken(token);
+          })
+          .catch(() => {});
+
+        if (isFirst) { setLoading(true); setFetchError(false); }
+
+        authFetch(`${API_BASE_URL}/api/v1/sos-contacts`)
+          .then(r => {
+            console.log('[QA_SOS] contacts response status:', r.status);
+            return r.ok ? r.json() : Promise.reject(r.status);
+          })
+          .then((data: SOSContact[]) => {
+            console.log('[QA_SOS] contacts loaded:', data.length, 'items', JSON.stringify(data.map(c => ({ id: c.id, name: c.name, link_status: c.link_status }))));
+            if (live) setContacts(data);
+          })
+          .catch((err) => {
+            console.log('[QA_SOS] contacts fetch error:', err);
+            if (live && isFirst) setFetchError(true);
+          })
+          .finally(() => { if (live && isFirst) { setLoading(false); isFirst = false; } });
+
+        authFetch(`${API_BASE_URL}/api/v1/sos-contacts/who-has-me`)
+          .then(r => {
+            console.log('[QA_SOS] who-has-me response status:', r.status);
+            return r.ok ? r.json() : Promise.reject(r.status);
+          })
+          .then((data: WhoHasMeItem[]) => {
+            console.log('[QA_SOS] who-has-me loaded:', data.length, 'items', JSON.stringify(data));
+            if (live) setWhoHasMe(data);
+          })
+          .catch((err) => console.log('[QA_SOS] who-has-me fetch error:', err));
+      }
+
+      fetchAllRef.current = fetchAll;
+      fetchAll();
+      const interval = setInterval(fetchAll, 15000);
+      return () => { live = false; fetchAllRef.current = () => {}; clearInterval(interval); };
+    }, [])
+  );
+
+  // Re-check pending token when app returns to foreground
   useEffect(() => {
-    AsyncStorage.getItem(PENDING_SOS_INVITE_KEY)
-      .then(token => {
-        console.log('[QA_SOS_INVITE] SOSContactsScreen check pending | token:', token ?? 'none');
-        setPendingInviteToken(token);
-      })
-      .catch(() => {});
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        console.log('[QA_SOS_INVITE] AppState active → re-checking pending token');
+        AsyncStorage.getItem(PENDING_SOS_INVITE_KEY)
+          .then(token => setPendingInviteToken(token))
+          .catch(() => {});
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   function openCreate() {
@@ -88,20 +144,28 @@ export default function SOSContactsScreen() {
 
     setSaving(true); setFormError(null);
     const body = { name: n, phone: p, ...(r ? { relationship: r } : {}) };
+    const url = editingContact
+      ? `${API_BASE_URL}/api/v1/sos-contacts/${editingContact.id}`
+      : `${API_BASE_URL}/api/v1/sos-contacts`;
+    const method = editingContact ? "PATCH" : "POST";
+    console.log('[QA_SOS] saving contact | method:', method, '| body:', JSON.stringify(body));
     try {
-      const url = editingContact
-        ? `${API_BASE_URL}/api/v1/sos-contacts/${editingContact.id}`
-        : `${API_BASE_URL}/api/v1/sos-contacts`;
-      const method = editingContact ? "PATCH" : "POST";
       const res = await authFetch(url, { method, body: JSON.stringify(body) });
-      if (!res.ok) throw new Error();
+      console.log('[QA_SOS] save response status:', res.status);
+      if (!res.ok) throw new Error(String(res.status));
       const saved: SOSContact = await res.json();
+      console.log('[QA_SOS] contact saved:', JSON.stringify({ id: saved.id, name: saved.name, link_status: saved.link_status }));
       setContacts(prev =>
         editingContact ? prev.map(c => c.id === saved.id ? saved : c) : [...prev, saved]
       );
       closeModal();
-    } catch {
-      setFormError("No se pudo guardar el contacto. Intenta de nuevo.");
+    } catch (err) {
+      console.log('[QA_SOS] save error:', err, '→ refetching to check if server saved anyway');
+      authFetch(`${API_BASE_URL}/api/v1/sos-contacts`)
+        .then(r => r.ok ? r.json() : null)
+        .then((data: SOSContact[] | null) => { if (data) { setContacts(data); closeModal(); return; } })
+        .catch(() => {});
+      setFormError("Error de red. Verifica tu conexión e intenta de nuevo.");
     } finally {
       setSaving(false);
     }
@@ -115,20 +179,52 @@ export default function SOSContactsScreen() {
   }
 
   async function handleDelete(c: SOSContact) {
+    console.log('[QA_SOS] deleting contact id:', c.id, 'name:', c.name);
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/${c.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
+      console.log('[QA_SOS] delete response status:', res.status);
+      if (!res.ok) throw new Error(String(res.status));
       setContacts(prev => prev.filter(x => x.id !== c.id));
-    } catch {
+      console.log('[QA_SOS] contact deleted successfully');
+    } catch (err) {
+      console.log('[QA_SOS] delete error:', err);
       Alert.alert("Error", "No se pudo eliminar el contacto. Intenta de nuevo.");
     }
   }
 
+  async function handleAddReciprocal(item: WhoHasMeItem) {
+    console.log('[QA_SOS] adding reciprocal contact | owner_user_id:', item.owner_user_id, '| name:', item.owner_display_name);
+    setAddingReciprocal(item.owner_user_id);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/reciprocate/${item.owner_user_id}`, { method: "POST" });
+      console.log('[QA_SOS] reciprocal response status:', res.status);
+      if (res.status === 409) {
+        toast("Ya es tu contacto SOS");
+        setWhoHasMe(prev => prev.map(w => w.owner_user_id === item.owner_user_id ? { ...w, already_my_contact: true } : w));
+        return;
+      }
+      if (!res.ok) throw new Error(String(res.status));
+      const saved: SOSContact = await res.json();
+      console.log('[QA_SOS] reciprocal added:', JSON.stringify({ id: saved.id, name: saved.name }));
+      setContacts(prev => [...prev, saved]);
+      setWhoHasMe(prev => prev.map(w => w.owner_user_id === item.owner_user_id ? { ...w, already_my_contact: true } : w));
+      toast.success(`${item.owner_display_name ?? item.name} agregado a tus contactos SOS`);
+    } catch (err) {
+      console.log('[QA_SOS] reciprocal error:', err);
+      Alert.alert("Error", "No se pudo agregar el contacto. Intenta de nuevo.");
+    } finally {
+      setAddingReciprocal(null);
+    }
+  }
+
   async function handleInvite(c: SOSContact) {
+    console.log('[QA_SOS] sending invite for contact id:', c.id, 'name:', c.name);
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/${c.id}/invite`, { method: "POST" });
-      if (!res.ok) throw new Error();
+      console.log('[QA_SOS] invite response status:', res.status);
+      if (!res.ok) throw new Error(String(res.status));
       const { share_url, push_sent } = await res.json();
+      console.log('[QA_SOS] invite result | push_sent:', push_sent, '| share_url:', share_url);
       setContacts(prev => prev.map(x => x.id === c.id ? { ...x, link_status: "invite_sent" } : x));
       if (push_sent) {
         toast.success("Notificación enviada", {
@@ -165,19 +261,33 @@ export default function SOSContactsScreen() {
   const whoHasMeSection = whoHasMe.length > 0 ? (
     <View style={{ paddingBottom: 24, paddingHorizontal: 16 }}>
       <Text style={s.sectionTitle}>Soy contacto SOS de</Text>
-      {whoHasMe.map((item, idx) => (
-        <View key={idx} style={s.whoRow}>
-          <MaterialCommunityIcons name="shield-account-outline" size={32} color={colors.brandCyan} />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={s.contactName}>
-              {item.owner_display_name ?? item.name}
-            </Text>
-            {item.relationship
-              ? <Text style={s.contactRel}>{item.relationship}</Text>
-              : null}
+      {whoHasMe.map((item, idx) => {
+        const isAdding = addingReciprocal === item.owner_user_id;
+        const isAdded  = item.already_my_contact;
+        return (
+          <View key={idx} style={s.whoRow}>
+            <MaterialCommunityIcons name="shield-account-outline" size={32} color={colors.brandCyan} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={s.contactName}>{item.owner_display_name ?? item.name}</Text>
+              {item.relationship ? <Text style={s.contactRel}>{item.relationship}</Text> : null}
+            </View>
+            {isAdded ? (
+              <MaterialCommunityIcons name="check-circle-outline" size={24} color={colors.brandGreen} />
+            ) : (
+              <Pressable
+                onPress={() => handleAddReciprocal(item)}
+                disabled={isAdding}
+                hitSlop={8}
+                accessibilityLabel="Agregar como mi contacto SOS"
+              >
+                {isAdding
+                  ? <ActivityIndicator size="small" color={colors.brandCyan} />
+                  : <MaterialCommunityIcons name="account-plus-outline" size={24} color={colors.brandCyan} />}
+              </Pressable>
+            )}
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   ) : null;
 
