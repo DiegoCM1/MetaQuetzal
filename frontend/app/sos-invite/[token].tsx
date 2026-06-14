@@ -9,7 +9,7 @@ import { authFetch } from "../../utils/api";
 import { API_BASE_URL } from "../../utils/config";
 import { colors, fonts } from "../../utils/theme";
 
-type Stage = "loading" | "preview" | "accepting" | "success" | "error";
+type Stage = "loading" | "preview" | "accepting" | "rejecting" | "success" | "error";
 
 interface Preview {
   inviter_display_name: string;
@@ -60,6 +60,21 @@ export default function SosInviteScreen() {
       });
   }, [token]);
 
+  async function handleReject() {
+    if (!token) return;
+    console.log('[QA_SOS_INVITE] rejecting | token:', token);
+    setStage("rejecting");
+    try {
+      await authFetch(`${API_BASE_URL}/api/v1/sos-invitations/${token}/reject`, { method: "POST" });
+      console.log('[QA_SOS_INVITE] rejected OK');
+    } catch (e) {
+      console.warn('[QA_SOS_INVITE] reject error (non-critical):', e);
+    } finally {
+      await AsyncStorage.removeItem(PENDING_SOS_INVITE_KEY).catch(() => {});
+      router.back();
+    }
+  }
+
   async function handleAccept() {
     if (!token) return;
     console.log('[QA_SOS_INVITE] accepting | token:', token);
@@ -86,7 +101,7 @@ export default function SosInviteScreen() {
       <View style={s.centered}>
         <View style={s.card}>
 
-          {(stage === "loading" || stage === "accepting") && (
+          {(stage === "loading" || stage === "accepting" || stage === "rejecting") && (
             <ActivityIndicator size="large" color={colors.brandCyan} />
           )}
 
@@ -100,11 +115,7 @@ export default function SosInviteScreen() {
               </Text>
               <Text style={s.sub}>Contacto guardado: {preview.contact_name}</Text>
               <View style={s.row}>
-                <TouchableOpacity style={s.cancelBtn} onPress={() => {
-                  console.log('[QA_SOS_INVITE] user rejected invite | token:', token);
-                  AsyncStorage.removeItem(PENDING_SOS_INVITE_KEY).catch(() => {});
-                  router.back();
-                }}>
+                <TouchableOpacity style={s.cancelBtn} onPress={handleReject}>
                   <Text style={s.cancelTxt}>Rechazar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.acceptBtn} onPress={handleAccept}>

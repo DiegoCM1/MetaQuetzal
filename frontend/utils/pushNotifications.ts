@@ -1,7 +1,7 @@
 // frontend/utils/pushNotifications.js
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import { Alert, DeviceEventEmitter } from "react-native";
+import { Alert, DeviceEventEmitter, Platform } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from "./analytics";
@@ -66,11 +66,24 @@ export async function sendTokenToBackend(fcmToken: string): Promise<void> {
   }
 }
 
+export async function setupNotificationChannels() {
+  if (Platform.OS !== "android") return;
+  await Notifications.setNotificationChannelAsync("sos_alerts", {
+    name: "Alertas SOS",
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    enableVibrate: true,
+    showBadge: true,
+  });
+}
+
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
     console.log("Push solo funciona en dispositivo físico");
     return null;
   }
+
+  await setupNotificationChannels();
 
   // 1) Permisos
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
