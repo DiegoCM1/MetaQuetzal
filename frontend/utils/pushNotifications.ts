@@ -75,6 +75,13 @@ export async function setupNotificationChannels() {
     enableVibrate: true,
     showBadge: true,
   });
+  // Silent channel for background data-refresh pushes — no banner, no sound, hidden in drawer
+  await Notifications.setNotificationChannelAsync("contacts_refresh_silent", {
+    name: "Sincronización de contactos",
+    importance: Notifications.AndroidImportance.MIN,
+    enableVibrate: false,
+    showBadge: false,
+  });
 }
 
 export async function registerForPushNotificationsAsync() {

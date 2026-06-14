@@ -58,7 +58,12 @@ async def get_tokens_for_users(db: AsyncSession, user_ids: list[int]) -> dict[in
 
 
 async def send_targeted_notification(
-    db: AsyncSession, user_id: int, title: str, body: str, data: dict[str, str]
+    db: AsyncSession,
+    user_id: int,
+    title: str,
+    body: str,
+    data: dict[str, str],
+    android_channel_id: str | None = None,
 ):
     """Send a push notification only to the tokens belonging to a specific user."""
     from fastapi import HTTPException  # local import avoids circular on module load
@@ -68,9 +73,14 @@ async def send_targeted_notification(
     if not tokens:
         raise HTTPException(status_code=404, detail="No tokens registered for this user")
 
+    android_config = messaging.AndroidConfig(
+        priority="high",
+        notification=messaging.AndroidNotification(channel_id=android_channel_id) if android_channel_id else None,
+    )
     message = messaging.MulticastMessage(
         notification=messaging.Notification(title=title, body=body),
         data=data or {},
+        android=android_config,
         tokens=tokens,
     )
     try:
@@ -99,7 +109,10 @@ async def send_contacts_refresh_push(db: AsyncSession, user_ids: list[int]) -> N
     msg = messaging.MulticastMessage(
         notification=messaging.Notification(title=" ", body=" "),
         data={"type": "contacts_refresh"},
-        android=messaging.AndroidConfig(priority="high"),
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(channel_id="contacts_refresh_silent"),
+        ),
         tokens=tokens,
     )
     try:

@@ -3,7 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sos_contacts.schemas import SOSContactCreate, SOSContactUpdate
-from app.features.notifications.service import send_contacts_refresh_push
+from app.features.notifications.service import send_contacts_refresh_push, send_targeted_notification
 
 
 async def list_sos_contacts(db: AsyncSession, user_id: int) -> list[dict]:
@@ -114,6 +114,7 @@ async def add_reciprocal_contact(db: AsyncSession, current_user_id: int, owner_u
     if exists.mappings().first():
         raise HTTPException(status_code=409, detail="Already have this user as a contact")
 
+    # Fetch both users in parallel queries
     owner = await db.execute(
         text("SELECT display_name, phone FROM users WHERE id = :id"),
         {"id": owner_user_id},
@@ -121,6 +122,13 @@ async def add_reciprocal_contact(db: AsyncSession, current_user_id: int, owner_u
     owner_row = owner.mappings().first()
     if not owner_row:
         raise HTTPException(status_code=404, detail="User not found")
+
+    adder = await db.execute(
+        text("SELECT display_name FROM users WHERE id = :id"),
+        {"id": current_user_id},
+    )
+    adder_row = adder.mappings().first()
+    adder_name = (adder_row["display_name"] if adder_row else None) or "Tu contacto"
 
     result = await db.execute(
         text("""
@@ -137,6 +145,19 @@ async def add_reciprocal_contact(db: AsyncSession, current_user_id: int, owner_u
     )
     await db.commit()
     contact = dict(result.mappings().first())
+
+    # Notify the owner (Xiaomi) with a visible banner push + silent UI refresh
+    try:
+        await send_targeted_notification(
+            db,
+            user_id=owner_user_id,
+            title="Nuevo contacto SOS",
+            body=f"{adder_name} te agregó como contacto SOS.",
+            data={"category": "sos_contact_added", "adder_display_name": adder_name},
+            android_channel_id="sos_alerts",
+        )
+    except Exception:
+        pass  # owner may have no tokens; not critical
     await send_contacts_refresh_push(db, [owner_user_id])
     return contact
 
