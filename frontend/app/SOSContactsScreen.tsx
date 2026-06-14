@@ -16,6 +16,7 @@ import { authFetch } from "../utils/api";
 import { API_BASE_URL } from "../utils/config";
 import { colors, fonts } from "../utils/theme";
 import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
+import { PENDING_SOS_CONTACT_ADDED_KEY } from "./_layout";
 
 interface SOSContact {
   id: number; user_id: number; name: string; phone: string;
@@ -48,6 +49,7 @@ export default function SOSContactsScreen() {
   const [relVal, setRelVal]                 = useState("");
   const [formError, setFormError]           = useState<string | null>(null);
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
+  const [pendingContactAdded, setPendingContactAdded] = useState<string | null>(null);
   const [whoHasMe, setWhoHasMe]             = useState<WhoHasMeItem[]>([]);
   const [addingReciprocal, setAddingReciprocal] = useState<number | null>(null);
 
@@ -76,6 +78,10 @@ export default function SOSContactsScreen() {
             console.log('[QA_SOS_INVITE] SOSContactsScreen check pending | token:', token ?? 'none');
             if (live) setPendingInviteToken(token);
           })
+          .catch(() => {});
+
+        AsyncStorage.getItem(PENDING_SOS_CONTACT_ADDED_KEY)
+          .then(name => { if (live) setPendingContactAdded(name); })
           .catch(() => {});
 
         if (isFirst) { setLoading(true); setFetchError(false); }
@@ -121,6 +127,9 @@ export default function SOSContactsScreen() {
         console.log('[QA_SOS_INVITE] AppState active → re-checking pending token');
         AsyncStorage.getItem(PENDING_SOS_INVITE_KEY)
           .then(token => setPendingInviteToken(token))
+          .catch(() => {});
+        AsyncStorage.getItem(PENDING_SOS_CONTACT_ADDED_KEY)
+          .then(name => setPendingContactAdded(name))
           .catch(() => {});
       }
     });
@@ -311,6 +320,26 @@ export default function SOSContactsScreen() {
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color="#030810" />
         </TouchableOpacity>
+      )}
+
+      {pendingContactAdded && (
+        <View style={s.inviteBanner}>
+          <MaterialCommunityIcons name="account-check-outline" size={22} color="#030810" />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={s.inviteBannerTitle}>{pendingContactAdded} te agregó como contacto SOS</Text>
+            <Text style={s.inviteBannerSub}>Ya son contactos mutuos</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              console.log('[QA_SOS] dismiss contact_added banner');
+              AsyncStorage.removeItem(PENDING_SOS_CONTACT_ADDED_KEY).catch(() => {});
+              setPendingContactAdded(null);
+            }}
+            hitSlop={12}
+          >
+            <MaterialCommunityIcons name="close" size={20} color="#030810" />
+          </TouchableOpacity>
+        </View>
       )}
 
       {contacts.length === 0 ? (

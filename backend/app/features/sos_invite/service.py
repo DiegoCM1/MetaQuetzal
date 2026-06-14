@@ -245,6 +245,7 @@ async def reject_invite(db: AsyncSession, token: str, caller_user_id: int) -> No
             title="Invitación SOS rechazada",
             body=f"{contact_name} rechazó tu invitación SOS.",
             data={"category": "sos_rejected"},
+            android_channel_id="sos_alerts",
         )
     except Exception:
         pass  # inviter may have no tokens; not critical
