@@ -2,14 +2,15 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import * as IntentLauncher from "expo-intent-launcher";
-import { Alert, DeviceEventEmitter, Platform } from "react-native";
+import { Alert, DeviceEventEmitter, Linking, Platform } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from "./analytics";
 import { authFetch } from './api'
 import { API_BASE_URL } from './config'
 
-const BATTERY_OPT_ASKED_KEY = '@blueeye:battery_opt_asked';
+const BATTERY_OPT_ASKED_KEY  = '@blueeye:battery_opt_asked';
+const HEADS_UP_ASKED_KEY     = '@blueeye:heads_up_asked';
 
 export async function requestBatteryOptimizationExemption(): Promise<void> {
   if (Platform.OS !== 'android') return;
@@ -38,6 +39,48 @@ export async function requestBatteryOptimizationExemption(): Promise<void> {
               IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
               { data: 'package:com.bluai.app' }
             );
+          }
+        },
+      },
+    ]
+  );
+}
+
+// Show once: ask the user to enable heads-up / floating notifications for the
+// sos_alerts channel. Android lets apps open the exact channel settings screen so
+// the user just needs to toggle "Mostrar en pantalla" (MIUI) / "Show as pop-up"
+// (stock Android). Called after battery-opt so both dialogs don't overlap.
+export async function requestHeadsUpPermission(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    const alreadyAsked = await AsyncStorage.getItem(HEADS_UP_ASKED_KEY);
+    if (alreadyAsked) return;
+    await AsyncStorage.setItem(HEADS_UP_ASKED_KEY, 'true');
+  } catch { /* proceed */ }
+
+  Alert.alert(
+    'Notificaciones a pantalla completa',
+    'Para que las alertas SOS aparezcan sobre cualquier pantalla (incluso con el teléfono bloqueado), activa "Mostrar en pantalla" en los ajustes del canal SOS.',
+    [
+      { text: 'Ahora no', style: 'cancel' },
+      {
+        text: 'Configurar',
+        onPress: async () => {
+          try {
+            // Opens the exact sos_alerts channel settings where the user can
+            // enable "Floating notifications" / "Show as pop-up" / "Mostrar en pantalla"
+            await IntentLauncher.startActivityAsync(
+              'android.settings.CHANNEL_NOTIFICATION_SETTINGS',
+              {
+                extra: {
+                  'android.provider.extra.APP_PACKAGE': 'com.bluai.app',
+                  'android.provider.extra.CHANNEL_ID': 'sos_alerts',
+                },
+              }
+            );
+          } catch {
+            // Fallback: open the general app notification settings page
+            await Linking.openSettings();
           }
         },
       },
@@ -161,9 +204,10 @@ export async function registerForPushNotificationsAsync() {
 
   await sendTokenToBackend(fcmToken);
 
-  // 3) Battery optimization exemption — pide permiso para funcionar sin restricciones
-  //    Solo aparece una vez (guardado en AsyncStorage)
+  // 3) Battery optimization exemption — solo aparece una vez
   requestBatteryOptimizationExemption();
+  // 4) Heads-up / floating notifications — mostramos 2 s después para no superponer dialogs
+  setTimeout(() => requestHeadsUpPermission(), 2000);
 
   return fcmToken;
 }
