@@ -1,12 +1,49 @@
 // frontend/utils/pushNotifications.js
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import * as IntentLauncher from "expo-intent-launcher";
 import { Alert, DeviceEventEmitter, Platform } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from "./analytics";
 import { authFetch } from './api'
 import { API_BASE_URL } from './config'
+
+const BATTERY_OPT_ASKED_KEY = '@blueeye:battery_opt_asked';
+
+export async function requestBatteryOptimizationExemption(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    const alreadyAsked = await AsyncStorage.getItem(BATTERY_OPT_ASKED_KEY);
+    if (alreadyAsked) return;
+    await AsyncStorage.setItem(BATTERY_OPT_ASKED_KEY, 'true');
+  } catch { /* AsyncStorage unavailable — still show the dialog */ }
+
+  Alert.alert(
+    'Alertas de emergencia',
+    'Para que BluEye pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
+    [
+      { text: 'Ahora no', style: 'cancel' },
+      {
+        text: 'Permitir',
+        onPress: async () => {
+          try {
+            await IntentLauncher.startActivityAsync(
+              'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+              { data: 'package:com.bluai.app' }
+            );
+          } catch {
+            // Si el intent falla (algunos OEM lo bloquean), abrir ajustes de la app
+            await IntentLauncher.startActivityAsync(
+              IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+              { data: 'package:com.bluai.app' }
+            );
+          }
+        },
+      },
+    ]
+  );
+}
 
 const _LAST_TOKEN_KEY = 'push_last_registered_token';
 // In-memory guard prevents concurrent calls with the same token from both POSTing
@@ -70,10 +107,12 @@ export async function setupNotificationChannels() {
   if (Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync("sos_alerts", {
     name: "Alertas SOS",
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
     showBadge: true,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    bypassDnd: true,
   });
   // Silent channel for background data-refresh pushes — no banner, no sound, hidden in drawer
   await Notifications.setNotificationChannelAsync("contacts_refresh_silent", {
@@ -116,6 +155,11 @@ export async function registerForPushNotificationsAsync() {
   console.log("FCM token →", fcmToken);
 
   await sendTokenToBackend(fcmToken);
+
+  // 3) Battery optimization exemption — pide permiso para funcionar sin restricciones
+  //    Solo aparece una vez (guardado en AsyncStorage)
+  requestBatteryOptimizationExemption();
+
   return fcmToken;
 }
 

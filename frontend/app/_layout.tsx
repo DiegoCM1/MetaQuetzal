@@ -72,6 +72,7 @@ interface NotificationData {
   alertMessage?: string
   bulletinUrl?: string
   sender_name?: string
+  sender_phone?: string
   lat?: string
   lon?: string
   invite_token?: string
@@ -95,6 +96,7 @@ function resolveNotifPayload(
   const sosLat = parseFloat(data.lat ?? '')
   const sosLon = parseFloat(data.lon ?? '')
   const sosHasCoords = Number.isFinite(sosLat) && Number.isFinite(sosLon)
+  const senderPhone = data.sender_phone ?? ''
   return {
     id,
     levelNum,
@@ -107,6 +109,7 @@ function resolveNotifPayload(
     inviteToken: data.invite_token,
     inviterDisplayName: data.inviter_display_name ?? 'Un usuario',
     senderName: data.sender_name ?? 'Un contacto',
+    senderPhone,
     sosLat,
     sosLon,
     sosHasCoords,
@@ -203,7 +206,7 @@ export default Sentry.wrap(function Layout() {
     // Tap en notificación (background → foreground, o foreground tap)
     const tapSub = addNotificationResponseListener(async (rawData, content) => {
       const data = rawData as NotificationData
-      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, inviteToken, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
+      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, inviteToken, senderName, senderPhone, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
       console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| sosRejected:', isSosRejected, '| contactAdded:', isSosContactAdded)
 
       if (data.type === 'contacts_refresh') {
@@ -226,8 +229,16 @@ export default Sentry.wrap(function Layout() {
         return;
       }
       if (isSos) {
-        const coordsText = sosHasCoords ? `\nUbicación: ${sosLat.toFixed(5)}, ${sosLon.toFixed(5)}` : '';
-        Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
+        console.log('[QA_NAV] tap → sos-receiver | sender:', senderName, '| hasCoords:', sosHasCoords, '| hasPhone:', !!senderPhone)
+        router.push({
+          pathname: '/sos-receiver',
+          params: {
+            senderName,
+            senderPhone,
+            lat: sosHasCoords ? String(sosLat) : '',
+            lon: sosHasCoords ? String(sosLon) : '',
+          },
+        });
         return;
       }
       if (isSosRejected) {
@@ -256,7 +267,7 @@ export default Sentry.wrap(function Layout() {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       const rawData = notification.request.content.data as NotificationData
       const content = notification.request.content
-      const { isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, inviteToken, inviterDisplayName, senderName, adderDisplayName, params } = resolveNotifPayload(rawData, content)
+      const { isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, inviteToken, inviterDisplayName, senderName, senderPhone, adderDisplayName, params } = resolveNotifPayload(rawData, content)
       console.log('[QA_NOTIF] received foreground | fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| sosRejected:', isSosRejected, '| contactAdded:', isSosContactAdded, '| category:', params.category)
       if (isFullScreen && !alarmActiveRef.current) {
         alarmActiveRef.current = true
@@ -279,8 +290,15 @@ export default Sentry.wrap(function Layout() {
         return;
       }
       if (isSos) {
-        toast.error(`SOS — ${senderName}`, {
-          description: 'Necesita ayuda urgente. Revisa tu pantalla.',
+        console.log('[QA_NAV] foreground SOS → sos-receiver | sender:', senderName, '| hasPhone:', !!senderPhone)
+        router.push({
+          pathname: '/sos-receiver',
+          params: {
+            senderName,
+            senderPhone,
+            lat: rawData.lat ?? '',
+            lon: rawData.lon ?? '',
+          },
         });
         return;
       }
@@ -332,7 +350,7 @@ export default Sentry.wrap(function Layout() {
       if (!data) return
       const { title: coldTitle, body: coldBody } = initial.notification.request.content
 
-      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, adderDisplayName, inviteToken, senderName, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
+      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, adderDisplayName, inviteToken, senderName, senderPhone, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
       console.log('[QA_NAV] cold start | category:', data.category ?? 'none', '| type:', data.type ?? 'none', '| isSosInvite:', isSosInvite, '| isSos:', isSos, '| isSosRejected:', isSosRejected, '| contactAdded:', isSosContactAdded, '| id:', id ?? 'none')
       if (data.type === 'contacts_refresh') return
       if (!id && !isFullScreen && !isSos && !isSosInvite && !isSosRejected && !isSosContactAdded) return
@@ -352,8 +370,16 @@ export default Sentry.wrap(function Layout() {
         return;
       }
       if (isSos) {
-        const coordsText = sosHasCoords ? `\nUbicación: ${sosLat.toFixed(5)}, ${sosLon.toFixed(5)}` : '';
-        Alert.alert('SOS recibido', `${senderName} necesita ayuda urgente.${coordsText}`);
+        console.log('[QA_NAV] cold start → sos-receiver | sender:', senderName, '| hasCoords:', sosHasCoords, '| hasPhone:', !!senderPhone)
+        router.push({
+          pathname: '/sos-receiver',
+          params: {
+            senderName,
+            senderPhone,
+            lat: sosHasCoords ? String(sosLat) : '',
+            lon: sosHasCoords ? String(sosLon) : '',
+          },
+        });
         return;
       }
       if (isSosRejected) {
