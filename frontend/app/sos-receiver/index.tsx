@@ -19,6 +19,8 @@ export default function SOSReceiverScreen() {
   const hasCoords = Number.isFinite(parsedLat) && Number.isFinite(parsedLon);
   const hasPhone  = !!senderPhone && senderPhone.trim().length > 0;
 
+  console.log('[QA_SOS_RECEIVER] render | sender:', senderName, '| hasCoords:', hasCoords, '| hasPhone:', hasPhone, '| lat:', lat, '| lon:', lon);
+
   function handleCall() {
     const tel = `tel:${senderPhone!.replace(/\s/g, "")}`;
     Linking.canOpenURL(tel).then((can) => {
@@ -28,10 +30,12 @@ export default function SOSReceiverScreen() {
   }
 
   function handleViewOnMap() {
+    console.log('[QA_SOS_RECEIVER] ver en mapa → alertLat:', parsedLat, '| alertLon:', parsedLon);
     router.replace({
       pathname: "/(tabs)/MapScreen",
+      // MapScreen reads alertLat/alertLon — NOT focusLat/focusLon
       params: hasCoords
-        ? { focusLat: String(parsedLat), focusLon: String(parsedLon), focusTitle: senderName }
+        ? { alertLat: String(parsedLat), alertLon: String(parsedLon), alertTitle: senderName }
         : {},
     });
   }
@@ -62,20 +66,6 @@ export default function SOSReceiverScreen() {
         <Text style={s.senderName}>{senderName ?? "Un contacto"}</Text>
         <Text style={s.subtitle}>Necesita ayuda urgente</Text>
 
-        {/* Location */}
-        <View style={s.locationCard}>
-          <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.brandCyan} />
-          {hasCoords ? (
-            <Text style={s.locationText}>
-              {parsedLat.toFixed(5)}, {parsedLon.toFixed(5)}
-            </Text>
-          ) : (
-            <Text style={[s.locationText, { color: "rgba(255,255,255,0.35)" }]}>
-              Sin ubicación disponible
-            </Text>
-          )}
-        </View>
-
         {/* Actions */}
         <View style={s.actions}>
           {hasPhone && (
@@ -88,8 +78,15 @@ export default function SOSReceiverScreen() {
           {hasCoords && (
             <Pressable style={s.mapBtn} onPress={handleViewOnMap} android_ripple={{ color: "rgba(255,255,255,0.08)" }}>
               <MaterialCommunityIcons name="map-search-outline" size={22} color={colors.brandCyan} />
-              <Text style={s.mapBtnText}>Ver en mapa</Text>
+              <Text style={s.mapBtnText}>Ver ubicación en mapa</Text>
             </Pressable>
+          )}
+
+          {!hasCoords && (
+            <View style={s.noLocationCard}>
+              <MaterialCommunityIcons name="map-marker-off-outline" size={20} color="rgba(255,255,255,0.35)" />
+              <Text style={s.noLocationText}>Sin ubicación disponible</Text>
+            </View>
           )}
         </View>
       </View>
@@ -157,26 +154,7 @@ const s = StyleSheet.create({
     color: "rgba(255,255,255,0.55)",
     fontFamily: fonts.poppins,
     fontSize: 15,
-    marginBottom: 28,
-  },
-  locationCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.09)",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
     marginBottom: 36,
-    alignSelf: "stretch",
-    justifyContent: "center",
-  },
-  locationText: {
-    color: "rgba(255,255,255,0.75)",
-    fontFamily: fonts.poppins,
-    fontSize: 14,
   },
   actions: {
     alignSelf: "stretch",
@@ -210,6 +188,18 @@ const s = StyleSheet.create({
     color: colors.brandCyan,
     fontFamily: fonts.poppinsSemiBold,
     fontSize: 16,
+  },
+  noLocationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+  },
+  noLocationText: {
+    color: "rgba(255,255,255,0.35)",
+    fontFamily: fonts.poppins,
+    fontSize: 14,
   },
   dismissBtn: {
     alignItems: "center",

@@ -105,12 +105,17 @@ export async function sendTokenToBackend(fcmToken: string): Promise<void> {
 
 export async function setupNotificationChannels() {
   if (Platform.OS !== "android") return;
+  // Delete old channel so Android re-creates it at MAX importance.
+  // Android never upgrades a channel's importance once created; the only fix is
+  // to delete and recreate with the new importance level.
+  await Notifications.deleteNotificationChannelAsync("sos_alerts").catch(() => {});
   await Notifications.setNotificationChannelAsync("sos_alerts", {
     name: "Alertas SOS",
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
     showBadge: true,
+    sound: "default",
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: true,
   });

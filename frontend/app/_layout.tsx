@@ -481,6 +481,10 @@ export default Sentry.wrap(function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
+                      name="sos-receiver"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
                       name="sos-invite/[token]"
                       options={{ headerShown: false }}
                     />
