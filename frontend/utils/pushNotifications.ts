@@ -10,7 +10,7 @@ import { authFetch } from './api'
 import { API_BASE_URL } from './config'
 
 const BATTERY_OPT_ASKED_KEY  = '@blueeye:battery_opt_asked';
-const HEADS_UP_ASKED_KEY     = '@blueeye:heads_up_asked';
+const HEADS_UP_ASKED_KEY     = '@blueeye:heads_up_asked_v2'; // v2 = sos_emergency channel
 
 export async function requestBatteryOptimizationExemption(): Promise<void> {
   if (Platform.OS !== 'android') return;
@@ -47,7 +47,7 @@ export async function requestBatteryOptimizationExemption(): Promise<void> {
 }
 
 // Show once: ask the user to enable heads-up / floating notifications for the
-// sos_alerts channel. Android lets apps open the exact channel settings screen so
+// sos_emergency channel. Android lets apps open the exact channel settings screen so
 // the user just needs to toggle "Mostrar en pantalla" (MIUI) / "Show as pop-up"
 // (stock Android). Called after battery-opt so both dialogs don't overlap.
 export async function requestHeadsUpPermission(): Promise<void> {
@@ -67,14 +67,14 @@ export async function requestHeadsUpPermission(): Promise<void> {
         text: 'Configurar',
         onPress: async () => {
           try {
-            // Opens the exact sos_alerts channel settings where the user can
+            // Opens the exact sos_emergency channel settings where the user can
             // enable "Floating notifications" / "Show as pop-up" / "Mostrar en pantalla"
             await IntentLauncher.startActivityAsync(
               'android.settings.CHANNEL_NOTIFICATION_SETTINGS',
               {
                 extra: {
                   'android.provider.extra.APP_PACKAGE': 'com.bluai.app',
-                  'android.provider.extra.CHANNEL_ID': 'sos_alerts',
+                  'android.provider.extra.CHANNEL_ID': 'sos_emergency',
                 },
               }
             );
@@ -151,8 +151,9 @@ export async function setupNotificationChannels() {
   // Delete old channel so Android re-creates it at MAX importance.
   // Android never upgrades a channel's importance once created; the only fix is
   // to delete and recreate with the new importance level.
-  await Notifications.deleteNotificationChannelAsync("sos_alerts").catch(() => {});
-  await Notifications.setNotificationChannelAsync("sos_alerts", {
+  // No delete needed — sos_emergency is a new ID that has never existed on any
+  // device, so Android creates it fresh at IMPORTANCE_MAX every time.
+  await Notifications.setNotificationChannelAsync("sos_emergency", {
     name: "Alertas SOS",
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],

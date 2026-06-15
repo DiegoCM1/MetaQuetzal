@@ -94,7 +94,7 @@ async def trigger_sos(
                 android=messaging.AndroidConfig(
                     priority="high",
                     notification=messaging.AndroidNotification(
-                        channel_id="sos_alerts",
+                        channel_id="sos_emergency",
                         priority=messaging.AndroidNotificationPriority.MAX,
                         default_vibrate_timings=False,
                         vibrate_timings_millis=[0, 250, 250, 250],

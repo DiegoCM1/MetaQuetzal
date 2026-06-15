@@ -481,7 +481,7 @@ export default Sentry.wrap(function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
-                      name="sos-receiver"
+                      name="sos-receiver/index"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
