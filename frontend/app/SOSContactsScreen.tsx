@@ -4,7 +4,7 @@ import { useFocusEffect } from "expo-router";
 import {
   View, Text, FlatList, Modal, TextInput, TouchableOpacity,
   Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Share,
-  AppState, DeviceEventEmitter,
+  AppState, DeviceEventEmitter, Linking,
 } from "react-native";
 import * as ExpoContacts from "expo-contacts";
 import { toast } from "sonner-native";
@@ -142,22 +142,38 @@ export default function SOSContactsScreen() {
   }, []);
 
   function openCreate() {
+    console.log('[QA_SOS] modal open → CREATE');
     setEditingContact(null); setNameVal(""); setPhoneVal(""); setRelVal("");
     setFormError(null); setModalVisible(true);
   }
   function openEdit(c: SOSContact) {
+    console.log('[QA_SOS] modal open → EDIT | id:', c.id, '| name:', c.name, '| rel:', c.relationship);
     setEditingContact(c); setNameVal(c.name); setPhoneVal(c.phone);
     setRelVal(c.relationship ?? ""); setFormError(null); setModalVisible(true);
   }
-  function closeModal() { setModalVisible(false); setFormError(null); }
+  function closeModal() {
+    console.log('[QA_SOS] modal closed');
+    setModalVisible(false); setFormError(null);
+  }
 
   async function pickFromContacts() {
-    const { status } = await ExpoContacts.requestPermissionsAsync();
+    console.log('[QA_SOS] pickFromContacts → requesting permission');
+    const { status, canAskAgain } = await ExpoContacts.requestPermissionsAsync();
+    console.log('[QA_SOS] contacts permission result | status:', status, '| canAskAgain:', canAskAgain);
     if (status !== "granted") {
-      Alert.alert(
-        "Permiso denegado",
-        "BluEye necesita acceso a tus contactos. Habilítalo en Configuración.",
-      );
+      if (!canAskAgain) {
+        console.log('[QA_SOS] permission permanently denied → showing Settings alert');
+        Alert.alert(
+          "Acceso a contactos",
+          "BluEye necesita acceso a tus contactos para agregar contactos SOS fácilmente. Habilítalo en Configuración.",
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Abrir Configuración", onPress: () => { console.log('[QA_SOS] user tapped Abrir Configuración'); Linking.openSettings(); } },
+          ]
+        );
+      } else {
+        console.log('[QA_SOS] permission denied by user (canAskAgain=true) → silent return');
+      }
       return;
     }
     setLoadingContacts(true);
@@ -166,10 +182,12 @@ export default function SOSContactsScreen() {
         fields: [ExpoContacts.Fields.PhoneNumbers, ExpoContacts.Fields.Name],
       });
       const withPhone = data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0);
+      console.log('[QA_SOS] phone contacts loaded:', withPhone.length, 'with phone numbers');
       setPhoneContacts(withPhone);
       setContactSearch("");
       setPickerVisible(true);
-    } catch {
+    } catch (err) {
+      console.log('[QA_SOS] getContactsAsync error:', err);
       Alert.alert("Error", "No se pudieron cargar los contactos. Intenta de nuevo.");
     } finally {
       setLoadingContacts(false);
@@ -179,6 +197,7 @@ export default function SOSContactsScreen() {
   function selectPhoneContact(contact: ExpoContacts.Contact) {
     const fullName = (contact.name ?? "").trim();
     const phone = (contact.phoneNumbers?.[0]?.number ?? "").replace(/\s/g, "");
+    console.log('[QA_SOS] contact selected from picker | name:', fullName, '| phone:', phone);
     setNameVal(fullName);
     setPhoneVal(phone);
     setPickerVisible(false);
@@ -187,8 +206,15 @@ export default function SOSContactsScreen() {
 
   async function handleSave() {
     const n = nameVal.trim(), p = phoneVal.trim(), r = relVal.trim();
-    if (!n || !p) return setFormError("Nombre y teléfono son obligatorios.");
-    if (p.length < 5) return setFormError("El teléfono debe tener al menos 5 caracteres.");
+    console.log('[QA_SOS] handleSave | name:', JSON.stringify(n), '| phone:', JSON.stringify(p), '| rel:', JSON.stringify(r), '| editing:', editingContact?.id ?? null);
+    if (!n || !p) {
+      console.log('[QA_SOS] validation failed: name or phone empty');
+      return setFormError("Nombre y teléfono son obligatorios.");
+    }
+    if (p.length < 5) {
+      console.log('[QA_SOS] validation failed: phone too short');
+      return setFormError("El teléfono debe tener al menos 5 caracteres.");
+    }
 
     setSaving(true); setFormError(null);
     const body = { name: n, phone: p, ...(r ? { relationship: r } : {}) };
@@ -486,9 +512,44 @@ export default function SOSContactsScreen() {
               onChangeText={v => { setPhoneVal(v); setFormError(null); }} keyboardType="phone-pad" />
 
             <Text style={s.inputLabel}>Relación (opcional)</Text>
-            <TextInput style={s.input} placeholder="Ej. Madre, Hermano…"
-              placeholderTextColor="rgba(255,255,255,0.3)" value={relVal} maxLength={60}
-              onChangeText={v => { setRelVal(v); setFormError(null); }} autoCapitalize="sentences" />
+            <View style={s.chipsRow}>
+              {["Mamá", "Papá", "Hijo/a", "Hermano/a", "Pareja", "Amigo/a", "Otro"].map(chip => {
+                const isOtro = chip === "Otro";
+                const isSelected = isOtro
+                  ? (!!relVal && !["Mamá","Papá","Hijo/a","Hermano/a","Pareja","Amigo/a"].includes(relVal))
+                  : relVal === chip;
+                return (
+                  <TouchableOpacity
+                    key={chip}
+                    style={[s.chip, isSelected && s.chipSelected]}
+                    onPress={() => {
+                      setFormError(null);
+                      if (isOtro) {
+                        if (!isSelected) {
+                          console.log('[QA_SOS] chip selected: Otro → showing text input');
+                          setRelVal(" ");
+                        } else {
+                          console.log('[QA_SOS] chip deselected: Otro');
+                          setRelVal("");
+                        }
+                      } else {
+                        const next = isSelected ? "" : chip;
+                        console.log('[QA_SOS] chip', isSelected ? 'deselected' : 'selected', ':', chip, '→ relVal:', next || '(empty)');
+                        setRelVal(next);
+                      }
+                    }}
+                  >
+                    <Text style={[s.chipText, isSelected && s.chipTextSelected]}>{chip}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {!!relVal && !["Mamá","Papá","Hijo/a","Hermano/a","Pareja","Amigo/a"].includes(relVal) && (
+              <TextInput style={[s.input, { marginTop: 8 }]} placeholder="¿Cuál relación?"
+                placeholderTextColor="rgba(255,255,255,0.3)" value={relVal.trim()} maxLength={60}
+                onChangeText={v => { setRelVal(v); setFormError(null); }} autoCapitalize="sentences"
+                autoFocus />
+            )}
 
             {formError ? <Text style={s.formError}>{formError}</Text> : null}
 
@@ -619,4 +680,10 @@ const s = StyleSheet.create({
                       borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.07)" },
   pickerName:       { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 14 },
   pickerPhone:      { color: "rgba(255,255,255,0.5)", fontFamily: fonts.poppins, fontSize: 13, marginTop: 1 },
+  chipsRow:         { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
+  chip:             { borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", borderRadius: 20,
+                      paddingVertical: 7, paddingHorizontal: 14 },
+  chipSelected:     { backgroundColor: colors.brandCyan, borderColor: colors.brandCyan },
+  chipText:         { color: "rgba(255,255,255,0.7)", fontFamily: fonts.poppins, fontSize: 13 },
+  chipTextSelected: { color: "#030810", fontFamily: fonts.poppinsSemiBold },
 });
