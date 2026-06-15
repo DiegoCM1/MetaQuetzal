@@ -27,6 +27,8 @@ import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue"
 import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
 export const PENDING_SOS_CONTACT_ADDED_KEY = "@BluEye:pending_sos_contact_added";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
+import { authFetch } from "../utils/api"
+import { API_BASE_URL } from "../utils/config"
 import { usePathname } from "expo-router";
 import * as Sentry from '@sentry/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -152,9 +154,21 @@ function AuthGate({ children }) {
         const completed = await hasCompletedOnboarding()
         if (completed) {
           router.replace('/(tabs)/MapScreen')
-        } else {
-          router.replace('/onboarding/step1')
+          return
         }
+        // AsyncStorage vacío (e.g. reinstalación): verificar backend como fuente de verdad
+        try {
+          const res = await authFetch(`${API_BASE_URL}/api/v1/users/me`, { method: 'POST' })
+          if (res.ok) {
+            const profile = await res.json()
+            if (profile?.display_name) {
+              await AsyncStorage.setItem('@blueye_onboarding_completed', 'true')
+              router.replace('/(tabs)/MapScreen')
+              return
+            }
+          }
+        } catch { /* si falla, continúa a onboarding */ }
+        router.replace('/onboarding/step1')
       }
       checkAndRoute()
     }

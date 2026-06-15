@@ -6,7 +6,7 @@ import {
   Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Share,
   AppState, DeviceEventEmitter,
 } from "react-native";
-import { Contact as PhoneContact, ContactField, requestPermissionsAsync as requestContactsPermission } from "expo-contacts";
+import * as ExpoContacts from "expo-contacts";
 import { toast } from "sonner-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -52,7 +52,7 @@ export default function SOSContactsScreen() {
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
   const [pendingContactAdded, setPendingContactAdded] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [phoneContacts, setPhoneContacts] = useState<PhoneContact[]>([]);
+  const [phoneContacts, setPhoneContacts] = useState<ExpoContacts.Contact[]>([]);
   const [contactSearch, setContactSearch] = useState("");
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [whoHasMe, setWhoHasMe]             = useState<WhoHasMeItem[]>([]);
@@ -152,7 +152,7 @@ export default function SOSContactsScreen() {
   function closeModal() { setModalVisible(false); setFormError(null); }
 
   async function pickFromContacts() {
-    const { status } = await requestContactsPermission();
+    const { status } = await ExpoContacts.requestPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
         "Permiso denegado",
@@ -162,10 +162,11 @@ export default function SOSContactsScreen() {
     }
     setLoadingContacts(true);
     try {
-      const fields = [ContactField.GIVEN_NAME, ContactField.FAMILY_NAME, ContactField.PHONES] as const;
-      const all = await PhoneContact.getAllDetails(fields);
-      const withPhone = all.filter(c => c.phones && c.phones.length > 0);
-      setPhoneContacts(withPhone as unknown as PhoneContact[]);
+      const { data } = await ExpoContacts.getContactsAsync({
+        fields: [ExpoContacts.Fields.PhoneNumbers, ExpoContacts.Fields.Name],
+      });
+      const withPhone = data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0);
+      setPhoneContacts(withPhone);
       setContactSearch("");
       setPickerVisible(true);
     } catch {
@@ -175,10 +176,9 @@ export default function SOSContactsScreen() {
     }
   }
 
-  function selectPhoneContact(contact: PhoneContact) {
-    const c = contact as unknown as { givenName?: string; familyName?: string; phones?: { number?: string }[] };
-    const fullName = [c.givenName, c.familyName].filter(Boolean).join(" ").trim();
-    const phone = (c.phones?.[0]?.number ?? "").replace(/\s/g, "");
+  function selectPhoneContact(contact: ExpoContacts.Contact) {
+    const fullName = (contact.name ?? "").trim();
+    const phone = (contact.phoneNumbers?.[0]?.number ?? "").replace(/\s/g, "");
     setNameVal(fullName);
     setPhoneVal(phone);
     setPickerVisible(false);
@@ -529,34 +529,29 @@ export default function SOSContactsScreen() {
 
             <FlatList
               data={phoneContacts.filter(c => {
-                const raw = c as unknown as { givenName?: string; familyName?: string; phones?: { number?: string }[] };
-                const fullName = [raw.givenName, raw.familyName].filter(Boolean).join(" ").toLowerCase();
                 const q = contactSearch.toLowerCase();
                 if (!q) return true;
-                return fullName.includes(q) || raw.phones?.some(p => p.number?.includes(q));
+                return (c.name ?? "").toLowerCase().includes(q) ||
+                  c.phoneNumbers?.some(p => p.number?.includes(q));
               })}
               keyExtractor={(_, i) => String(i)}
               keyboardShouldPersistTaps="handled"
               style={{ maxHeight: 400 }}
-              renderItem={({ item }) => {
-                const raw = item as unknown as { givenName?: string; familyName?: string; phones?: { number?: string }[] };
-                const fullName = [raw.givenName, raw.familyName].filter(Boolean).join(" ").trim();
-                return (
-                  <TouchableOpacity
-                    style={s.pickerRow}
-                    onPress={() => selectPhoneContact(item)}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons name="account-outline" size={22} color={colors.brandCyan} style={{ marginRight: 10 }} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.pickerName}>{fullName || "Sin nombre"}</Text>
-                      {raw.phones?.slice(0, 2).map((p, i) => (
-                        <Text key={i} style={s.pickerPhone}>{p.number}</Text>
-                      ))}
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={s.pickerRow}
+                  onPress={() => selectPhoneContact(item)}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="account-outline" size={22} color={colors.brandCyan} style={{ marginRight: 10 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.pickerName}>{item.name || "Sin nombre"}</Text>
+                    {item.phoneNumbers?.slice(0, 2).map((p, i) => (
+                      <Text key={i} style={s.pickerPhone}>{p.number}</Text>
+                    ))}
+                  </View>
+                </TouchableOpacity>
+              )}
               ListEmptyComponent={
                 <Text style={[s.bodyText, { textAlign: "center", marginTop: 20 }]}>
                   {contactSearch ? "Sin resultados" : "No hay contactos con teléfono"}
