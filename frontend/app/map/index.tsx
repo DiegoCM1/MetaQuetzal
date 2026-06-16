@@ -13,6 +13,7 @@ import {
   AppState,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -38,7 +39,7 @@ import { colors, fonts } from "../../utils/theme";
 import { authFetch } from "../../utils/api";
 import { API_BASE_URL } from "../../utils/config";
 import * as Network from "expo-network";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { enqueueSOS, hasPendingSOSItem, getPendingSOSItem, flushSOSQueue, clearSOSQueue } from "./sosQueue";
 import type { Zone, ZoneType } from "./types";
 
@@ -51,6 +52,9 @@ interface MapProps {
   focusLon?: number;
   focusTitle?: string;
   focusLevel?: number;
+  // Present only when navigated from sos-receiver — undefined for hurricane alerts.
+  // Empty string means SOS context but no phone registered.
+  focusSosPhone?: string;
 }
 
 const LEVEL_COLORS: Record<number, string> = {
@@ -108,7 +112,8 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
   );
 });
 
-export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel }: MapProps = {}) {
+export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel, focusSosPhone }: MapProps = {}) {
+  const router = useRouter();
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
@@ -651,10 +656,39 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
         )}
       </MapView>
 
-      {/* Layer selector */}
+      {/* SOS context banner — only shown when navigated from sos-receiver */}
+      {focusSosPhone !== undefined && focusTitle != null && (
+        <View style={sosBanner.bar}>
+          <View style={sosBanner.left}>
+            <MaterialCommunityIcons name="alarm-light" size={16} color="#030810" />
+            <Text style={sosBanner.name} numberOfLines={1}>{focusTitle}</Text>
+          </View>
+          <View style={sosBanner.right}>
+            {!!focusSosPhone && (
+              <Pressable
+                style={sosBanner.callBtn}
+                onPress={() => Linking.openURL(`tel:${focusSosPhone!.replace(/\s/g, '')}`).catch(() => {})}
+                android_ripple={{ color: 'rgba(0,0,0,0.15)' }}
+              >
+                <MaterialCommunityIcons name="phone" size={15} color="#030810" />
+                <Text style={sosBanner.callBtnText}>Llamar</Text>
+              </Pressable>
+            )}
+            <Pressable
+              style={sosBanner.backBtn}
+              onPress={() => router.back()}
+              android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      {/* Layer selector — shifted down when SOS banner is visible */}
       <Pressable
         onPress={() => setLayerModalVisible(true)}
-        className="absolute top-12 right-4 p-3 rounded-full"
+        className={`absolute ${focusSosPhone !== undefined ? 'top-20' : 'top-12'} right-4 p-3 rounded-full`}
         style={{ backgroundColor: 'rgba(8, 15, 30, 0.85)' }}
       >
         <MaterialCommunityIcons name="layers-outline" size={24} color="white" />
@@ -1101,5 +1135,56 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
 const styles = StyleSheet.create({
   map: {
     flex: 1,
+  },
+});
+
+const sosBanner = StyleSheet.create({
+  bar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.brandRed,
+    zIndex: 200,
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 8,
+  },
+  name: {
+    color: '#030810',
+    fontFamily: fonts.poppinsSemiBold,
+    fontSize: 13,
+    flex: 1,
+  },
+  right: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  callBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  callBtnText: {
+    color: '#030810',
+    fontFamily: fonts.poppinsSemiBold,
+    fontSize: 13,
+  },
+  backBtn: {
+    padding: 4,
   },
 });

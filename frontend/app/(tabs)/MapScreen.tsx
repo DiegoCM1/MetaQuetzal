@@ -4,11 +4,12 @@ import { useLocalSearchParams } from "expo-router";
 import Main from "../map";
 
 const MapScreen = () => {
-  const { alertLat, alertLon, alertTitle, alertLevel } = useLocalSearchParams<{
+  const { alertLat, alertLon, alertTitle, alertLevel, alertSosPhone } = useLocalSearchParams<{
     alertLat?: string;
     alertLon?: string;
     alertTitle?: string;
     alertLevel?: string;
+    alertSosPhone?: string;
   }>();
 
   const focusLat = alertLat ? parseFloat(alertLat) : undefined;
@@ -24,6 +25,7 @@ const MapScreen = () => {
         focusLon={focusLon}
         focusTitle={alertTitle}
         focusLevel={alertLevel ? parseInt(alertLevel, 10) : undefined}
+        focusSosPhone={alertSosPhone}
       />
     </>
   );

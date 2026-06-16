@@ -258,8 +258,9 @@ export default Sentry.wrap(function Layout() {
         console.log('[QA_NAV] tap → alert detail | alertId:', id)
         router.push({ pathname: "/alerts/[id]", params: { id } });
       } else {
-        console.log('[QA_NAV] tap → alerts list (no alertId)')
-        router.push("/alerts");
+        // No useful payload — MIUI/Android can fire the response listener spuriously
+        // when bringing the app to foreground. Don't navigate anywhere.
+        console.log('[QA_NAV] tap → no useful data, skipping navigation');
       }
     });
 
@@ -300,6 +301,10 @@ export default Sentry.wrap(function Layout() {
             lon: rawData.lon ?? '',
           },
         });
+        // IMPORTANCE_MAX overrides shouldShowAlert:false on Android/MIUI, so the notification
+        // stays visible in the tray even after we handle it in-app. Dismiss it immediately so
+        // the tap listener can't fire again for the same SOS and push a second sos-receiver.
+        Notifications.dismissNotificationAsync(notification.request.identifier).catch(() => {});
         return;
       }
       if (isSosRejected) {

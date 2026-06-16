@@ -31,11 +31,10 @@ export default function SOSReceiverScreen() {
 
   function handleViewOnMap() {
     console.log('[QA_SOS_RECEIVER] ver en mapa → alertLat:', parsedLat, '| alertLon:', parsedLon);
-    router.replace({
+    router.push({
       pathname: "/(tabs)/MapScreen",
-      // MapScreen reads alertLat/alertLon — NOT focusLat/focusLon
       params: hasCoords
-        ? { alertLat: String(parsedLat), alertLon: String(parsedLon), alertTitle: senderName }
+        ? { alertLat: String(parsedLat), alertLon: String(parsedLon), alertTitle: senderName, alertSosPhone: senderPhone ?? '' }
         : {},
     });
   }

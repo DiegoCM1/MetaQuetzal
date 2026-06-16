@@ -235,7 +235,7 @@ export function setForegroundNotificationHandler() {
       return;
     }
 
-    if (data?.category === "sos_invite" || data?.category === "sos_rejected" || data?.category === "sos_contact_added") {
+    if (data?.category === "sos" || data?.category === "sos_invite" || data?.category === "sos_rejected" || data?.category === "sos_contact_added") {
       console.log('[QA_NOTIF] skip toast for', data.category, '— handled by _layout.tsx');
       return;
     }
