@@ -1,12 +1,92 @@
 // frontend/utils/pushNotifications.js
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import { Alert, DeviceEventEmitter, Platform } from "react-native";
+import * as IntentLauncher from "expo-intent-launcher";
+import { Alert, DeviceEventEmitter, Linking, Platform } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { track } from "./analytics";
 import { authFetch } from './api'
 import { API_BASE_URL } from './config'
+
+const BATTERY_OPT_ASKED_KEY  = '@blueeye:battery_opt_asked';
+const HEADS_UP_ASKED_KEY     = '@blueeye:heads_up_asked_v2'; // v2 = sos_emergency channel
+
+export async function requestBatteryOptimizationExemption(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    const alreadyAsked = await AsyncStorage.getItem(BATTERY_OPT_ASKED_KEY);
+    if (alreadyAsked) return;
+    await AsyncStorage.setItem(BATTERY_OPT_ASKED_KEY, 'true');
+  } catch { /* AsyncStorage unavailable — still show the dialog */ }
+
+  Alert.alert(
+    'Alertas de emergencia',
+    'Para que BluEye pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
+    [
+      { text: 'Ahora no', style: 'cancel' },
+      {
+        text: 'Permitir',
+        onPress: async () => {
+          try {
+            await IntentLauncher.startActivityAsync(
+              'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+              { data: 'package:com.bluai.app' }
+            );
+          } catch {
+            // Si el intent falla (algunos OEM lo bloquean), abrir ajustes de la app
+            await IntentLauncher.startActivityAsync(
+              IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+              { data: 'package:com.bluai.app' }
+            );
+          }
+        },
+      },
+    ]
+  );
+}
+
+// Show once: ask the user to enable heads-up / floating notifications for the
+// sos_emergency channel. Android lets apps open the exact channel settings screen so
+// the user just needs to toggle "Mostrar en pantalla" (MIUI) / "Show as pop-up"
+// (stock Android). Called after battery-opt so both dialogs don't overlap.
+export async function requestHeadsUpPermission(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    const alreadyAsked = await AsyncStorage.getItem(HEADS_UP_ASKED_KEY);
+    if (alreadyAsked) return;
+    await AsyncStorage.setItem(HEADS_UP_ASKED_KEY, 'true');
+  } catch { /* proceed */ }
+
+  Alert.alert(
+    'Notificaciones a pantalla completa',
+    'Para que las alertas SOS aparezcan sobre cualquier pantalla (incluso con el teléfono bloqueado), activa "Mostrar en pantalla" en los ajustes del canal SOS.',
+    [
+      { text: 'Ahora no', style: 'cancel' },
+      {
+        text: 'Configurar',
+        onPress: async () => {
+          try {
+            // Opens the exact sos_emergency channel settings where the user can
+            // enable "Floating notifications" / "Show as pop-up" / "Mostrar en pantalla"
+            await IntentLauncher.startActivityAsync(
+              'android.settings.CHANNEL_NOTIFICATION_SETTINGS',
+              {
+                extra: {
+                  'android.provider.extra.APP_PACKAGE': 'com.bluai.app',
+                  'android.provider.extra.CHANNEL_ID': 'sos_emergency',
+                },
+              }
+            );
+          } catch {
+            // Fallback: open the general app notification settings page
+            await Linking.openSettings();
+          }
+        },
+      },
+    ]
+  );
+}
 
 const _LAST_TOKEN_KEY = 'push_last_registered_token';
 // In-memory guard prevents concurrent calls with the same token from both POSTing
@@ -68,12 +148,20 @@ export async function sendTokenToBackend(fcmToken: string): Promise<void> {
 
 export async function setupNotificationChannels() {
   if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync("sos_alerts", {
+  // Delete old channel so Android re-creates it at MAX importance.
+  // Android never upgrades a channel's importance once created; the only fix is
+  // to delete and recreate with the new importance level.
+  // No delete needed — sos_emergency is a new ID that has never existed on any
+  // device, so Android creates it fresh at IMPORTANCE_MAX every time.
+  await Notifications.setNotificationChannelAsync("sos_emergency", {
     name: "Alertas SOS",
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
     showBadge: true,
+    sound: "default",
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    bypassDnd: true,
   });
   // Silent channel for background data-refresh pushes — no banner, no sound, hidden in drawer
   await Notifications.setNotificationChannelAsync("contacts_refresh_silent", {
@@ -116,6 +204,12 @@ export async function registerForPushNotificationsAsync() {
   console.log("FCM token →", fcmToken);
 
   await sendTokenToBackend(fcmToken);
+
+  // 3) Battery optimization exemption — solo aparece una vez
+  requestBatteryOptimizationExemption();
+  // 4) Heads-up / floating notifications — mostramos 2 s después para no superponer dialogs
+  setTimeout(() => requestHeadsUpPermission(), 2000);
+
   return fcmToken;
 }
 
@@ -141,7 +235,7 @@ export function setForegroundNotificationHandler() {
       return;
     }
 
-    if (data?.category === "sos_invite" || data?.category === "sos_rejected" || data?.category === "sos_contact_added") {
+    if (data?.category === "sos" || data?.category === "sos_invite" || data?.category === "sos_rejected" || data?.category === "sos_contact_added") {
       console.log('[QA_NOTIF] skip toast for', data.category, '— handled by _layout.tsx');
       return;
     }

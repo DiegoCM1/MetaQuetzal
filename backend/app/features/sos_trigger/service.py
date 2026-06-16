@@ -48,7 +48,14 @@ async def trigger_sos(
             headers={"Retry-After": str(retry_after)},
         )
 
-    # 2. Linked contacts
+    # 2. Sender phone (included in push so receiver can call back)
+    phone_row = await db.execute(
+        text("SELECT phone FROM users WHERE id = :sender_id"),
+        {"sender_id": sender_id},
+    )
+    sender_phone: str = phone_row.scalar() or ""
+
+    # 3. Linked contacts
     contacts_result = await db.execute(
         text("""
             SELECT linked_user_id FROM sos_contacts
@@ -64,12 +71,12 @@ async def trigger_sos(
     skipped_count = 0
 
     if linked_user_ids:
-        # 3. Device tokens
+        # 4. Device tokens
         token_map = await get_tokens_for_users(db, linked_user_ids)
         all_tokens = [t for tokens in token_map.values() for t in tokens]
         skipped_count = len([uid for uid in linked_user_ids if uid not in token_map])
 
-        # 4. Firebase push
+        # 5. Firebase push
         if all_tokens:
             display_name = sender_display_name or "Un usuario de BluEye"
             msg = messaging.MulticastMessage(
@@ -78,11 +85,26 @@ async def trigger_sos(
                     body="Necesita ayuda urgente. Toca para ver su ubicación.",
                 ),
                 data={
-                    "category":    "sos",
-                    "sender_name": display_name,
+                    "category":     "sos",
+                    "sender_name":  display_name,
+                    "sender_phone": sender_phone,
                     "lat":         str(lat) if lat is not None else "",
                     "lon":         str(lon) if lon is not None else "",
                 },
+                android=messaging.AndroidConfig(
+                    priority="high",
+                    notification=messaging.AndroidNotification(
+                        channel_id="sos_emergency",
+                        default_vibrate_timings=False,
+                        vibrate_timings_millis=[0, 250, 250, 250],
+                    ),
+                ),
+                apns=messaging.APNSConfig(
+                    headers={"apns-priority": "10"},
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(sound="default"),
+                    ),
+                ),
                 tokens=all_tokens,
             )
             try:
