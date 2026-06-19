@@ -4,6 +4,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator,
   Alert, ScrollView, StyleSheet,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ScreenHeader from "../../components/ScreenHeader";
@@ -28,7 +29,9 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState("");
+  const [savedPhone, setSavedPhone] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     authFetch(`${API_BASE_URL}/api/v1/users/me`)
@@ -36,6 +39,7 @@ export default function ProfileScreen() {
       .then((data: UserProfile) => {
         setProfile(data);
         setPhone(data.phone ?? "");
+        setSavedPhone(data.phone ?? "");
       })
       .catch(() => Alert.alert("Error", "No se pudo cargar el perfil."))
       .finally(() => setLoading(false));
@@ -55,6 +59,8 @@ export default function ProfileScreen() {
       });
       if (!res.ok) throw new Error();
       setProfile(prev => prev ? { ...prev, phone: p } : prev);
+      setSavedPhone(p);
+      setEditing(false);
       toast.success("Teléfono guardado", {
         description: "Los contactos SOS podrán encontrarte por este número.",
       });
@@ -63,6 +69,11 @@ export default function ProfileScreen() {
     } finally {
       setSavingPhone(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setPhone(savedPhone);
+    setEditing(false);
   };
 
   return (
@@ -74,60 +85,79 @@ export default function ProfileScreen() {
           <ActivityIndicator size="large" color={colors.brandCyan} />
         </View>
       ) : (
-        <ScrollView className="flex-1 pt-6" showsVerticalScrollIndicator={false}>
-          <View style={s.card}>
-            <View style={s.avatarRow}>
-              <MaterialCommunityIcons name="account-circle" size={64} color={colors.brandCyan} />
-            </View>
+        <KeyboardAvoidingView
+          behavior="padding"
+          style={{ flex: 1 }}
+        >
+          <ScrollView className="flex-1 pt-6" showsVerticalScrollIndicator={false}>
+            <View style={s.card}>
+              <View style={s.avatarRow}>
+                <MaterialCommunityIcons name="account-circle" size={64} color={colors.brandCyan} />
+              </View>
 
-            <Field
-              icon="account-outline"
-              label="Nombre"
-              value={profile?.display_name ?? "—"}
-            />
-            <Field
-              icon="email-outline"
-              label="Correo"
-              value={profile?.email ?? "—"}
-            />
-            <Field
-              icon="calendar-outline"
-              label="Miembro desde"
-              value={profile?.created_at ? formatDate(profile.created_at) : "—"}
-            />
-          </View>
-
-          <View style={s.card}>
-            <View style={s.sectionHeader}>
-              <MaterialCommunityIcons name="phone-outline" size={20} color={colors.brandCyan} />
-              <Text style={s.sectionTitle}>Número de teléfono</Text>
-            </View>
-            <Text style={s.sectionSub}>
-              Para recibir invitaciones SOS directamente en la app.
-            </Text>
-            <View style={s.phoneRow}>
-              <TextInput
-                style={s.phoneInput}
-                placeholder="+52 999 123 4567"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                maxLength={30}
-                editable={!savingPhone}
+              <Field icon="account-outline" label="Nombre" value={profile?.display_name ?? "—"} />
+              <Field icon="email-outline" label="Correo" value={profile?.email ?? "—"} />
+              <Field
+                icon="calendar-outline"
+                label="Miembro desde"
+                value={profile?.created_at ? formatDate(profile.created_at) : "—"}
               />
-              <TouchableOpacity
-                style={[s.saveBtn, savingPhone && { opacity: 0.6 }]}
-                onPress={handleSavePhone}
-                disabled={savingPhone}
-              >
-                {savingPhone
-                  ? <ActivityIndicator size="small" color="#030810" />
-                  : <Text style={s.saveBtnText}>Guardar</Text>}
-              </TouchableOpacity>
             </View>
-          </View>
-        </ScrollView>
+
+            <View style={s.card}>
+              <View style={s.sectionHeader}>
+                <MaterialCommunityIcons name="phone-outline" size={20} color={colors.brandCyan} />
+                <Text style={s.sectionTitle}>Número de teléfono</Text>
+              </View>
+              <Text style={s.sectionSub}>
+                Para recibir invitaciones SOS directamente en la app.
+              </Text>
+
+              {editing ? (
+                <View style={s.phoneRow}>
+                  <TextInput
+                    style={s.phoneInput}
+                    placeholder="+52 999 123 4567"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    maxLength={30}
+                    editable={!savingPhone}
+                    autoFocus
+                  />
+                  {phone.trim() !== savedPhone && (
+                    <TouchableOpacity
+                      style={[s.saveBtn, savingPhone && { opacity: 0.6 }]}
+                      onPress={handleSavePhone}
+                      disabled={savingPhone}
+                    >
+                      {savingPhone
+                        ? <ActivityIndicator size="small" color="#030810" />
+                        : <Text style={s.saveBtnText}>Guardar</Text>}
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={s.iconBtn}
+                    onPress={handleCancelEdit}
+                    disabled={savingPhone}
+                  >
+                    <MaterialCommunityIcons name="close" size={22} color="rgba(255,255,255,0.5)" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={s.phoneDisplayRow}>
+                  <Text style={savedPhone ? s.phoneValue : s.phonePlaceholder}>
+                    {savedPhone || "Sin número registrado"}
+                  </Text>
+                  <TouchableOpacity style={s.iconBtn} onPress={() => setEditing(true)}>
+                    <MaterialCommunityIcons name="pencil-outline" size={20} color={colors.brandCyan} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </SafeAreaView>
   );
@@ -175,7 +205,14 @@ const s = StyleSheet.create({
     fontSize: 12,
     marginBottom: 14,
   },
-  phoneRow: { flexDirection: "row", gap: 10 },
+  phoneDisplayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  phoneValue: { color: "white", fontFamily: fonts.poppinsSemiBold, fontSize: 15 },
+  phonePlaceholder: { color: "rgba(255,255,255,0.3)", fontFamily: fonts.poppins, fontSize: 15 },
+  phoneRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   phoneInput: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.07)",
@@ -192,8 +229,10 @@ const s = StyleSheet.create({
     backgroundColor: colors.brandCyan,
     borderRadius: 10,
     paddingHorizontal: 18,
+    paddingVertical: 11,
     justifyContent: "center",
     alignItems: "center",
   },
   saveBtnText: { color: "#030810", fontFamily: fonts.poppinsSemiBold, fontSize: 14 },
+  iconBtn: { padding: 6 },
 });
