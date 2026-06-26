@@ -166,6 +166,25 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
             "ON sos_contacts (linked_user_id) WHERE linked_user_id IS NOT NULL"
         ))
 
+    # RAG retrieval table (pgvector). Isolated in its OWN transaction with a
+    # guard: pgvector is a non-default extension, so if it's unavailable in some
+    # environment, we log and continue instead of poisoning the core-table
+    # transaction or crashing startup. The table is read by features/ai/rag.py;
+    # embedding dim 384 matches the paraphrase-multilingual-MiniLM-L12-v2 model.
+    # Data is loaded out-of-band (copied from prod) — see docs/STAGING.md.
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text('CREATE EXTENSION IF NOT EXISTS vector'))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS rag_chunks (
+                    id        BIGSERIAL PRIMARY KEY,
+                    text      TEXT NOT NULL,
+                    embedding vector(384)
+                )
+            """))
+    except Exception as exc:
+        logger.warning("ensure_core_tables: rag_chunks/pgvector setup skipped: %s", exc)
+
 
 async def _siat_background_loop():
     """Runs SIAT evaluation cycle every SIAT_CYCLE_INTERVAL_SECONDS."""

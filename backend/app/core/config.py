@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = ""
     LLM_MODEL: str = ""
 
+    # Web search tool (optional - only needed for the AI web_search tool)
+    TAVILY_API_KEY: str = ""
+    # "basic" = 1 credit/search, "advanced" = 2 credits/search. Flip via env,
+    # no code change. Default basic to stretch the free-tier monthly quota.
+    TAVILY_SEARCH_DEPTH: str = "basic"
+
     # Dev-only bypasses
     DEV_BYPASS_MAP_EVENTS_AUTH: bool = False
     # When true, any authenticated Firebase user can call the notification test endpoints.
