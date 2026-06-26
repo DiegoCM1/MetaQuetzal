@@ -3,9 +3,15 @@ import json
 import logging
 from app.core.config import settings
 from app.features.ai.rag import retrieve
+from app.features.ai.tools import TOOL_SCHEMAS, build_tool_handlers
 from app.features.alerts.service import get_alert_by_id
 
 logger = logging.getLogger(__name__)
+
+# Hard cap on tool-call round-trips per user turn. The model normally ends the
+# loop by returning plain text; this is the seatbelt for when it doesn't, so a
+# confused model can't loop (and bill) forever.
+MAX_TOOL_ITERS = 5
 
 SYSTEM_PROMPT = """You are Bluai, an AI assistant specialized in hurricane preparedness, response, and recovery for residents of Mexico.
 
@@ -29,29 +35,116 @@ SYSTEM_PROMPT = """You are Bluai, an AI assistant specialized in hurricane prepa
   authorities."""
 
 
-async def fetch_weather(latitude: float, longitude: float) -> str:                                 
+async def fetch_weather(latitude: float, longitude: float) -> tuple[str, str | None]:
+    """Return (human-readable weather string, IANA timezone for those coords).
+
+    The One Call response carries a `timezone` field accurate to the exact
+    coordinates — we surface it so the agent's get_datetime tool can default to
+    the user's real zone instead of a hardcoded one. No extra API call needed.
+    """
     async with httpx.AsyncClient() as client:
         response = await client.get(
             url="https://api.openweathermap.org/data/3.0/onecall",
-            params={                                                                               
+            params={
                 "lat": latitude,
-                "lon": longitude,                                                                  
+                "lon": longitude,
                 "exclude": "minutely,hourly,daily",
-                "appid": settings.OPENWEATHER_API_KEY,                                             
+                "appid": settings.OPENWEATHER_API_KEY,
                 "units": "metric",
-                "lang": "es",                                                                      
-            }   
-        )                                                                                          
+                "lang": "es",
+            }
+        )
         data = response.json()
-        current = data["current"]                                                                  
+        current = data["current"]
         desc = current["weather"][0]["description"]
         temp = current["temp"]
         wind = current["wind_speed"]
-        weather_str = f"Clima: {temp}°C, {desc}, viento {wind} m/s."                               
-        if "alerts" in data:                                                                       
-            for alert in data["alerts"]:                                                           
-                weather_str += f" ⚠️  Alerta: {alert['event']} — {alert['description'][:100]}"      
-        return weather_str  
+        weather_str = f"Clima: {temp}°C, {desc}, viento {wind} m/s."
+        if "alerts" in data:
+            for alert in data["alerts"]:
+                weather_str += f" ⚠️  Alerta: {alert['event']} — {alert['description'][:100]}"
+        return weather_str, data.get("timezone")
+
+
+def _sse_content(text: str) -> str:
+    """Re-emit a token in the exact shape OnlineProvider parses.
+
+    The client only reads `choices[0].delta.content`. Forwarding ONLY content
+    here is what keeps tool-call chatter out of the SSE stream — the wire
+    contract stays byte-compatible with the pre-tools behavior.
+    """
+    payload = {"choices": [{"delta": {"content": text}}]}
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def _accumulate_tool_call_deltas(acc: dict, deltas: list) -> None:
+    """Merge streamed tool_call fragments into a per-index accumulator.
+
+    In a stream, a tool call arrives in pieces: the id/name once, then the JSON
+    `arguments` string split across many chunks. We reassemble them by index.
+    """
+    for d in deltas:
+        idx = d.get("index", 0)
+        slot = acc.setdefault(idx, {"id": None, "name": None, "arguments": ""})
+        if d.get("id"):
+            slot["id"] = d["id"]
+        fn = d.get("function") or {}
+        if fn.get("name"):
+            slot["name"] = fn["name"]
+        if fn.get("arguments"):
+            slot["arguments"] += fn["arguments"]
+
+
+def _build_assistant_tool_message(acc: dict) -> dict:
+    """Rebuild the assistant tool-call message we must echo back to the model."""
+    tool_calls = []
+    for idx in sorted(acc):
+        slot = acc[idx]
+        tool_calls.append({
+            "id": slot["id"],
+            "type": "function",
+            "function": {"name": slot["name"], "arguments": slot["arguments"] or "{}"},
+        })
+    return {"role": "assistant", "content": None, "tool_calls": tool_calls}
+
+
+async def _execute_tool_calls(tool_calls: list[dict], handlers: dict) -> list[dict]:
+    """Run each requested tool, returning one role:tool result message per call.
+
+    `handlers` is the request-scoped map from build_tool_handlers(), so tools see
+    the live user context (e.g. their timezone) rather than module-level defaults.
+
+    A tool NEVER raises out of here — a failure becomes a text result the model
+    can read and recover from, instead of killing the whole turn mid-reasoning.
+    """
+    results = []
+    for call in tool_calls:
+        name = call["function"]["name"]
+        raw_args = call["function"].get("arguments") or "{}"
+        try:
+            args = json.loads(raw_args)
+        except json.JSONDecodeError:
+            logger.warning("[chat:tools] bad JSON args for %s: %r", name, raw_args)
+            args = {}
+
+        handler = handlers.get(name)
+        if handler is None:
+            logger.warning("[chat:tools] model called unknown tool %r", name)
+            content = f"Error: herramienta desconocida '{name}'."
+        else:
+            try:
+                content = await handler(**args)
+                print(f"[chat:tools] {name}({args}) -> {content}")
+            except Exception as exc:
+                logger.error("[chat:tools] %s failed: %s", name, exc, exc_info=True)
+                content = f"Error ejecutando {name}."
+
+        results.append({
+            "role": "tool",
+            "tool_call_id": call["id"],
+            "content": content,
+        })
+    return results
 
 
 async def chat(messages: list[dict], location: str | None = None, latitude: float | None = None, longitude: float | None = None):
@@ -63,11 +156,13 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
         system_content += f"\n\nUbicación actual del usuario: {location}."
     print(f"[chat:location] {location}")
 
+    user_tz: str | None = None
     if latitude and longitude:
         try:
-            weather = await fetch_weather(latitude, longitude)
+            weather, user_tz = await fetch_weather(latitude, longitude)
             system_content += f"\n\n{weather}"
             print(f"[chat:weather] {weather}")
+            print(f"[chat:tz] resolved user timezone: {user_tz}")
         except Exception as e:
             print(f"[chat:weather] weather fetch failed: {e}")
 
@@ -88,56 +183,106 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
     print(f"[chat] messages count: {len(messages)}")
     full_messages = [{"role": "system", "content": system_content}] + [m.model_dump() for m in messages]
 
+    # Bind this request's context (the user's resolved timezone) into the tools.
+    tool_handlers = build_tool_handlers(user_timezone=user_tz)
+
+    # --- Agent loop -------------------------------------------------------
+    # Each pass streams one LLM turn. If the model asks for tools, we run them,
+    # append the results, and loop again. If it answers in plain text, that text
+    # has already streamed to the client and we finish. Only `delta.content`
+    # (the user-facing answer), the error envelope, and `[DONE]` ever reach the
+    # SSE stream — tool-call chatter is handled server-side and never forwarded.
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            async with client.stream(
-                "POST",
-                f"{settings.LLM_BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.LLM_MODEL,
-                    "messages": full_messages,
-                    "stream": True,
-                },
-            ) as response:
-                if response.status_code != 200:
-                    error_body = await response.aread()
-                    logger.error(
-                        "[chat:llm] upstream returned %s: %r",
-                        response.status_code,
-                        error_body,
-                    )
-                    raise RuntimeError(f"LLM upstream returned {response.status_code}")
+            for _ in range(MAX_TOOL_ITERS):
+                tool_acc: dict = {}
+                finish_reason: str | None = None
 
                 try:
-                    async for line in response.aiter_lines():
-                        if not line:
-                            continue
-                        if line.startswith("data: "):
-                            yield f"{line}\n\n"
-                            if line.strip() == "data: [DONE]":
-                                return
+                    async with client.stream(
+                        "POST",
+                        f"{settings.LLM_BASE_URL}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": settings.LLM_MODEL,
+                            "messages": full_messages,
+                            "tools": TOOL_SCHEMAS,
+                            "stream": True,
+                        },
+                    ) as response:
+                        if response.status_code != 200:
+                            error_body = await response.aread()
+                            logger.error(
+                                "[chat:llm] upstream returned %s: %r",
+                                response.status_code,
+                                error_body,
+                            )
+                            yield 'data: {"error": "llm_upstream_error"}\n\n'
+                            yield "data: [DONE]\n\n"
+                            return
+
+                        async for line in response.aiter_lines():
+                            if not line or not line.startswith("data: "):
+                                continue
+                            data = line[len("data: "):].strip()
+                            if data == "[DONE]":
+                                break  # end of THIS turn's stream, not the whole reply
+                            try:
+                                chunk = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
+
+                            choice = (chunk.get("choices") or [{}])[0]
+                            delta = choice.get("delta") or {}
+
+                            if delta.get("content"):
+                                yield _sse_content(delta["content"])
+                            if delta.get("tool_calls"):
+                                _accumulate_tool_call_deltas(tool_acc, delta["tool_calls"])
+                            if choice.get("finish_reason"):
+                                finish_reason = choice["finish_reason"]
                 except httpx.HTTPError as exc:
-                    logger.error(
-                        "[chat:llm] stream interrupted mid-flight: %s",
-                        exc,
-                        exc_info=True,
-                    )
+                    logger.error("[chat:llm] stream interrupted mid-flight: %s", exc, exc_info=True)
                     yield 'data: {"error": "stream_interrupted"}\n\n'
                     yield "data: [DONE]\n\n"
                     return
+
+                # --- Turn finished: did the model ask for tools? ---
+                if finish_reason == "tool_calls" and tool_acc:
+                    assistant_msg = _build_assistant_tool_message(tool_acc)
+                    full_messages.append(assistant_msg)
+                    tool_results = await _execute_tool_calls(assistant_msg["tool_calls"], tool_handlers)
+                    full_messages.extend(tool_results)
+                    print(f"[chat:tools] ran {len(tool_results)} tool(s), looping back to LLM")
+                    continue  # ask the model again, now with tool results in context
+
+                # No tools requested -> the final answer already streamed above.
+                yield "data: [DONE]\n\n"
+                return
+
+            # Safety valve: model kept requesting tools past the cap.
+            logger.warning("[chat:llm] hit MAX_TOOL_ITERS=%s without a final answer", MAX_TOOL_ITERS)
+            yield 'data: {"error": "max_tool_iterations"}\n\n'
+            yield "data: [DONE]\n\n"
+            return
     except httpx.ConnectError as exc:
         logger.error("[chat:llm] cannot connect to LLM: %s", exc, exc_info=True)
-        raise RuntimeError("LLM connection failed") from exc
+        yield 'data: {"error": "llm_connection_failed"}\n\n'
+        yield "data: [DONE]\n\n"
+        return
     except httpx.TimeoutException as exc:
         logger.error("[chat:llm] LLM request timed out: %s", exc, exc_info=True)
-        raise RuntimeError("LLM timeout") from exc
+        yield 'data: {"error": "llm_timeout"}\n\n'
+        yield "data: [DONE]\n\n"
+        return
     except httpx.HTTPError as exc:
         logger.error("[chat:llm] LLM HTTP error: %s", exc, exc_info=True)
-        raise RuntimeError("LLM request failed") from exc
+        yield 'data: {"error": "stream_interrupted"}\n\n'
+        yield "data: [DONE]\n\n"
+        return
 
 
 _SUMMARY_SYSTEM_PROMPT = (
