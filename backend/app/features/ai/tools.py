@@ -131,8 +131,7 @@ GET_DATETIME_SCHEMA = {
     "function": {
         "name": "get_datetime",
         "description": (
-            "Obtiene la fecha y hora actual. Úsalo cuando el usuario pregunte por "
-            "la hora, la fecha, el día de hoy, o cuánto falta para un evento."
+            "Obtiene la fecha y hora actual. Úsalo cuando el usuario pregunte por la hora, la fecha, el día de hoy, o cuánto falta para un evento, no uses esto a menos que el datetime sea necesario para tu respuesta"
         ),
         "parameters": {
             "type": "object",
@@ -158,10 +157,7 @@ WEB_SEARCH_SCHEMA = {
     "function": {
         "name": "web_search",
         "description": (
-            "Busca información actualizada en internet. Úsalo cuando necesites "
-            "datos recientes o que no conoces con certeza: noticias, avisos "
-            "oficiales, estado de carreteras o refugios, o cualquier dato en "
-            "tiempo real. NO lo uses para conocimiento general que ya tienes."
+            "Busca información actualizada en internet. Úsalo cuando necesites datos recientes o que no conoces con certeza: noticias, avisos oficiales, estado de carreteras o refugios, o cualquier dato en tiempo real."
         ),
         "parameters": {
             "type": "object",

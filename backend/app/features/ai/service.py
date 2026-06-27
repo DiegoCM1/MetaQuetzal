@@ -41,10 +41,8 @@ This live weather is for context — for official forecasts and warnings, direct
 SMN / CONAGUA.
 
 TOOLS
-- get_datetime: current date/time in the user's timezone. Use for timing questions \
-("how long until landfall").
-- web_search: live web info. Use ONLY for current, on-mission facts you don't reliably know \
-(official advisories, road/shelter status, current storm news). One search is usually enough \
+- get_datetime: current date/time in the user's timezone. Use for timing questions, when time is required to give a good response
+- web_search: Search for up to date information in the internet. Use this when you need access to recent data or when you don't know something for sure. Realtime or recent events, anything that is recent or you don't know for sure.
 — if the results answer the question, reply immediately and do NOT search again.
 
 SAFETY GUARDRAILS

@@ -165,6 +165,15 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
             "CREATE INDEX IF NOT EXISTS sos_contacts_linked_uid_idx "
             "ON sos_contacts (linked_user_id) WHERE linked_user_id IS NOT NULL"
         ))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                id         BIGSERIAL PRIMARY KEY,
+                rating     INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                email      VARCHAR(320),
+                message    TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
 
     # RAG retrieval table (pgvector). Isolated in its OWN transaction with a
     # guard: pgvector is a non-default extension, so if it's unavailable in some
