@@ -1,11 +1,6 @@
 """
 Schema-completeness guard.
-
-This is the one test that would have caught the `feedback` 500 ("relation
-public.feedback does not exist") *before* it reached staging. The bug class:
-a feature queries a table that the startup hook never creates, so it works in
-an environment whose schema accrued from deploy history (prod) but blows up on
-a freshly-created database (staging, a teammate's local, this CI Postgres).
+The bug class: a feature queries a table that the startup hook never creates, so it works in an environment whose schema accrued from deploy history (prod) but blows up on a freshly-created database (staging, a teammate's local, this CI Postgres).
 
 What it does: against a clean database, run the exact startup table-creation
 functions (`ensure_core_tables` + `ensure_siat_tables`) and assert that every
