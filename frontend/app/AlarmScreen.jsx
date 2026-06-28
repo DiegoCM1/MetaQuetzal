@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Modal, View, Text, TouchableOpacity } from "react-native";
 import { Link, useRouter, useLocalSearchParams } from "expo-router";
 import { colorForLevel } from "./alerts/_components/AlertCard";
@@ -5,6 +6,11 @@ import { colorForLevel } from "./alerts/_components/AlertCard";
 export default function AlarmScreen() {
   const { alertId, category, title, message } = useLocalSearchParams();
   const router = useRouter();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    console.log('[QA_NAV] AlarmScreen mounted | alertId:', alertId ?? 'none', '| category:', category, '| title:', title);
+  }, []);
 
   const alertData = {
     id:       alertId  || null,
@@ -72,6 +78,7 @@ export default function AlarmScreen() {
               <TouchableOpacity
                 className="flex-1 ml-2 py-3 rounded-lg items-center"
                 style={{ backgroundColor: buttonColor }}
+                onPress={() => console.log('[QA_NAV] AlarmScreen → más info | alertId:', alertData.id ?? 'none', '| href:', alertData.id ? `/alerts/${alertData.id}` : "/alerts")}
               >
                 <Text className="font-bold" style={{ color: baseColor }}>Más información</Text>
               </TouchableOpacity>

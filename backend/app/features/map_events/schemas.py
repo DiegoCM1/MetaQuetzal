@@ -13,10 +13,17 @@ class MapEventCreate(BaseModel):
     description: str = Field(min_length=1, max_length=2000)
     lat: float
     lon: float
+    address: str | None = Field(default=None, max_length=300)
 
 
 class MapEventUpdate(BaseModel):
     description: str = Field(min_length=1, max_length=2000)
+
+
+class MapEventVoteCreate(BaseModel):
+    value: Literal[1, -1]
+    lat: float
+    lon: float
 
 
 class MapEventResponse(BaseModel):
@@ -26,5 +33,14 @@ class MapEventResponse(BaseModel):
     description: str
     lat: float
     lon: float
+    address: str | None = None
     created_at: datetime
     updated_at: datetime
+    upvotes: int = 0
+    downvotes: int = 0
+    user_vote: int | None = None
+    is_owner: bool = False
+    distance_km: float | None = None
+    within_voting_radius: bool = False
+    can_vote: bool = False
+    trust_status: Literal["confirmado", "en_revision", "dudoso"] = "en_revision"

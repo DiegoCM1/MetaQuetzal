@@ -242,6 +242,31 @@ async def _mark_notified(db: AsyncSession, user_id: int, level: int) -> None:
     )
 
 
+async def _upsert_cyclone_alert(
+    db: AsyncSession, cyclone: dict, assessment: dict
+) -> str:
+    """Create an alerts record for a SIAT cyclone escalation. Returns the alert UUID."""
+    level = assessment["siat_level"]
+    color = assessment["siat_color"]
+    label = _COLOR_LABELS.get(color, color)
+    title = f"Ciclón {cyclone['name']} — SIAT-CT {label}"
+    short = (assessment.get("reason") or f"Ciclón a {assessment.get('distance_km', '?'):.0f} km")[:500]
+    result = await db.execute(
+        text("""
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations)
+            VALUES (:level, 0, :title, :short, :lat, :lon, '[]', '[]')
+            RETURNING id
+        """),
+        {
+            "level": level, "title": title, "short": short,
+            "lat": cyclone["lat"], "lon": cyclone["lon"],
+        },
+    )
+    alert_id = str(result.mappings().first()["id"])
+    logger.info("Cyclone alert created: id=%s level=%d title='%s'", alert_id, level, title)
+    return alert_id
+
+
 # ---------------------------------------------------------------------------
 # Push notification — per-user (not broadcast)
 # ---------------------------------------------------------------------------
@@ -262,16 +287,28 @@ async def _push_per_user(
             logger.debug("user_id=%d has no registered tokens, skipping push", user_id)
             continue
 
+        level = assessment["siat_level"]
         label = _COLOR_LABELS.get(assessment["siat_color"], assessment["siat_color"])
+        title = f"Alerta SIAT-CT {label}"
+        body = assessment["reason"]
+        alert_id = assessment.get("alert_id")
+
+        data: dict[str, str] = {
+            "siat_level": str(level),
+            "siat_color": assessment["siat_color"],
+            "alertTitle": title,
+            "alertMessage": body,
+        }
+        if alert_id:
+            data["alertId"] = alert_id
+        if level >= 4:
+            data["fullScreen"] = "true"
+
         msg = messaging.MulticastMessage(
-            notification=messaging.Notification(
-                title=f"Alerta SIAT-CT {label}",
-                body=assessment["reason"],
-            ),
-            data={
-                "siat_level": str(assessment["siat_level"]),
-                "siat_color": assessment["siat_color"],
-            },
+            notification=messaging.Notification(title=title, body=body),
+            data=data,
+            android=messaging.AndroidConfig(priority="high"),
+            apns=messaging.APNSConfig(headers={"apns-priority": "10"}),
             tokens=tokens,
         )
 
@@ -300,12 +337,11 @@ _SMN_RADIUS_KM = 500.0
 
 
 async def _get_pending_smn_alerts(db: AsyncSession) -> list:
+    # Includes national alerts (lat/lon NULL) — these are handled without radius filtering
     result = await db.execute(text("""
         SELECT id, title, short, level, lat, lon
         FROM alerts
-        WHERE lat IS NOT NULL
-          AND lon IS NOT NULL
-          AND notified_at IS NULL
+        WHERE notified_at IS NULL
           AND timestamp > NOW() - INTERVAL '35 minutes'
         ORDER BY timestamp DESC
     """))
@@ -322,11 +358,13 @@ async def _mark_alert_notified(db: AsyncSession, alert_id) -> None:
 async def _push_smn_for_alert(
     db: AsyncSession, alert: dict, users: list
 ) -> int:
+    is_national = alert["lat"] is None or alert["lon"] is None
     affected_user_ids = []
     for user in users:
-        dist = haversine_km(alert["lat"], alert["lon"], user["lat"], user["lon"])
-        if dist > _SMN_RADIUS_KM:
-            continue
+        if not is_national:
+            dist = haversine_km(alert["lat"], alert["lon"], user["lat"], user["lon"])
+            if dist > _SMN_RADIUS_KM:
+                continue
         prefs = await get_preferences(db, user["id"])
         if prefs["siat_enabled"] and alert["level"] >= prefs["min_siat_level"]:
             if is_within_quiet_hours(prefs) and alert["level"] < _QUIET_HOURS_OVERRIDE_LEVEL:
@@ -341,20 +379,20 @@ async def _push_smn_for_alert(
     if not all_tokens:
         return 0
 
+    smn_title = f"Nueva alerta — {alert['title']}"
+    smn_body = alert["short"] or ""
     msg = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=f"Nueva alerta — {alert['title']}",
-            body=alert["short"],
-        ),
+        notification=messaging.Notification(title=smn_title, body=smn_body),
         data={
             "alert_id": str(alert["id"]),
+            "alertId": str(alert["id"]),
             "level": str(alert["level"]),
             "siat_level": str(alert["level"]),
+            "alertTitle": smn_title,
+            "alertMessage": smn_body,
         },
         android=messaging.AndroidConfig(priority="high"),
-        apns=messaging.APNSConfig(
-            headers={"apns-priority": "10"},
-        ),
+        apns=messaging.APNSConfig(headers={"apns-priority": "10"}),
         tokens=all_tokens,
     )
 
@@ -399,20 +437,73 @@ async def _notify_smn_alerts(db: AsyncSession, users: list) -> int:
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
-async def run_cycle(db: AsyncSession) -> dict:
+async def reset_user_siat_state(db: AsyncSession, user_id: int) -> None:
+    """Delete all SIAT state for a user so the next injection evaluates from scratch."""
+    await db.execute(
+        text("DELETE FROM user_alert_states WHERE user_id = :uid"),
+        {"uid": user_id},
+    )
+    await db.commit()
+
+
+async def inject_smn_test_alert(
+    db: AsyncSession, level: int, title: str, short: str
+) -> dict:
+    """Insert a national test alert and immediately process it via the SMN notify path."""
+    result = await db.execute(
+        text("""
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations)
+            VALUES (:level, 0, :title, :short, NULL, NULL, '[]', '[]')
+            RETURNING id
+        """),
+        {"level": level, "title": title, "short": short},
+    )
+    alert_id = str(result.mappings().first()["id"])
+    await db.commit()
+
+    users = await _get_users_with_location(db)
+    notifications_sent = await _notify_smn_alerts(db, users)
+    return {"alert_id": alert_id, "users_evaluated": len(users), "notifications_sent": notifications_sent}
+
+
+async def inject_and_run_cycle(db: AsyncSession, req) -> dict:
+    """Insert a fake cyclone into cyclone_events and immediately run a full SIAT cycle."""
+    fake_cyclone: dict = {
+        "source": "FAKE",
+        "name": req.name,
+        "status": "HU",
+        "lat": req.lat,
+        "lon": req.lon,
+        "wind_kmh": req.wind_kmh,
+        "pressure": None,
+        "movement_direction": req.movement_direction,
+        "movement_speed_kmh": req.movement_speed_kmh,
+        "advisory_time": datetime.now(timezone.utc),
+        "raw_payload": {},
+    }
+    cyclone_event_id = await _save_cyclone(db, fake_cyclone)
+    result = await run_cycle(db, extra_cyclones=[fake_cyclone])
+    return {**result, "cyclone_event_id": cyclone_event_id, "cyclone_name": req.name}
+
+
+async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) -> dict:
     logger.info("SIAT run-cycle started")
 
     users = await _get_users_with_location(db)
     cyclones = await fetch_active_cyclones()
+    if extra_cyclones:
+        cyclones = cyclones + extra_cyclones
 
     logger.info("SIAT run-cycle: %d cyclone(s), %d user(s) with location", len(cyclones), len(users))
 
     all_assessments: list[dict] = []
     escalations: dict[int, dict] = {}  # user_id → highest assessment this cycle
+    cyclone_map: dict[int, dict] = {}  # cyclone_id → cyclone data (for alert creation)
 
     for cyclone in (cyclones if users else []):
         try:
             cyclone_id = await _save_cyclone(db, cyclone)
+            cyclone_map[cyclone_id] = cyclone
             logger.info("Cyclone saved: id=%d name=%s status=%s", cyclone_id, cyclone["name"], cyclone["status"])
         except Exception as exc:
             logger.error("Failed to save cyclone %s: %s", cyclone.get("name"), exc, exc_info=True)
@@ -455,7 +546,7 @@ async def run_cycle(db: AsyncSession) -> dict:
                         else:
                             prev = escalations.get(user["id"])
                             if prev is None or new_level > prev["siat_level"]:
-                                escalations[user["id"]] = assessment
+                                escalations[user["id"]] = {**assessment, "cyclone_id": cyclone_id}
                                 logger.info(
                                     "Escalation queued: user_id=%d %s→%s (%s)",
                                     user["id"], old_level, new_level, assessment["siat_color"],
@@ -477,6 +568,16 @@ async def run_cycle(db: AsyncSession) -> dict:
 
     notifications_sent = 0
     if escalations:
+        # Create one alerts record per unique cyclone that triggered escalations
+        cyclone_alert_ids: dict[int, str] = {}
+        for assessment in escalations.values():
+            cid = assessment["cyclone_id"]
+            if cid not in cyclone_alert_ids:
+                cyclone = cyclone_map[cid]
+                cyclone_alert_ids[cid] = await _upsert_cyclone_alert(db, cyclone, assessment)
+        for assessment in escalations.values():
+            assessment["alert_id"] = cyclone_alert_ids.get(assessment["cyclone_id"])
+
         token_map = await get_tokens_for_users(db, list(escalations.keys()))
         notifications_sent = await _push_per_user(escalations, token_map)
         for user_id, assessment in escalations.items():

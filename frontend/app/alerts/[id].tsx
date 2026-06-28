@@ -30,6 +30,9 @@ interface AlertData {
   score?: number;
   recommendations?: string[];
   factors?: string[];
+  pdf_url?: string;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 function SectionPill({ title, color }: { title: string; color: string }) {
@@ -58,12 +61,17 @@ export default function AlertDetailsScreen() {
   const [aiLoading, setAiLoading] = useState(false);
 
   const handleOpenBoletin = async () => {
-    const url = "https://preparados.gob.mx/SIAT-CT/";
+    const url = alert?.pdf_url ?? "https://preparados.gob.mx/SIAT-CT/";
+    console.log('[QA_LINK] boletin tap | alertId:', id, '| alertTitle:', alert?.title, '| url:', url);
     try {
       const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) await Linking.openURL(url);
+      console.log('[QA_LINK] canOpenURL:', canOpen);
+      if (canOpen) {
+        await Linking.openURL(url);
+        console.log('[QA_LINK] openURL called OK');
+      }
     } catch (err) {
-      console.error("Error opening URL:", err);
+      console.error('[QA_LINK] openURL error:', err);
     }
   };
 
@@ -79,7 +87,10 @@ export default function AlertDetailsScreen() {
           throw Object.assign(new Error("Error"), { status: res.status });
         }
         const data = await res.json();
-        if (live) setAlert(data);
+        if (live) {
+          console.log('[QA_ALERTS] detail loaded | id:', id, '| level:', data.level, '| title:', data.title);
+          setAlert(data);
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         const isAuthError = msg === 'Not authenticated'
@@ -250,8 +261,15 @@ export default function AlertDetailsScreen() {
             style={[styles.ctaButton, { backgroundColor: colors.brandBlue }]}
             activeOpacity={0.7}
             onPress={() => {
+              console.log('[QA_NAV] alert detail → mapa | alertId:', alert.id, '| level:', alert.level, '| lat:', alert.lat, '| lon:', alert.lon);
               track("details_map_tap", { alertId: String(alert.id), level: Number(alert.level), score: Number(alert.score ?? 0) });
-              router.push("/(tabs)/MapScreen");
+              const params: Record<string, string> = {
+                alertTitle: alert.title,
+                alertLevel: String(alert.level),
+              };
+              if (alert.lat != null) params.alertLat = String(alert.lat);
+              if (alert.lon != null) params.alertLon = String(alert.lon);
+              router.push({ pathname: "/(tabs)/MapScreen", params });
             }}
           >
             <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold }}>Ver en mapa</Text>

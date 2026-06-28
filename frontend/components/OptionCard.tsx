@@ -7,14 +7,15 @@ import React from "react";
 
 interface Props {
     title: string;
-    icon: keyof typeof MaterialCommunityIcons.glyphMap; 
+    subtitle?: string;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
     route?: string;
     onPress?: () => void;
     rightElement?: React.ReactNode;
-    danger?: boolean; 
+    danger?: boolean;
 }
 
-export default function OptionCard({ title, icon, route, onPress, rightElement, danger }: Props) {
+export default function OptionCard({ title, subtitle, icon, route, onPress, rightElement, danger }: Props) {
     const router = useRouter();
 
     const handlePress = () => {
@@ -42,11 +43,21 @@ export default function OptionCard({ title, icon, route, onPress, rightElement, 
                 className="py-4 px-5 flex-row items-center"
             >
                 <MaterialCommunityIcons name={icon} size={24} color={contentColor} />
-                
-                <Text className="flex-1 font-poppins-semibold text-lg ml-4" style={{ color: contentColor }}>
-                    {title}
-                </Text>
-                
+
+                <View className="flex-1 ml-4">
+                    <Text className="font-poppins-semibold text-lg" style={{ color: contentColor }}>
+                        {title}
+                    </Text>
+                    {subtitle ? (
+                        <Text
+                            className="font-poppins text-xs mt-0.5"
+                            style={{ color: danger ? "rgba(239,68,68,0.85)" : "rgba(255,255,255,0.7)" }}
+                        >
+                            {subtitle}
+                        </Text>
+                    ) : null}
+                </View>
+
                 {rightElement ? (
                     rightElement
                 ) : (route || onPress) ? (

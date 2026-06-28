@@ -1,4 +1,5 @@
 import "../../global.css";
+import { useMemo } from "react";
 import Markdown from "react-native-markdown-display";
 import {
   View,
@@ -7,9 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  FlatList,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { FlashList } from "@shopify/flash-list";
 import { colors, fonts } from "../../utils/theme";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -25,6 +26,9 @@ import { useModel } from "./_context/ModelContext"
 export default function ChatAIScreen() {
   const { messages, input, setInput, isLoading, isStreaming, restartConversation, handleSendMessage, stop } = useChat()
   const { modelMode } = useModel()
+  // Inverted FlatList renders newest-first (index 0 = bottom anchor). Keep the
+  // chronological order untouched in state/storage; only reverse for rendering.
+  const reversedMessages = useMemo(() => messages.slice().reverse(), [messages]);
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
@@ -89,50 +93,61 @@ export default function ChatAIScreen() {
         keyboardVerticalOffset={keyboardOffset}
       >
         <View className="flex-1 px-2 pt-2">
-          {/* Messages List */}
-          <FlashList
-            data={messages}
-            keyExtractor={(item, index) => index.toString()}
-            className="flex-1 pt-4"
-            contentContainerStyle={{ paddingBottom: 20 }}
-            ListEmptyComponent={() => (
-              <View style={{ height: 600 }} className="flex-row items-center justify-center">
-                <Text className="text-3xl font-poppins-semibold text-center text-white">
-                  ¿
-                </Text>
-                <Text className="text-3xl font-poppins-semibold text-white/60 text-center">
-                  En qué puedo ayudar
-                </Text>
-                <Text className="text-3xl font-poppins-semibold text-center text-white">
-                  ?
-                </Text>
-              </View>
-            )}
-            ListFooterComponent={showThinking ? <ThinkingBubble /> : null}
-            renderItem={({ item }) => (
-              <View
-                className={`mb-1 flex-row ${item.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-              >
+          {/* Messages List — inverted FlatList for rock-solid bottom anchoring.
+              Data is reversed (newest at index 0 = bottom); RN counter-flips each
+              cell so content renders upright. New & streaming messages live at the
+              bottom anchor and stay pinned with zero scroll heuristics. */}
+          {messages.length === 0 ? (
+            // Empty state rendered outside the list so the inverted transform
+            // can't flip the prompt upside down.
+            <View className="flex-1 flex-row items-center justify-center">
+              <Text className="text-3xl font-poppins-semibold text-center text-white">
+                ¿
+              </Text>
+              <Text className="text-3xl font-poppins-semibold text-white/60 text-center">
+                En qué puedo ayudar
+              </Text>
+              <Text className="text-3xl font-poppins-semibold text-center text-white">
+                ?
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={reversedMessages}
+              inverted
+              keyExtractor={(item) => `${item.timestamp}-${item.role}`}
+              style={{ flex: 1 }}
+              // In an inverted list, paddingTop renders at the visual BOTTOM
+              // (the gap between the newest message and the input bar).
+              contentContainerStyle={{ paddingTop: 20 }}
+              // Inverted swaps the header/footer ends: ListHeaderComponent renders
+              // at the visual bottom, so the thinking bubble (newest end) goes here.
+              ListHeaderComponent={showThinking ? <ThinkingBubble /> : null}
+              renderItem={({ item }) => (
                 <View
-                  className={`rounded-2xl ${item.role === "user"
-                      ? "max-w-[80%] rounded-lg py-3 px-4 bg-brand-blue"
-                      : "flex-1 rounded-tl-none py-1 px-2"
+                  className={`mb-1 flex-row ${item.role === "user" ? "justify-end" : "justify-start"
                     }`}
                 >
-                  {item.role === "user" ? (
-                    <Text className="text-base font-poppins text-white">{item.text}</Text>
-                  ) : item.error === true ? (
-                    <Text className="text-base font-poppins text-brand-red">
-                      {item.text}
-                    </Text>
-                  ) : (
-                    <Markdown style={markdownStyles}>{item.text}</Markdown>
-                  )}
+                  <View
+                    className={`rounded-2xl ${item.role === "user"
+                        ? "max-w-[80%] rounded-lg py-3 px-4 bg-brand-blue"
+                        : "flex-1 rounded-tl-none py-1 px-2"
+                      }`}
+                  >
+                    {item.role === "user" ? (
+                      <Text className="text-base font-poppins text-white">{item.text}</Text>
+                    ) : item.error === true ? (
+                      <Text className="text-base font-poppins text-brand-red">
+                        {item.text}
+                      </Text>
+                    ) : (
+                      <Markdown style={markdownStyles}>{item.text}</Markdown>
+                    )}
+                  </View>
                 </View>
-              </View>
-            )}
-          />
+              )}
+            />
+          )}
 
           {/* Input Area */}
           <View className="py-4 border-t border-brand-blue/30">

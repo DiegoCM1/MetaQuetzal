@@ -64,12 +64,13 @@ export default function AlertsListScreen() {
         renderItem={({ item }) => (
           <AlertCard
             alert={item}
-            onPress={() =>
+            onPress={() => {
+              console.log('[QA_ALERTS] list tap | id:', item.id, '| level:', item.level, '| title:', item.title);
               router.push({
                 pathname: "/alerts/[id]",
                 params: { id: item.id },
-              })
-            }
+              });
+            }}
           />
         )}
       />

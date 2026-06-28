@@ -46,10 +46,15 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "BLUETOOTH_ADVERTISE",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "NEARBY_WIFI_DEVICES",
         "USE_FULL_SCREEN_INTENT",
         "SYSTEM_ALERT_WINDOW",
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CONTACTS"
       ],
       "config": {
         "googleMaps": {
@@ -63,7 +68,14 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "BluEye necesita acceso a tus contactos para que puedas agregar contactos SOS fácilmente."
+        }
+      ],
       "expo-audio",
+      "./plugins/with-nearby-connections",
       "@react-native-firebase/app",
       [
         "@sentry/react-native/expo",

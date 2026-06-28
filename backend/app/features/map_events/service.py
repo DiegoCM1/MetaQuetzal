@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.map_events.schemas import MapEventCreate, MapEventUpdate
 
 DEFAULT_RADIUS_KM = 100
+MAP_EVENT_VOTING_RADIUS_KM = 10
+MAP_EVENT_HIDE_DOWNVOTES = 3
+MAP_EVENT_CONFIRM_UPVOTES = 3
+MAP_EVENT_DOUBTFUL_DOWNVOTES = 3
 
 
 def distance_in_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -47,7 +51,7 @@ async def ensure_map_events_table(db: AsyncSession) -> None:
 
     if is_legacy_table:
         backup_name = f"map_events_legacy_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-        await db.execute(text(f'ALTER TABLE map_events RENAME TO {backup_name}'))
+        await db.execute(text(f"ALTER TABLE map_events RENAME TO {backup_name}"))
 
     await db.execute(
         text(
@@ -59,13 +63,95 @@ async def ensure_map_events_table(db: AsyncSession) -> None:
                 description TEXT NOT NULL,
                 lat DOUBLE PRECISION NOT NULL,
                 lon DOUBLE PRECISION NOT NULL,
+                address TEXT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
             """
         )
     )
+    await db.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS map_event_votes (
+                event_id UUID NOT NULL REFERENCES map_events(id) ON DELETE CASCADE,
+                user_id BIGINT NOT NULL,
+                value SMALLINT NOT NULL CHECK (value IN (-1, 1)),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (event_id, user_id)
+            )
+            """
+        )
+    )
+    # Idempotent migration for tables created before the address column existed.
+    await db.execute(
+        text("ALTER TABLE map_events ADD COLUMN IF NOT EXISTS address TEXT")
+    )
     await db.commit()
+
+
+async def get_map_event_with_votes(
+    db: AsyncSession,
+    event_id: str,
+    current_user_id: int | None,
+):
+    result = await db.execute(
+        text(
+            """
+            SELECT
+                e.id,
+                e.user_id,
+                e.type,
+                e.description,
+                e.lat,
+                e.lon,
+                e.address,
+                e.created_at,
+                e.updated_at,
+                COALESCE(SUM(CASE WHEN v.value = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
+                COALESCE(SUM(CASE WHEN v.value = -1 THEN 1 ELSE 0 END), 0) AS downvotes,
+                MAX(CASE WHEN v.user_id = :current_user_id THEN v.value END) AS user_vote
+            FROM map_events e
+            LEFT JOIN map_event_votes v ON v.event_id = e.id
+            WHERE e.id = :event_id
+            GROUP BY e.id
+            """
+        ),
+        {"event_id": event_id, "current_user_id": current_user_id},
+    )
+    row = result.fetchone()
+    if not row:
+        return None
+
+    event = dict(row._mapping)
+    event["is_owner"] = current_user_id is not None and event["user_id"] == current_user_id
+    return event
+
+
+def build_trust_status(upvotes: int, downvotes: int) -> str:
+    if upvotes >= MAP_EVENT_CONFIRM_UPVOTES and upvotes > downvotes:
+        return "confirmado"
+    if downvotes >= MAP_EVENT_DOUBTFUL_DOWNVOTES and downvotes >= upvotes:
+        return "dudoso"
+    return "en_revision"
+
+
+def decorate_map_event(
+    event: dict,
+    viewer_lat: float,
+    viewer_lon: float,
+    current_user_id: int | None,
+) -> dict:
+    distance_km = distance_in_km(viewer_lat, viewer_lon, float(event["lat"]), float(event["lon"]))
+    is_owner = current_user_id is not None and event["user_id"] == current_user_id
+    within_voting_radius = distance_km <= MAP_EVENT_VOTING_RADIUS_KM
+
+    event["is_owner"] = is_owner
+    event["distance_km"] = round(distance_km, 2)
+    event["within_voting_radius"] = within_voting_radius
+    event["can_vote"] = current_user_id is not None and not is_owner and within_voting_radius and event.get("user_vote") is None
+    event["trust_status"] = build_trust_status(int(event.get("upvotes") or 0), int(event.get("downvotes") or 0))
+    return event
 
 
 async def list_map_events(
@@ -73,24 +159,36 @@ async def list_map_events(
     lat: float,
     lon: float,
     radius_km: float = DEFAULT_RADIUS_KM,
+    current_user_id: int | None = None,
 ):
     await ensure_map_events_table(db)
     result = await db.execute(
         text(
             """
-            SELECT id, user_id, type, description, lat, lon, created_at, updated_at
-            FROM map_events
-            ORDER BY created_at DESC
+            SELECT e.id
+            FROM map_events e
+            ORDER BY e.created_at DESC
             """
         )
     )
 
-    rows = [dict(row._mapping) for row in result.fetchall()]
-    return [
-        row
-        for row in rows
-        if distance_in_km(lat, lon, float(row["lat"]), float(row["lon"])) <= radius_km
-    ]
+    rows = []
+    for row in result.fetchall():
+        event = await get_map_event_with_votes(db, str(row[0]), current_user_id)
+        if event is not None:
+            rows.append(event)
+
+    visible_rows = []
+    for row in rows:
+        if distance_in_km(lat, lon, float(row["lat"]), float(row["lon"])) > radius_km:
+            continue
+
+        row = decorate_map_event(row, lat, lon, current_user_id)
+        if not row["is_owner"] and int(row["downvotes"] or 0) >= MAP_EVENT_HIDE_DOWNVOTES:
+            continue
+        visible_rows.append(row)
+
+    return visible_rows
 
 
 async def create_map_event(db: AsyncSession, payload: MapEventCreate, user_id: int | None):
@@ -99,8 +197,8 @@ async def create_map_event(db: AsyncSession, payload: MapEventCreate, user_id: i
     result = await db.execute(
         text(
             """
-            INSERT INTO map_events (user_id, type, description, lat, lon)
-            VALUES (:user_id, :type, :description, :lat, :lon)
+            INSERT INTO map_events (user_id, type, description, lat, lon, address)
+            VALUES (:user_id, :type, :description, :lat, :lon, :address)
             RETURNING id, user_id, type, description, lat, lon, created_at, updated_at
             """
         ),
@@ -110,11 +208,12 @@ async def create_map_event(db: AsyncSession, payload: MapEventCreate, user_id: i
             "description": payload.description.strip(),
             "lat": payload.lat,
             "lon": payload.lon,
+            "address": payload.address,
         },
     )
     await db.commit()
     row = result.fetchone()
-    return dict(row._mapping)
+    return await get_map_event_with_votes(db, str(row.id), user_id)
 
 
 async def update_map_event(
@@ -143,7 +242,7 @@ async def update_map_event(
     row = result.fetchone()
 
     if row:
-        return dict(row._mapping)
+        return await get_map_event_with_votes(db, str(row.id), user_id)
 
     owner_check = await db.execute(
         text("SELECT user_id FROM map_events WHERE id = :id"),
@@ -186,3 +285,72 @@ async def delete_map_event(
         raise HTTPException(status_code=404, detail="Map event not found")
 
     raise HTTPException(status_code=403, detail="Map event does not belong to the authenticated user")
+
+
+async def vote_map_event(
+    db: AsyncSession,
+    event_id: UUID,
+    user_id: int | None,
+    value: int,
+    voter_lat: float,
+    voter_lon: float,
+):
+    await ensure_map_events_table(db)
+
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    owner_result = await db.execute(
+        text("SELECT user_id FROM map_events WHERE id = :id"),
+        {"id": str(event_id)},
+    )
+    owner_row = owner_result.fetchone()
+    if not owner_row:
+        raise HTTPException(status_code=404, detail="Map event not found")
+
+    owner_user_id = owner_row[0]
+    if owner_user_id == user_id:
+        raise HTTPException(status_code=403, detail="You cannot vote for your own event")
+
+    location_result = await db.execute(
+        text("SELECT lat, lon FROM map_events WHERE id = :id"),
+        {"id": str(event_id)},
+    )
+    location_row = location_result.fetchone()
+    if not location_row:
+        raise HTTPException(status_code=404, detail="Map event not found")
+
+    event_lat, event_lon = float(location_row[0]), float(location_row[1])
+    if distance_in_km(voter_lat, voter_lon, event_lat, event_lon) > MAP_EVENT_VOTING_RADIUS_KM:
+        raise HTTPException(
+            status_code=403,
+            detail="You must be within 10 km of the event to vote",
+        )
+
+    existing_vote = await db.execute(
+        text(
+            """
+            SELECT value
+            FROM map_event_votes
+            WHERE event_id = :event_id AND user_id = :user_id
+            """
+        ),
+        {"event_id": str(event_id), "user_id": user_id},
+    )
+    if existing_vote.fetchone():
+        raise HTTPException(status_code=409, detail="You have already voted for this event")
+
+    await db.execute(
+        text(
+            """
+            INSERT INTO map_event_votes (event_id, user_id, value)
+            VALUES (:event_id, :user_id, :value)
+            """
+        ),
+        {"event_id": str(event_id), "user_id": user_id, "value": value},
+    )
+    await db.commit()
+    event = await get_map_event_with_votes(db, str(event_id), user_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Map event not found")
+    return decorate_map_event(event, voter_lat, voter_lon, user_id)

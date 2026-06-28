@@ -11,7 +11,12 @@ from app.features.map_events.router import router as map_events_router
 from app.features.siat.router import router as siat_router
 from app.features.users.router import router as users_router
 from app.features.notification_preferences.router import router as notification_preferences_router
+from app.features.sos_contacts.router import router as sos_contacts_router
+from app.features.sos_invite.router import router as sos_invite_router
+from app.features.sos_trigger.router import router as sos_trigger_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
+from app.features.alerts.providers.smn import fetch_latest_bulletin
+from app.features.alerts.service import persist_smn_bulletin_if_new
 import app.core.firebase
 import asyncio
 import logging
@@ -61,6 +66,18 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
                 updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
+        await conn.execute(text(
+            "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS pdf_url TEXT"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(255)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)"
+        ))
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS notification_preferences (
@@ -92,6 +109,90 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
                 updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         """))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sos_contacts (
+                id           BIGSERIAL PRIMARY KEY,
+                user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name         VARCHAR(100) NOT NULL,
+                phone        VARCHAR(30) NOT NULL,
+                relationship VARCHAR(60),
+                created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_contacts_user_id_idx ON sos_contacts (user_id, created_at ASC)"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE sos_contacts ADD COLUMN IF NOT EXISTS linked_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE sos_contacts ADD COLUMN IF NOT EXISTS link_status VARCHAR(20) NOT NULL DEFAULT 'unlinked'"
+        ))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sos_invitations (
+                id                   BIGSERIAL PRIMARY KEY,
+                token                VARCHAR(64) UNIQUE NOT NULL,
+                inviter_id           BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                inviter_display_name VARCHAR(200),
+                contact_id           BIGINT NOT NULL REFERENCES sos_contacts(id) ON DELETE CASCADE,
+                contact_name         VARCHAR(100) NOT NULL,
+                expires_at           TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '72 hours'),
+                accepted_at          TIMESTAMPTZ,
+                accepted_user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                revoked_at           TIMESTAMPTZ,
+                created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT sos_inv_contact_unique UNIQUE (contact_id)
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_invitations_token_idx ON sos_invitations (token)"
+        ))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS sos_events (
+                id             BIGSERIAL PRIMARY KEY,
+                sender_id      BIGINT NOT NULL REFERENCES users(id),
+                lat            DOUBLE PRECISION,
+                lon            DOUBLE PRECISION,
+                notified_count INT NOT NULL DEFAULT 0,
+                created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_events_sender_idx ON sos_events (sender_id, created_at DESC)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS sos_contacts_linked_uid_idx "
+            "ON sos_contacts (linked_user_id) WHERE linked_user_id IS NOT NULL"
+        ))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS feedback (
+                id         BIGSERIAL PRIMARY KEY,
+                rating     INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                email      VARCHAR(320),
+                message    TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """))
+
+    # RAG retrieval table (pgvector). Isolated in its OWN transaction with a
+    # guard: pgvector is a non-default extension, so if it's unavailable in some
+    # environment, we log and continue instead of poisoning the core-table
+    # transaction or crashing startup. The table is read by features/ai/rag.py;
+    # embedding dim 384 matches the paraphrase-multilingual-MiniLM-L12-v2 model.
+    # Data is loaded out-of-band (copied from prod) — see docs/STAGING.md.
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text('CREATE EXTENSION IF NOT EXISTS vector'))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS rag_chunks (
+                    id        BIGSERIAL PRIMARY KEY,
+                    text      TEXT NOT NULL,
+                    embedding vector(384)
+                )
+            """))
+    except Exception as exc:
+        logger.warning("ensure_core_tables: rag_chunks/pgvector setup skipped: %s", exc)
 
 
 async def _siat_background_loop():
@@ -99,6 +200,14 @@ async def _siat_background_loop():
     while True:
         try:
             async with AsyncSessionLocal() as db:
+                bulletin = await fetch_latest_bulletin()
+                if bulletin:
+                    inserted = await persist_smn_bulletin_if_new(db, bulletin)
+                    if inserted:
+                        logger.info(
+                            "SMN: new bulletin persisted — '%s'",
+                            (bulletin.get("headline") or "")[:60],
+                        )
                 result = await run_cycle(db)
                 logger.info(
                     "SIAT background cycle: cyclones=%d users=%d notif=%d",
@@ -157,3 +266,6 @@ app.include_router(siat_router)
 app.include_router(map_events_router)
 app.include_router(users_router)
 app.include_router(notification_preferences_router)
+app.include_router(sos_contacts_router)
+app.include_router(sos_invite_router)
+app.include_router(sos_trigger_router)

@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Location from 'expo-location'
 
 import { API_BASE_URL } from '../../utils/config'
+import { MAP_EVENT_RADIUS_KM, REPORTING_DISTANCE_METERS } from './config'
 import type { Zone } from './types'
 
 const STORAGE_KEY = '@BluEye:redZones'
-export const REPORTING_DISTANCE_METERS = 100000
 const DEV_BYPASS_MAP_AUTH = process.env.EXPO_PUBLIC_DEV_BYPASS_MAP_AUTH === 'true'
 
 type ReporterLocation = {
@@ -17,14 +18,23 @@ type LoadZonesParams = ReporterLocation & {
 }
 
 type MapEventResponse = {
+  can_vote?: boolean
   id: string
   user_id?: number | null
+  is_owner?: boolean
   type: Zone['type']
   description: string
+  distance_km?: number | null
+  downvotes?: number
   lat: number
   lon: number
+  trust_status?: NonNullable<Zone['trustStatus']>
+  upvotes?: number
   created_at?: string
   updated_at?: string
+  user_vote?: Zone['userVote']
+  within_voting_radius?: boolean
+  address?: string | null
 }
 
 function normalizeZone(event: MapEventResponse): Zone {
@@ -36,11 +46,76 @@ function normalizeZone(event: MapEventResponse): Zone {
     timestamp: String(event.created_at ?? event.updated_at ?? new Date().toISOString()),
     radius: 500,
     type: event.type,
+    upvotes: event.upvotes ?? 0,
+    downvotes: event.downvotes ?? 0,
+    userVote: event.user_vote ?? null,
+    isOwner: event.is_owner ?? false,
+    distanceKm: event.distance_km ?? null,
+    withinVotingRadius: event.within_voting_radius ?? false,
+    canVote: event.can_vote ?? false,
+    trustStatus: event.trust_status ?? 'en_revision',
+    address: event.address ?? null,
   }
 }
 
 export function generateZoneId() {
   return `zone_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+}
+
+const GEOCODE_TIMEOUT_MS = 5000
+
+// Reverse-geocode coordinates into a human-readable "Calle, Colonia, Ciudad" string,
+// ONCE, on the reporter's device (free OS geocoder — no API key, no per-viewer cost).
+// Returns null on any failure (offline, no result, timeout, no permission) so callers
+// fall back to coordinates. Never throws — a geocode hiccup must not block a report.
+export async function reverseGeocodeAddress(
+  latitude: number,
+  longitude: number,
+): Promise<string | null> {
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('geocode timeout')), GEOCODE_TIMEOUT_MS),
+    )
+    const results = await Promise.race([
+      Location.reverseGeocodeAsync({ latitude, longitude }),
+      timeout,
+    ])
+    const place = results?.[0]
+    if (!place) return null
+    // Build defensively — fields vary by platform/locale and any can be null.
+    // Order: calle (street) → colonia (district) → municipio/ciudad (city ?? subregion).
+    const parts = [place.street, place.district, place.city ?? place.subregion].filter(Boolean)
+    return parts.length > 0 ? parts.join(', ') : null
+  } catch {
+    return null
+  }
+}
+
+// Human-friendly "how long ago" for an event timestamp.
+// Degrades: unos segundos → X min → X h → X días → absolute date (>7 días).
+// Guards clock skew: a server timestamp slightly ahead of the device reads "hace un momento".
+export function formatRelativeTime(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+
+  const diffSec = Math.round((Date.now() - then) / 1000)
+  if (diffSec < 0) return 'hace un momento'
+  if (diffSec < 60) return 'hace unos segundos'
+
+  const minutes = Math.floor(diffSec / 60)
+  if (minutes < 60) return `hace ${minutes} min`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `hace ${hours} h`
+
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `hace ${days} ${days === 1 ? 'día' : 'días'}`
+
+  return new Date(iso).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 export function distanceInMeters(
@@ -110,7 +185,7 @@ async function mapFetch(path: string, options: RequestInit = {}) {
 export async function loadZones({
   latitude,
   longitude,
-  radiusKm = 100,
+  radiusKm = MAP_EVENT_RADIUS_KM,
 }: LoadZonesParams) {
   try {
     const search = new URLSearchParams({
@@ -145,12 +220,39 @@ export async function createZone(zone: Zone) {
       description: zone.description,
       lat: zone.latitude,
       lon: zone.longitude,
+      address: zone.address ?? null,
     }),
   })
 
   if (!response.ok) {
     const message = await response.text().catch(() => '')
     throw new Error(message || `Failed to create map event: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return normalizeZone(data)
+}
+
+export async function voteZone(
+  zoneId: string,
+  value: 1 | -1,
+  voterLocation: ReporterLocation
+) {
+  const response = await mapFetch(`/api/v1/map-events/${zoneId}/vote`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      value,
+      lat: voterLocation.latitude,
+      lon: voterLocation.longitude,
+    }),
+  })
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => '')
+    throw new Error(message || `Failed to vote map event: ${response.status}`)
   }
 
   const data = await response.json()

@@ -20,8 +20,21 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = ""
     LLM_MODEL: str = ""
 
+    # Web search tool (optional - only needed for the AI web_search tool)
+    TAVILY_API_KEY: str = ""
+    # "basic" = 1 credit/search, "advanced" = 2 credits/search. Flip via env,
+    # no code change. Default basic to stretch the free-tier monthly quota.
+    TAVILY_SEARCH_DEPTH: str = "basic"
+
     # Dev-only bypasses
     DEV_BYPASS_MAP_EVENTS_AUTH: bool = False
+    # When true, any authenticated Firebase user can call the notification test endpoints.
+    # Set to true in Railway staging. Never set in production.
+    DEV_BYPASS_NOTIF_TEST_AUTH: bool = False
+
+    # Notification test tool — comma-separated emails allowed to call POST /api/v1/notifications/test.
+    # Empty string disables the endpoint for everyone (production default).
+    NOTIFICATION_TEST_ADMIN_EMAILS: str = ""
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"))
 

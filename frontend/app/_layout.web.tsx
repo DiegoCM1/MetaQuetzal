@@ -18,7 +18,7 @@ import {
   addNotificationResponseListener,
 } from "../utils/pushNotifications";
 import * as Notifications from "expo-notifications";
-import Toast from "react-native-toast-message";
+import { Toaster } from "sonner-native";
 import { initAnalytics, track, flush } from "../utils/analytics";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
 import { usePathname } from "expo-router";
@@ -219,7 +219,7 @@ export default function Layout() {
                       <Stack.Screen name="educational" options={{ headerShown: false }} />
                       <Stack.Screen name="subscription" options={{ headerShown: false }} />
                     </Stack>
-                    <Toast />
+                    <Toaster />
                   </LinearGradient>
                 </ModelProvider>
               </AuthGate>
