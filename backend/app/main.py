@@ -14,6 +14,7 @@ from app.features.notification_preferences.router import router as notification_
 from app.features.sos_contacts.router import router as sos_contacts_router
 from app.features.sos_invite.router import router as sos_invite_router
 from app.features.sos_trigger.router import router as sos_trigger_router
+from app.features.payments.router import router as payments_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
 from app.features.alerts.providers.smn import fetch_latest_bulletin
 from app.features.alerts.service import persist_smn_bulletin_if_new
@@ -129,6 +130,9 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "ALTER TABLE sos_contacts ADD COLUMN IF NOT EXISTS link_status VARCHAR(20) NOT NULL DEFAULT 'unlinked'"
         ))
+        await conn.execute(text(
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS billing_period VARCHAR(10) NOT NULL DEFAULT 'monthly'"
+        ))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS sos_invitations (
                 id                   BIGSERIAL PRIMARY KEY,
@@ -165,6 +169,20 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
             "CREATE INDEX IF NOT EXISTS sos_contacts_linked_uid_idx "
             "ON sos_contacts (linked_user_id) WHERE linked_user_id IS NOT NULL"
         ))
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id                      BIGSERIAL PRIMARY KEY,
+                user_id                 BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                plan_slug               VARCHAR(20) NOT NULL DEFAULT 'free',
+                stripe_customer_id      VARCHAR(100),
+                stripe_subscription_id  VARCHAR(100),
+                status                  VARCHAR(20) NOT NULL DEFAULT 'active',
+                current_period_end      TIMESTAMPTZ,
+                created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT subscriptions_user_unique UNIQUE (user_id)
+            )
+        """))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS feedback (
                 id         BIGSERIAL PRIMARY KEY,
@@ -269,3 +287,4 @@ app.include_router(notification_preferences_router)
 app.include_router(sos_contacts_router)
 app.include_router(sos_invite_router)
 app.include_router(sos_trigger_router)
+app.include_router(payments_router)

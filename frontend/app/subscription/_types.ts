@@ -1,33 +1,27 @@
-// Subscription types
-
 export type BillingPeriod = 'monthly' | 'annual';
 
 export interface Plan {
-  id: string;
+  slug: string;
   name: string;
   description: string;
-  monthlyPrice: number;
-  annualPrice: number;
-  annualDiscount: number; // percentage saved on annual
+  monthlyPrice: number | null;
+  annualPrice: number | null;
+  annualDiscount: number;
   features: string[];
-  popular?: boolean;
-  recommended?: boolean;
+  isFree: boolean;
 }
 
 export interface Subscription {
-  userId: string;
-  planId: string;
-  billingPeriod: BillingPeriod;
-  status: 'active' | 'inactive' | 'cancelled';
-  startDate: string;
-  endDate: string;
+  planSlug: string;
+  status: 'active' | 'inactive' | 'canceled';
+  currentPeriodEnd: string | null;
 }
 
 export interface FamilyMember {
   id: string;
   name: string;
   initials: string;
-  distance: number; // in kilometers
+  distance: number;
   distanceUnit: 'km' | 'mts';
   avatarColor: string;
   lastUpdated: string;
