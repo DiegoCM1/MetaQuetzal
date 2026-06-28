@@ -130,9 +130,6 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "ALTER TABLE sos_contacts ADD COLUMN IF NOT EXISTS link_status VARCHAR(20) NOT NULL DEFAULT 'unlinked'"
         ))
-        await conn.execute(text(
-            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS billing_period VARCHAR(10) NOT NULL DEFAULT 'monthly'"
-        ))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS sos_invitations (
                 id                   BIGSERIAL PRIMARY KEY,
@@ -183,6 +180,9 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
                 CONSTRAINT subscriptions_user_unique UNIQUE (user_id)
             )
         """))
+        await conn.execute(text(
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS billing_period VARCHAR(10) NOT NULL DEFAULT 'monthly'"
+        ))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS feedback (
                 id         BIGSERIAL PRIMARY KEY,
