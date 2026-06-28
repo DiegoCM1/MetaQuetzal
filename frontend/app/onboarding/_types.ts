@@ -6,6 +6,7 @@
 export interface OnboardingData {
     firstName: string;
     lastName: string;
+    phone?: string;
     address1: string;
     address2?: string;
     zipCode: string;

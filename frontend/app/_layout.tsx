@@ -12,19 +12,26 @@ import { LinearGradient } from "expo-linear-gradient";
 import { gradients } from "../utils/theme";
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
-import { AppState, Platform, StatusBar as RNStatusBar } from "react-native";
+import { Alert, AppState, DeviceEventEmitter, Platform, StatusBar as RNStatusBar } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
   registerForPushNotificationsAsync,
+  sendTokenToBackend,
   setForegroundNotificationHandler,
   addNotificationResponseListener,
 } from "../utils/pushNotifications";
 import * as Notifications from "expo-notifications";
-import Toast from "react-native-toast-message";
-import { initAnalytics, track, flush } from "../utils/analytics";
+import { Toaster, toast } from "sonner-native";
+import { initAnalytics, track, flush } from "../utils/analytics"
+import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue"
+import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
+export const PENDING_SOS_CONTACT_ADDED_KEY = "@BluEye:pending_sos_contact_added";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
+import { authFetch } from "../utils/api"
+import { API_BASE_URL } from "../utils/config"
 import { usePathname } from "expo-router";
 import * as Sentry from '@sentry/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -64,6 +71,14 @@ interface NotificationData {
   alertTitle?: string
   alertMessage?: string
   bulletinUrl?: string
+  sender_name?: string
+  sender_phone?: string
+  lat?: string
+  lon?: string
+  invite_token?: string
+  inviter_display_name?: string
+  adder_display_name?: string
+  type?: string
 }
 
 function resolveNotifPayload(
@@ -73,10 +88,31 @@ function resolveNotifPayload(
   const id = data.alertId || data.alert_id
   const levelNum = Number(data.level ?? data.siat_level ?? data.alertLevel ?? 0)
   const isFullScreen = data.fullScreen === 'true' || levelNum >= 4
+  const isSos = data.category === 'sos'
+  const isSosInvite = data.category === 'sos_invite'
+  const isSosRejected = data.category === 'sos_rejected'
+  const isSosContactAdded = data.category === 'sos_contact_added'
+  const adderDisplayName = data.adder_display_name ?? 'Tu contacto'
+  const sosLat = parseFloat(data.lat ?? '')
+  const sosLon = parseFloat(data.lon ?? '')
+  const sosHasCoords = Number.isFinite(sosLat) && Number.isFinite(sosLon)
+  const senderPhone = data.sender_phone ?? ''
   return {
     id,
     levelNum,
     isFullScreen,
+    isSos,
+    isSosInvite,
+    isSosRejected,
+    isSosContactAdded,
+    adderDisplayName,
+    inviteToken: data.invite_token,
+    inviterDisplayName: data.inviter_display_name ?? 'Un usuario',
+    senderName: data.sender_name ?? 'Un contacto',
+    senderPhone,
+    sosLat,
+    sosLon,
+    sosHasCoords,
     params: {
       alertId: id,
       category: data.category ?? String(levelNum),
@@ -98,6 +134,10 @@ function AuthGate({ children }) {
     registerForPushNotificationsAsync()
       .then((token) => console.log("Token guardado:", token))
       .catch(console.error)
+    const tokenSub = Notifications.addPushTokenListener(({ data }) => {
+      sendTokenToBackend(data).catch(console.error)
+    })
+    return () => tokenSub.remove()
   }, [authEnabled, user?.uid])
 
   useEffect(() => {
@@ -117,9 +157,21 @@ function AuthGate({ children }) {
         const completed = await hasCompletedOnboarding()
         if (completed) {
           router.replace('/(tabs)/MapScreen')
-        } else {
-          router.replace('/onboarding/step1')
+          return
         }
+        // AsyncStorage vacío (e.g. reinstalación): verificar backend como fuente de verdad
+        try {
+          const res = await authFetch(`${API_BASE_URL}/api/v1/users/me`, { method: 'POST' })
+          if (res.ok) {
+            const profile = await res.json()
+            if (profile?.display_name) {
+              await AsyncStorage.setItem('@blueye_onboarding_completed', 'true')
+              router.replace('/(tabs)/MapScreen')
+              return
+            }
+          }
+        } catch { /* si falla, continúa a onboarding */ }
+        router.replace('/onboarding/step1')
       }
       checkAndRoute()
     }
@@ -152,23 +204,63 @@ export default Sentry.wrap(function Layout() {
     setForegroundNotificationHandler();
 
     // Tap en notificación (background → foreground, o foreground tap)
-    const tapSub = addNotificationResponseListener(async (rawData) => {
+    const tapSub = addNotificationResponseListener(async (rawData, content) => {
       const data = rawData as NotificationData
-      const { id, isFullScreen, params } = resolveNotifPayload(data)
-      if (!id && !isFullScreen) return
+      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, inviteToken, senderName, senderPhone, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, content)
+      console.log('[QA_NOTIF] tap | alertId:', id ?? 'none', '| fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| sosRejected:', isSosRejected, '| contactAdded:', isSosContactAdded)
+
+      if (data.type === 'contacts_refresh') {
+        console.log('[QA_NOTIF] tap contacts_refresh → skip navigation');
+        return;
+      }
 
       await initAnalytics();
       track("push_open", {
         alertId: id ? String(id) : undefined,
-        alertLevel: params.category ? Number(params.category) : undefined,
+        alertLevel: isSos || isSosInvite ? undefined : (params.category ? Number(params.category) : undefined),
         fullScreen: isFullScreen,
         origin: "listener",
       });
 
+      if (isSosInvite && inviteToken) {
+        console.log('[QA_NAV] tap → sos-invite | token:', inviteToken)
+        AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
+        router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
+        return;
+      }
+      if (isSos) {
+        console.log('[QA_NAV] tap → sos-receiver | sender:', senderName, '| hasCoords:', sosHasCoords, '| hasPhone:', !!senderPhone)
+        router.push({
+          pathname: '/sos-receiver',
+          params: {
+            senderName,
+            senderPhone,
+            lat: sosHasCoords ? String(sosLat) : '',
+            lon: sosHasCoords ? String(sosLon) : '',
+          },
+        });
+        return;
+      }
+      if (isSosRejected) {
+        console.log('[QA_NAV] tap → SOSContactsScreen (rejected)')
+        router.push('/SOSContactsScreen');
+        return;
+      }
+      if (isSosContactAdded) {
+        console.log('[QA_NAV] tap → SOSContactsScreen (contact added)')
+        router.push('/SOSContactsScreen');
+        return;
+      }
       if (isFullScreen) {
+        console.log('[QA_NAV] tap → AlarmScreen | alertId:', id ?? 'none', '| category:', params.category)
         router.push({ pathname: "AlarmScreen", params });
       } else if (id) {
+        console.log('[QA_NAV] tap → alert detail | alertId:', id)
         router.push({ pathname: "/alerts/[id]", params: { id } });
+      } else {
+        // No useful payload — MIUI/Android can fire the response listener spuriously
+        // when bringing the app to foreground. Don't navigate anywhere.
+        console.log('[QA_NAV] tap → no useful data, skipping navigation');
       }
     });
 
@@ -176,12 +268,64 @@ export default Sentry.wrap(function Layout() {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
       const rawData = notification.request.content.data as NotificationData
       const content = notification.request.content
-      const { isFullScreen, params } = resolveNotifPayload(rawData, content)
+      const { isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, inviteToken, inviterDisplayName, senderName, senderPhone, adderDisplayName, params } = resolveNotifPayload(rawData, content)
+      console.log('[QA_NOTIF] received foreground | fullScreen:', isFullScreen, '| sos:', isSos, '| sosInvite:', isSosInvite, '| sosRejected:', isSosRejected, '| contactAdded:', isSosContactAdded, '| category:', params.category)
       if (isFullScreen && !alarmActiveRef.current) {
         alarmActiveRef.current = true
+        console.log('[QA_NAV] received → AlarmScreen | category:', params.category, '| alertId:', params.alertId ?? 'none')
         router.push({ pathname: "AlarmScreen", params })
         // Liberar el guard después de un debounce para cubrir multi-push
         setTimeout(() => { alarmActiveRef.current = false }, 5000)
+        return;
+      }
+      if (isSosInvite && inviteToken) {
+        console.log('[QA_SOS_INVITE] foreground received | saving token:', inviteToken)
+        AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
+        toast(`Invitación SOS de ${inviterDisplayName}`, {
+          description: 'Toca para aceptar la invitación.',
+          action: {
+            label: 'Ver',
+            onClick: () => router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } }),
+          },
+        });
+        return;
+      }
+      if (isSos) {
+        console.log('[QA_NAV] foreground SOS → sos-receiver | sender:', senderName, '| hasPhone:', !!senderPhone)
+        router.push({
+          pathname: '/sos-receiver',
+          params: {
+            senderName,
+            senderPhone,
+            lat: rawData.lat ?? '',
+            lon: rawData.lon ?? '',
+          },
+        });
+        // IMPORTANCE_MAX overrides shouldShowAlert:false on Android/MIUI, so the notification
+        // stays visible in the tray even after we handle it in-app. Dismiss it immediately so
+        // the tap listener can't fire again for the same SOS and push a second sos-receiver.
+        Notifications.dismissNotificationAsync(notification.request.identifier).catch(() => {});
+        return;
+      }
+      if (isSosRejected) {
+        console.log('[QA_SOS_INVITE] foreground received | sos_rejected')
+        toast(content.title ?? 'Invitación SOS rechazada', {
+          description: content.body ?? undefined,
+        });
+        DeviceEventEmitter.emit('contacts:refresh');
+        return;
+      }
+      if (isSosContactAdded) {
+        console.log('[QA_SOS] foreground received | sos_contact_added | adder:', adderDisplayName)
+        AsyncStorage.setItem(PENDING_SOS_CONTACT_ADDED_KEY, adderDisplayName).catch(() => {});
+        toast(`${adderDisplayName} te agregó como contacto SOS`, {
+          description: 'Ya son contactos mutuos.',
+          action: {
+            label: 'Ver',
+            onClick: () => router.push('/SOSContactsScreen'),
+          },
+        });
+        DeviceEventEmitter.emit('contacts:refresh');
       }
     });
 
@@ -195,20 +339,65 @@ export default Sentry.wrap(function Layout() {
   useEffect(() => {
     (async () => {
       const initial = await Notifications.getLastNotificationResponseAsync();
-      const data = initial?.notification?.request?.content?.data as NotificationData | undefined
-      if (!data) return
+      if (!initial) return;
 
-      const { id, isFullScreen, params } = resolveNotifPayload(data)
-      if (!id && !isFullScreen) return
+      // Deduplicate: skip if this notification was already handled (prevents stale
+      // notifications from being re-processed on hot reload or subsequent app mounts)
+      const notifId = initial.notification.request.identifier;
+      const LAST_COLD_KEY = '@BluEye:last_cold_start_notif';
+      try {
+        const lastProcessed = await AsyncStorage.getItem(LAST_COLD_KEY);
+        if (lastProcessed === notifId) return;
+        await AsyncStorage.setItem(LAST_COLD_KEY, notifId);
+      } catch { /* AsyncStorage unavailable — proceed */ }
+
+      const data = initial.notification.request.content.data as NotificationData | undefined
+      if (!data) return
+      const { title: coldTitle, body: coldBody } = initial.notification.request.content
+
+      const { id, isFullScreen, isSos, isSosInvite, isSosRejected, isSosContactAdded, adderDisplayName, inviteToken, senderName, senderPhone, sosLat, sosLon, sosHasCoords, params } = resolveNotifPayload(data, { title: coldTitle, body: coldBody })
+      console.log('[QA_NAV] cold start | category:', data.category ?? 'none', '| type:', data.type ?? 'none', '| isSosInvite:', isSosInvite, '| isSos:', isSos, '| isSosRejected:', isSosRejected, '| contactAdded:', isSosContactAdded, '| id:', id ?? 'none')
+      if (data.type === 'contacts_refresh') return
+      if (!id && !isFullScreen && !isSos && !isSosInvite && !isSosRejected && !isSosContactAdded) return
 
       await initAnalytics();
       track("push_open", {
         alertId: id ? String(id) : undefined,
-        alertLevel: params.category ? Number(params.category) : undefined,
+        alertLevel: isSos || isSosInvite ? undefined : (params.category ? Number(params.category) : undefined),
         fullScreen: isFullScreen,
         origin: "initial",
       });
 
+      if (isSosInvite && inviteToken) {
+        console.log('[QA_NAV] cold start → sos-invite | token:', inviteToken)
+        AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
+        router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
+        return;
+      }
+      if (isSos) {
+        console.log('[QA_NAV] cold start → sos-receiver | sender:', senderName, '| hasCoords:', sosHasCoords, '| hasPhone:', !!senderPhone)
+        router.push({
+          pathname: '/sos-receiver',
+          params: {
+            senderName,
+            senderPhone,
+            lat: sosHasCoords ? String(sosLat) : '',
+            lon: sosHasCoords ? String(sosLon) : '',
+          },
+        });
+        return;
+      }
+      if (isSosRejected) {
+        console.log('[QA_NAV] cold start → SOSContactsScreen (rejected)')
+        router.push('/SOSContactsScreen');
+        return;
+      }
+      if (isSosContactAdded) {
+        console.log('[QA_NAV] cold start → SOSContactsScreen (contact added) | adder:', adderDisplayName)
+        AsyncStorage.setItem(PENDING_SOS_CONTACT_ADDED_KEY, adderDisplayName).catch(() => {});
+        router.push('/SOSContactsScreen');
+        return;
+      }
       if (isFullScreen) {
         router.push({ pathname: "AlarmScreen", params });
       } else if (id) {
@@ -233,6 +422,12 @@ export default Sentry.wrap(function Layout() {
       if (state === "background") {
         track("app_background");
         flush();
+      }
+      if (state === "active") {
+        shouldConfirmPendingSOS().then((needsConfirm) => {
+          if (!needsConfirm) flushSOSQueue();
+          // Si needsConfirm: MapScreen mostrará el Alert cuando el usuario vuelva al mapa.
+        });
       }
     });
     return () => sub.remove();
@@ -283,11 +478,31 @@ export default Sentry.wrap(function Layout() {
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
+                      name="SOSContactsScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="NotificationTestScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="sos-receiver/index"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="sos-invite/[token]"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
                       name="AlarmScreen"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
                       name="FeedbackScreen"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="local-chat"
                       options={{ headerShown: false }}
                     />
                     <Stack.Screen
@@ -302,8 +517,12 @@ export default Sentry.wrap(function Layout() {
                       name="subscription"
                       options={{ headerShown: false }}
                     />
+                    <Stack.Screen
+                      name="profile"
+                      options={{ headerShown: false }}
+                    />
                   </Stack>
-                  <Toast />
+                  <Toaster />
                   </LinearGradient>
                 </ModelProvider>
               </AuthGate>

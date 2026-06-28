@@ -1,12 +1,34 @@
 import "../../global.css";
 import { StatusBar } from "expo-status-bar";
+import { useLocalSearchParams } from "expo-router";
 import Main from "../map";
 
-const MapScreen = () => (
-  <>
-    <StatusBar style="light" translucent={false} />
-    <Main />
-  </>
-);
+const MapScreen = () => {
+  const { alertLat, alertLon, alertTitle, alertLevel, alertSosPhone } = useLocalSearchParams<{
+    alertLat?: string;
+    alertLon?: string;
+    alertTitle?: string;
+    alertLevel?: string;
+    alertSosPhone?: string;
+  }>();
+
+  const focusLat = alertLat ? parseFloat(alertLat) : undefined;
+  const focusLon = alertLon ? parseFloat(alertLon) : undefined;
+
+  console.log('[QA_MAP] MapScreen params | alertLat:', alertLat, '| alertLon:', alertLon, '| focusLat:', focusLat, '| focusLon:', focusLon);
+
+  return (
+    <>
+      <StatusBar style="light" translucent={false} />
+      <Main
+        focusLat={focusLat}
+        focusLon={focusLon}
+        focusTitle={alertTitle}
+        focusLevel={alertLevel ? parseInt(alertLevel, 10) : undefined}
+        focusSosPhone={alertSosPhone}
+      />
+    </>
+  );
+};
 
 export default MapScreen;

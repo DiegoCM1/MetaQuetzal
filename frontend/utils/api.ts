@@ -8,7 +8,7 @@ export async function getAuthToken(): Promise<string> {
 
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = await getAuthToken()
-  return fetch(url, {
+  const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -16,4 +16,24 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
       Authorization: `Bearer ${token}`,
     },
   })
+
+  if (res.status === 401) {
+    const user = getAuth().currentUser
+    if (!user) return res
+    try {
+      const freshToken = await getIdToken(user, true)
+      return fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+          Authorization: `Bearer ${freshToken}`,
+        },
+      })
+    } catch {
+      return res
+    }
+  }
+
+  return res
 }

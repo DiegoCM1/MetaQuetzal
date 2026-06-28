@@ -1,6 +1,71 @@
 import json
+import logging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
+
+
+def _smn_headline_to_level(headline: str) -> int:
+    """Derive SIAT level (1-5) from SMN headline keywords."""
+    hl = headline.upper()
+    if any(k in hl for k in ("ROJO", "EXTREM", "EXCEPCIONAL", "CATEGORÍA 4", "CATEGORÍA 5")):
+        return 5
+    if any(k in hl for k in ("NARANJA", "SEVER", "GRAVE", "HURACÁN", "HURACAN")):
+        return 4
+    if any(k in hl for k in ("AMARILLO", "MODERADO", "FUERTE", "INTENSO", "INTENSA", "TORMENTA TROPICAL")):
+        return 3
+    return 2  # VERDE — default para boletín informativo
+
+
+async def persist_smn_bulletin_if_new(db: AsyncSession, bulletin: dict) -> bool:
+    """
+    Insert an SMN bulletin into the alerts table if it hasn't been persisted yet.
+    Returns True when a new row was inserted, False when it already existed.
+    SMN alerts have no specific lat/lon (national scope).
+    """
+    aviso_num = bulletin.get("aviso_num")
+    if aviso_num:
+        title = f"SMN Aviso #{aviso_num}"
+        existing = await db.execute(
+            text("SELECT id FROM alerts WHERE title = :title AND timestamp > NOW() - INTERVAL '26 hours'"),
+            {"title": title},
+        )
+    else:
+        headline = bulletin.get("headline") or ""
+        title = f"SMN: {headline[:240]}"
+        existing = await db.execute(
+            text("SELECT id FROM alerts WHERE title = :title AND timestamp > NOW() - INTERVAL '4 hours'"),
+            {"title": title},
+        )
+
+    existing_row = existing.mappings().first()
+    if existing_row:
+        pdf_url = bulletin.get("pdf_url")
+        if pdf_url:
+            await db.execute(
+                text("UPDATE alerts SET pdf_url = :pdf_url WHERE id = :id AND pdf_url IS NULL"),
+                {"pdf_url": pdf_url, "id": existing_row["id"]},
+            )
+            await db.commit()
+            logger.debug("SMN bulletin pdf_url backfilled: '%s'", title)
+        logger.debug("SMN bulletin already persisted: '%s'", title)
+        return False
+
+    level = _smn_headline_to_level(bulletin.get("headline") or "")
+    short = (bulletin.get("summary") or bulletin.get("headline") or "Boletín del SMN/CONAGUA")[:500]
+
+    pdf_url = bulletin.get("pdf_url")
+    await db.execute(
+        text("""
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations, pdf_url)
+            VALUES (:level, 0, :title, :short, NULL, NULL, '[]', '[]', :pdf_url)
+        """),
+        {"level": level, "title": title, "short": short, "pdf_url": pdf_url},
+    )
+    await db.commit()
+    logger.info("SMN bulletin persisted: level=%d title='%s'", level, title)
+    return True
 
 
 async def get_alerts(db: AsyncSession, limit: int, offset: int):

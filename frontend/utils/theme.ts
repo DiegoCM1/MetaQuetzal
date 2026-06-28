@@ -12,6 +12,9 @@ export const colors = {
   brandYellow: '#ffce00',
   brandGreen:  '#00e774',
   brandRed:    '#e24337',
+
+  // Surface — content cards (DarkCard) on the primary gradient.
+  brandSurface: '#0a1c32',
 } as const
 
 export const gradients = {

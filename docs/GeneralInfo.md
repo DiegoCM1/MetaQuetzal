@@ -7,7 +7,8 @@ PRODUCTION BUILD
 3. eas build --profile production --platform android --local     
 
 Option A — Physical phone + (Creating builds EAS Cloud)
-1. npm install -g eas-cli                                                                                                    
+1. npm install -g eas-cli                                   
+RUN npx expo export --platform android BEFORE ANY NEW BUILD                                                                 
 2. eas build --profile development --platform android (Add --local flag to compile the code in your hardware)
   2.1 eas build --profile preview --platform android (Add --local flag to compile the code in your hardware)
   2.2 eas build --profile production --platform android (Add --local flag to compile the code in your hardware) 

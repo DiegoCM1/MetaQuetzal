@@ -76,12 +76,16 @@ def _parse_bulletin(html: str) -> dict | None:
     if aviso_num is None:
         logger.debug("SMN parse: aviso_num selector not found")
 
-    # headline — content inside <strong> in the sintesis block
-    headline_match = re.search(
-        r"sintesis[^>]*>.*?<strong>(.*?)</strong>",
-        html, re.DOTALL
-    )
-    headline = _strip_tags(headline_match.group(1)) if headline_match else None
+    # headline — first non-empty <strong> inside the sintesis block
+    # The block can contain a leading empty <strong> </strong> before the real title.
+    sintesis_match = re.search(r"sintesis[^>]*>(.*?)</div>", html, re.DOTALL)
+    headline: str | None = None
+    if sintesis_match:
+        for m in re.finditer(r"<strong>(.*?)</strong>", sintesis_match.group(1), re.DOTALL):
+            candidate = _strip_tags(m.group(1))
+            if candidate:
+                headline = candidate
+                break
     if not headline:
         logger.warning(
             "SMN parse failed: headline not found — the 'sintesis/<strong>' "

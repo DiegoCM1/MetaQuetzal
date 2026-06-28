@@ -1,17 +1,18 @@
 import "../global.css";
 import { clearOnboardingData } from './onboarding/_services/onboardingService';
-import { Alert, Text, ScrollView } from "react-native";
+import { Alert, Text, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { track } from "../utils/analytics";
 import { useModel } from "./ai/_context/ModelContext";
+import { MODEL_FAILURE_LABEL } from "./ai/_services/modelTelemetry";
 import { useAuth } from "../features/auth/AuthContext";
 import ScreenHeader from "../components/ScreenHeader";
 import OptionCard from "../components/OptionCard";
+
 export default function SettingsScreen() {
   const router = useRouter();
-  const { modelOptedIn, optIn, optOut, retryDownload, downloadProgress, modelReady, modelError } = useModel();
+  const { modelStatus, optIn, optOut, retryDownload, downloadProgress, modelFailure } = useModel();
   const { signOut, deleteAccount } = useAuth();
 
   const handleDeleteAccount = () => {
@@ -45,9 +46,6 @@ export default function SettingsScreen() {
       ]
     );
   };
-
-  const showComingSoon = () =>
-    Alert.alert("¡Próximamente!", "Esta opción estará disponible muy pronto.");
 
   const handleResetOnboarding = async () => {
     Alert.alert(
@@ -104,20 +102,22 @@ export default function SettingsScreen() {
           onPress={() => router.push('/NotificationPreferencesScreen')}
         />
 
-        {/* <OptionCard icon="account-outline" title="Cuenta" onPress={showComingSoon} /> */}
-
         <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
 
-        {/* <OptionCard
-          icon="alert-outline"
-          title="Ver Alerta de Emergencia"
-          onPress={() => {
-            track('demo_alarm_view');
-            router.push('/AlarmScreen');
-          }}
-        /> */}
+        {/* AI offline model — one card per lifecycle status (single source of truth). */}
+        {modelStatus === 'idle' && (
+          <OptionCard icon="chip" title="Activar modo sin conexión" onPress={handleDownloadModel} />
+        )}
 
-        {modelOptedIn && !modelReady && !modelError && (
+        {modelStatus === 'checking' && (
+          <OptionCard
+            icon="cloud-download-outline"
+            title="Preparando descarga..."
+            rightElement={<ActivityIndicator color="white" />}
+          />
+        )}
+
+        {modelStatus === 'downloading' && (
           <OptionCard
             icon="cloud-download-outline"
             title="Descargando modelo IA..."
@@ -129,16 +129,38 @@ export default function SettingsScreen() {
           />
         )}
 
-        {modelOptedIn && modelError && (
+        {modelStatus === 'reconnecting' && (
+          <OptionCard
+            icon="autorenew"
+            title="Reconectando..."
+            subtitle="Conexión interrumpida — reanudando la descarga"
+            rightElement={
+              <Text style={{ color: "white", fontWeight: "600" }}>
+                {Math.round(downloadProgress * 100)}%
+              </Text>
+            }
+          />
+        )}
+
+        {modelStatus === 'loading' && (
+          <OptionCard
+            icon="cog-sync-outline"
+            title="Cargando modelo en memoria..."
+            rightElement={<ActivityIndicator color="white" />}
+          />
+        )}
+
+        {modelStatus === 'failed' && modelFailure && (
           <OptionCard
             icon="alert-circle-outline"
-            title="Error al descargar IA offline — reintentar"
+            title={`${MODEL_FAILURE_LABEL[modelFailure.type]} — reintentar`}
+            subtitle={modelFailure.message}
             onPress={retryDownload}
             danger
           />
         )}
 
-        {modelOptedIn && modelReady && (
+        {modelStatus === 'ready' && (
           <OptionCard
             icon="check-circle-outline"
             title="Modelo IA listo"
@@ -147,10 +169,6 @@ export default function SettingsScreen() {
               <MaterialCommunityIcons name="trash-can-outline" color="#EF4444" size={22} />
             }
           />
-        )}
-
-        {!modelOptedIn && (
-          <OptionCard icon="chip" title="Activar modo sin conexión" onPress={handleDownloadModel} />
         )}
 
         <OptionCard icon="logout" title="Cerrar sesión" onPress={handleSignOut} danger />

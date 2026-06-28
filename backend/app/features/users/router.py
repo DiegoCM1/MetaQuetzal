@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.features.users.schemas import UserProfile, UserLocationUpdate
+from app.features.users.schemas import UserProfile, UserLocationUpdate, PhoneUpdate
 from app.features.users.service import (
     upsert_user,
     update_user_location,
+    update_user_phone,
     get_user_by_firebase_uid,
 )
 
@@ -23,7 +24,7 @@ async def register_or_get_profile(
 ):
     """Create or update user profile from Firebase token. Idempotent."""
     firebase_uid = user.get("uid")
-    return await upsert_user(db, firebase_uid)
+    return await upsert_user(db, firebase_uid, display_name=user.get("name"), email=user.get("email"))
 
 
 @router.get("/api/v1/users/me", response_model=UserProfile)
@@ -33,6 +34,20 @@ async def get_my_profile(
 ):
     firebase_uid = user.get("uid")
     profile = await get_user_by_firebase_uid(db, firebase_uid)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Profile not found. Call POST /api/v1/users/me first.")
+    return profile
+
+
+@router.patch("/api/v1/users/me/phone", response_model=UserProfile)
+async def set_my_phone(
+    body: PhoneUpdate,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Store the user's phone number so SOS invites can find them by phone."""
+    firebase_uid = user.get("uid")
+    profile = await update_user_phone(db, firebase_uid, body.phone)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found. Call POST /api/v1/users/me first.")
     return profile
