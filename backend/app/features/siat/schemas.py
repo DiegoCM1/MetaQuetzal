@@ -68,3 +68,23 @@ class AffectedUser(BaseModel):
 class AffectedUsersResponse(BaseModel):
     total: int
     users: list[AffectedUser]
+
+
+class ActiveCycloneItem(BaseModel):
+    id: int
+    source: str
+    name: str
+    lat: float
+    lon: float
+    wind_kmh: float | None
+    movement_direction: str | None
+    movement_direction_deg: float | None
+    movement_speed_kmh: float | None
+    category_code: str
+    category_label: str
+    advisory_time: datetime | None
+
+
+class ActiveCyclonesResponse(BaseModel):
+    total: int
+    cyclones: list[ActiveCycloneItem]

@@ -23,6 +23,8 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.features.siat.classification import classify_wind_kmh, classification_label
+from app.features.siat.direction import parse_movement_direction
 from app.features.siat.evaluator import evaluate_user, haversine_km
 from app.features.siat.providers.nhc import fetch_active_cyclones
 from app.features.notifications.service import get_tokens_for_users
@@ -471,7 +473,7 @@ async def inject_and_run_cycle(db: AsyncSession, req) -> dict:
     fake_cyclone: dict = {
         "source": "FAKE",
         "name": req.name,
-        "status": "HU",
+        "status": classify_wind_kmh(req.wind_kmh),
         "lat": req.lat,
         "lon": req.lon,
         "wind_kmh": req.wind_kmh,
@@ -612,3 +614,34 @@ async def get_user_siat_status(db: AsyncSession, user_id: int) -> dict | None:
         {"uid": user_id},
     )
     return result.mappings().first()
+
+
+async def get_active_cyclones(db: AsyncSession, max_age_hours: int = 72) -> list[dict]:
+    """
+    Cyclones (real + fake) recent enough to still be worth showing on the map.
+    Enriches each row with its intensity classification and a parsed heading
+    in degrees, for the map's category label and direction arrow.
+    """
+    result = await db.execute(
+        text("""
+            SELECT id, source, name, lat, lon, wind_kmh,
+                   movement_direction, movement_speed_kmh, advisory_time
+            FROM cyclone_events
+            WHERE advisory_time > NOW() - make_interval(hours => :max_age_hours)
+            ORDER BY advisory_time DESC
+        """),
+        {"max_age_hours": max_age_hours},
+    )
+    rows = result.mappings().all()
+
+    cyclones = []
+    for row in rows:
+        wind_kmh = row["wind_kmh"] or 0.0
+        category_code = classify_wind_kmh(wind_kmh)
+        cyclones.append({
+            **row,
+            "category_code": category_code,
+            "category_label": classification_label(category_code),
+            "movement_direction_deg": parse_movement_direction(row["movement_direction"]),
+        })
+    return cyclones

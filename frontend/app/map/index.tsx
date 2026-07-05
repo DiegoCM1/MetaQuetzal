@@ -27,11 +27,13 @@ import {
   deleteZone,
   formatRelativeTime,
   generateZoneId,
+  loadActiveCyclones,
   loadZones,
   reverseGeocodeAddress,
   syncCachedZones,
   updateZone,
   voteZone,
+  type ActiveCyclone,
 } from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, REPORTING_DISTANCE_METERS, ZONE_TYPES } from "./config";
@@ -57,6 +59,8 @@ interface MapProps {
   focusSosPhone?: string;
 }
 
+// SIAT level (this user's risk) — used only for the focusLat/focusLon marker
+// that comes from a push notification.
 const LEVEL_COLORS: Record<number, string> = {
   1: '#4CAF50',
   2: '#4CAF50',
@@ -65,12 +69,21 @@ const LEVEL_COLORS: Record<number, string> = {
   5: '#F44336',
 }
 
+// Storm intensity classification — deliberately separate from LEVEL_COLORS.
+// A weak depression heading straight at someone can carry a high SIAT level,
+// so mixing the two palettes would misrepresent one or the other.
+const CATEGORY_COLORS: Record<string, string> = {
+  HU: '#F44336',
+  TS: '#FF9800',
+  TD: '#FFC107',
+}
+
 const HurricaneMarker = React.memo(function HurricaneMarker({
-  lat, lon, title, level,
-}: { lat: number; lon: number; title?: string; level?: number }) {
+  lat, lon, title, level, categoryCode, directionDeg,
+}: { lat: number; lon: number; title?: string; level?: number; categoryCode?: string; directionDeg?: number | null }) {
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
   console.log('[QA_MAP] HurricaneMarker render | lat:', lat, '| lon:', lon);
-  const color = LEVEL_COLORS[level ?? 3];
+  const color = categoryCode ? (CATEGORY_COLORS[categoryCode] ?? CATEGORY_COLORS.TD) : LEVEL_COLORS[level ?? 3];
   return (
     <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges} title={title}>
       <View
@@ -80,7 +93,9 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
         }}
         style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color, borderWidth: 2, borderColor: 'white', alignItems: 'center', justifyContent: 'center' }}
       >
-        <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
+        <View style={directionDeg != null ? { transform: [{ rotate: `${directionDeg}deg` }] } : undefined}>
+          <MaterialCommunityIcons name={directionDeg != null ? 'navigation' : 'weather-hurricane'} size={28} color="white" />
+        </View>
       </View>
     </Marker>
   );
@@ -138,6 +153,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
   const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [hasPendingSOS, setHasPendingSOS] = useState(false);
   const [linkedContactCount, setLinkedContactCount] = useState<number | null>(null);
+  const [activeCyclones, setActiveCyclones] = useState<ActiveCyclone[]>([]);
 
   // Al montar y al volver al foco: verificar cola con control de antigüedad.
   // Items < 30 min → flush automático. Items > 30 min → pedir confirmación al usuario.
@@ -193,6 +209,21 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
           setLinkedContactCount(data.filter(c => c.link_status === 'linked').length);
         } catch {
           // best-effort — badge stays hidden on error
+        }
+      })();
+    }, [])
+  );
+
+  // Al volver al foco: refrescar tormentas activas (reales + de prueba) desde la DB,
+  // así una tormenta inyectada sigue apareciendo después de recargar la app.
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          const cyclones = await loadActiveCyclones();
+          setActiveCyclones(cyclones);
+        } catch (error) {
+          console.warn('[Map] Failed to load active cyclones:', error);
         }
       })();
     }, [])
@@ -644,6 +675,17 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
 
         {showEvents && zones.map((zone) => (
           <ZoneMarker key={zone.id} zone={zone} onPress={() => handleCirclePress(zone)} />
+        ))}
+
+        {activeCyclones.map((cyclone) => (
+          <HurricaneMarker
+            key={cyclone.id}
+            lat={cyclone.latitude}
+            lon={cyclone.longitude}
+            title={`${cyclone.name} — ${cyclone.categoryLabel}`}
+            categoryCode={cyclone.categoryCode}
+            directionDeg={cyclone.movementDirectionDeg}
+          />
         ))}
 
         {focusLat != null && focusLon != null && (
