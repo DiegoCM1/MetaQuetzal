@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Switch, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { toast } from 'sonner-native';
 import { colors } from '../utils/theme';
 import { authFetch } from '../utils/api';
 import { API_BASE_URL } from '../utils/config';
+import { darkMapStyle } from './map/mapStyle';
+import { DEFAULT_REGION } from './map/config';
 
 type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -26,42 +30,38 @@ const BUTTONS: TestButton[] = [
   { label: 'Push genérico',                         icon: 'bell-outline',        color: colors.brandBlue,    type: 'generic' },
 ];
 
-type FakeCyclonePreset = {
-  label: string;
-  sublabel: string;
-  color: string;
-  body: { name: string; lat: number; lon: number; wind_kmh: number; movement_speed_kmh: number };
-};
+// Same 16-point compass abbreviations the backend's direction.py parses —
+// collapsed to 8 for a simpler chip row (backend also accepts the numeric bearing NHC sends).
+const COMPASS_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
+type CompassDirection = typeof COMPASS_DIRECTIONS[number];
 
-// Posiciones en el Golfo de México, calibradas para usuarios en CDMX (~19.4°N, -99.1°W)
-const CYCLONE_PRESETS: FakeCyclonePreset[] = [
-  {
-    label: 'Nivel 2 — Verde',
-    sublabel: '~510 km · ETA ~51h',
-    color: colors.brandGreen,
-    body: { name: 'FALSO-VERDE', lat: 23.0, lon: -96.0, wind_kmh: 130, movement_speed_kmh: 10 },
-  },
-  {
-    label: 'Nivel 4 — Naranja',
-    sublabel: '~200 km · ETA ~10h',
-    color: colors.brandOrange,
-    body: { name: 'FALSO-NARANJA', lat: 21.0, lon: -98.0, wind_kmh: 160, movement_speed_kmh: 20 },
-  },
-  {
-    label: 'Nivel 5 — Rojo',
-    sublabel: '~87 km · ETA ~2.9h',
-    color: colors.brandRed,
-    body: { name: 'FALSO-ROJO', lat: 20.0, lon: -98.5, wind_kmh: 200, movement_speed_kmh: 30 },
-  },
-];
+// Same defaults FakeCycloneRequest uses in backend/app/features/siat/schemas.py
+const DEFAULT_CYCLONE_NAME = 'FALSO-1';
+const DEFAULT_WIND_KMH = '120';
+const DEFAULT_SPEED_KMH = '20';
+const DEFAULT_DIRECTION: CompassDirection = 'NW';
+const DEFAULT_LAT = 21.0;
+const DEFAULT_LON = -98.0;
 
 export default function NotificationTestScreen() {
   const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
   const [onlyMe, setOnlyMe] = useState(true);
-  const [cycloneLoadingIndex, setCycloneLoadingIndex] = useState<number | null>(null);
+  const [cycloneLoading, setCycloneLoading] = useState(false);
 
   const [resetLoading, setResetLoading] = useState(false);
   const [smnLoading, setSmnLoading] = useState(false);
+
+  const [cycloneName, setCycloneName] = useState(DEFAULT_CYCLONE_NAME);
+  const [cycloneLat, setCycloneLat] = useState(String(DEFAULT_LAT));
+  const [cycloneLon, setCycloneLon] = useState(String(DEFAULT_LON));
+  const [windKmh, setWindKmh] = useState(DEFAULT_WIND_KMH);
+  const [speedKmh, setSpeedKmh] = useState(DEFAULT_SPEED_KMH);
+  const [direction, setDirection] = useState<CompassDirection>(DEFAULT_DIRECTION);
+  const [locatingSelf, setLocatingSelf] = useState(false);
+
+  const markerLat = Number(cycloneLat);
+  const markerLon = Number(cycloneLon);
+  const hasValidMarker = Number.isFinite(markerLat) && Number.isFinite(markerLon);
 
   const confirmBroadcast = (): Promise<boolean> =>
     new Promise(resolve =>
@@ -75,15 +75,69 @@ export default function NotificationTestScreen() {
       ),
     );
 
-  const injectCyclone = async (index: number) => {
-    if (cycloneLoadingIndex !== null) return;
-    setCycloneLoadingIndex(index);
+  const useMyLocation = async () => {
+    if (locatingSelf) return;
+    setLocatingSelf(true);
     try {
-      const preset = CYCLONE_PRESETS[index];
-      console.log('[SIAT] inject-cyclone →', preset.body.name, preset.body);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        toast.error('Permiso denegado', { description: 'Activa el permiso de ubicación para usar tu posición actual.' });
+        return;
+      }
+      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setCycloneLat(coords.latitude.toFixed(5));
+      setCycloneLon(coords.longitude.toFixed(5));
+    } catch (e) {
+      toast.error('No se pudo obtener tu ubicación', { description: String(e) });
+    } finally {
+      setLocatingSelf(false);
+    }
+  };
+
+  const injectCyclone = async () => {
+    if (cycloneLoading) return;
+
+    const lat = Number(cycloneLat);
+    const lon = Number(cycloneLon);
+    const wind = Number(windKmh);
+    const speed = Number(speedKmh);
+
+    if (!cycloneName.trim()) {
+      toast.error('Nombre requerido', { description: 'Escribe un nombre para el ciclón de prueba.' });
+      return;
+    }
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      toast.error('Latitud inválida', { description: 'Debe ser un número entre -90 y 90.' });
+      return;
+    }
+    if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
+      toast.error('Longitud inválida', { description: 'Debe ser un número entre -180 y 180.' });
+      return;
+    }
+    if (!Number.isFinite(wind) || wind <= 0) {
+      toast.error('Viento inválido', { description: 'Debe ser un número mayor a 0.' });
+      return;
+    }
+    if (!Number.isFinite(speed) || speed < 0) {
+      toast.error('Velocidad inválida', { description: 'Debe ser un número mayor o igual a 0.' });
+      return;
+    }
+
+    const body = {
+      name: cycloneName.trim(),
+      lat,
+      lon,
+      wind_kmh: wind,
+      movement_speed_kmh: speed,
+      movement_direction: direction,
+    };
+
+    setCycloneLoading(true);
+    try {
+      console.log('[SIAT] inject-cyclone →', body.name, body);
       const res = await authFetch(`${API_BASE_URL}/api/v1/siat/inject-cyclone`, {
         method: 'POST',
-        body: JSON.stringify(preset.body),
+        body: JSON.stringify(body),
       });
       console.log('[SIAT] inject-cyclone status:', res.status);
       if (res.status === 403) {
@@ -107,12 +161,12 @@ export default function NotificationTestScreen() {
       const notifDesc = data.notifications_sent > 0
         ? `Push enviado · ${detail}`
         : `Sin push · ${detail} · (revisa quiet hours o nivel mínimo)`;
-      toast.success(`Ciclón inyectado · ${preset.label}`, { description: notifDesc });
+      toast.success(`Ciclón inyectado · ${body.name}`, { description: notifDesc });
     } catch (e) {
       console.error('[SIAT] inject-cyclone error:', e);
       toast.error('Error al inyectar ciclón', { description: String(e) });
     } finally {
-      setCycloneLoadingIndex(null);
+      setCycloneLoading(false);
     }
   };
 
@@ -255,37 +309,139 @@ export default function NotificationTestScreen() {
           Motor SIAT — Ciclón Falso
         </Text>
         <Text className="text-xs font-poppins text-white/50 mb-4">
-          Inyecta un ciclón de prueba y corre el ciclo SIAT completo end-to-end.{'\n'}
-          Posiciones calibradas para usuarios en CDMX.
+          Crea un ciclón de prueba con los parámetros que quieras y corre el ciclo SIAT
+          completo end-to-end.
         </Text>
 
-        {CYCLONE_PRESETS.map((preset, index) => (
-          <TouchableOpacity
-            key={preset.body.name}
-            onPress={() => injectCyclone(index)}
-            disabled={cycloneLoadingIndex !== null}
-            className="flex-row items-center mb-4 rounded-2xl px-5 py-4"
-            style={{
-              backgroundColor: `${preset.color}22`,
-              borderWidth: 1,
-              borderColor: preset.color,
-              opacity: cycloneLoadingIndex !== null && cycloneLoadingIndex !== index ? 0.5 : 1,
+        <View
+          className="mb-4 rounded-2xl overflow-hidden"
+          style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}
+        >
+          <MapView
+            style={{ height: 180 }}
+            initialRegion={DEFAULT_REGION}
+            customMapStyle={darkMapStyle}
+            onPress={(e) => {
+              const { latitude, longitude } = e.nativeEvent.coordinate;
+              setCycloneLat(latitude.toFixed(5));
+              setCycloneLon(longitude.toFixed(5));
             }}
           >
-            {cycloneLoadingIndex === index ? (
-              <ActivityIndicator size="small" color={preset.color} style={{ marginRight: 12 }} />
-            ) : (
-              <MaterialCommunityIcons name="weather-hurricane" size={22} color={preset.color} style={{ marginRight: 12 }} />
+            {hasValidMarker && (
+              <Marker
+                coordinate={{ latitude: markerLat, longitude: markerLon }}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <MaterialCommunityIcons name="weather-hurricane" size={28} color={colors.brandRed} />
+              </Marker>
             )}
-            <View className="flex-1">
-              <Text className="font-poppins-semibold text-sm text-white">{preset.label}</Text>
-              <Text className="font-poppins text-xs text-white/50">{preset.sublabel}</Text>
-            </View>
-            {cycloneLoadingIndex !== null && cycloneLoadingIndex !== index && (
-              <Text className="text-xs font-poppins text-white/30">espera...</Text>
-            )}
+          </MapView>
+          <TouchableOpacity
+            onPress={useMyLocation}
+            disabled={locatingSelf}
+            className="flex-row items-center justify-center py-2.5"
+            style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+          >
+            {locatingSelf
+              ? <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+              : <MaterialCommunityIcons name="crosshairs-gps" size={16} color="white" style={{ marginRight: 8 }} />}
+            <Text className="font-poppins text-xs text-white/70">Usar mi ubicación actual</Text>
           </TouchableOpacity>
-        ))}
+        </View>
+
+        <View className="flex-row gap-3 mb-3">
+          <View className="flex-1">
+            <Text className="font-poppins text-xs text-white/50 mb-1">Latitud</Text>
+            <TextInput
+              value={cycloneLat}
+              onChangeText={setCycloneLat}
+              keyboardType="numbers-and-punctuation"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              className="rounded-lg px-3 py-2 font-poppins text-white"
+              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="font-poppins text-xs text-white/50 mb-1">Longitud</Text>
+            <TextInput
+              value={cycloneLon}
+              onChangeText={setCycloneLon}
+              keyboardType="numbers-and-punctuation"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              className="rounded-lg px-3 py-2 font-poppins text-white"
+              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+            />
+          </View>
+        </View>
+
+        <Text className="font-poppins text-xs text-white/50 mb-1">Nombre</Text>
+        <TextInput
+          value={cycloneName}
+          onChangeText={setCycloneName}
+          placeholderTextColor="rgba(255,255,255,0.3)"
+          className="rounded-lg px-3 py-2 mb-3 font-poppins text-white"
+          style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+        />
+
+        <View className="flex-row gap-3 mb-3">
+          <View className="flex-1">
+            <Text className="font-poppins text-xs text-white/50 mb-1">Viento (km/h)</Text>
+            <TextInput
+              value={windKmh}
+              onChangeText={setWindKmh}
+              keyboardType="numeric"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              className="rounded-lg px-3 py-2 font-poppins text-white"
+              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="font-poppins text-xs text-white/50 mb-1">Velocidad (km/h)</Text>
+            <TextInput
+              value={speedKmh}
+              onChangeText={setSpeedKmh}
+              keyboardType="numeric"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              className="rounded-lg px-3 py-2 font-poppins text-white"
+              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+            />
+          </View>
+        </View>
+
+        <Text className="font-poppins text-xs text-white/50 mb-2">Rumbo</Text>
+        <View className="flex-row flex-wrap gap-2 mb-4">
+          {COMPASS_DIRECTIONS.map((dir) => (
+            <TouchableOpacity
+              key={dir}
+              onPress={() => setDirection(dir)}
+              className="rounded-full px-4 py-2"
+              style={{
+                backgroundColor: direction === dir ? colors.brandBlue : 'rgba(255,255,255,0.06)',
+                borderWidth: 1,
+                borderColor: direction === dir ? colors.brandBlue : 'rgba(255,255,255,0.2)',
+              }}
+            >
+              <Text className="font-poppins-semibold text-xs text-white">{dir}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          onPress={injectCyclone}
+          disabled={cycloneLoading}
+          className="flex-row items-center justify-center mb-4 rounded-2xl px-5 py-4"
+          style={{
+            backgroundColor: `${colors.brandRed}22`,
+            borderWidth: 1,
+            borderColor: colors.brandRed,
+            opacity: cycloneLoading ? 0.6 : 1,
+          }}
+        >
+          {cycloneLoading
+            ? <ActivityIndicator size="small" color={colors.brandRed} style={{ marginRight: 12 }} />
+            : <MaterialCommunityIcons name="weather-hurricane" size={22} color={colors.brandRed} style={{ marginRight: 12 }} />}
+          <Text className="font-poppins-semibold text-sm text-white">Inyectar ciclón</Text>
+        </TouchableOpacity>
 
         {/* Reset estado SIAT */}
         <TouchableOpacity
