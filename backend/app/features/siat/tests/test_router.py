@@ -196,6 +196,65 @@ def test_evaluate_user_distant_slow_cyclone_is_azul():
 
 
 # ---------------------------------------------------------------------------
+# evaluate_user() — direction-aware level adjustment
+# ---------------------------------------------------------------------------
+# Cyclone due south of the user (same longitude), so bearing cyclone→user is
+# due north (0°). Distance ~222 km, speed 20 km/h → ETA ~11.1h → baseline
+# level 4 (NARANJA) before any heading adjustment. wind_kmh=50 keeps the
+# distance-only floor at level 2, low enough that the -1/-2 adjustments are
+# visible instead of being clamped back up by the floor.
+
+_DIRECTION_CYCLONE_BASE = {
+    "name": "HEADING-TEST",
+    "status": "HU",
+    "lat": 18.0,
+    "lon": -99.0,
+    "wind_kmh": 50.0,
+    "movement_speed_kmh": 20.0,
+}
+_DIRECTION_USER_LAT, _DIRECTION_USER_LON = 20.0, -99.0
+
+
+def test_evaluate_user_approaching_keeps_eta_level():
+    """Heading ~toward the user (bearing diff <= 60°) → no adjustment."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE, "movement_direction": "N"}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 4
+
+
+def test_evaluate_user_lateral_steps_down_one_level():
+    """Heading roughly perpendicular (60° < diff <= 120°) → level - 1."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE, "movement_direction": "E"}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 3
+
+
+def test_evaluate_user_departing_steps_down_two_levels():
+    """Heading away from the user (diff > 120°) → level - 2."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE, "movement_direction": "S"}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 2
+
+
+def test_evaluate_user_departing_never_drops_below_distance_floor():
+    """A departing cyclone close enough that distance alone floors the level."""
+    cyclone = {
+        **_DIRECTION_CYCLONE_BASE,
+        "wind_kmh": 100.0,  # floor: distance < 300 and wind >= 100 → floor level 4
+        "movement_direction": "S",
+    }
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 4  # ETA-based (4) - 2 = 2, but floor is 4
+
+
+def test_evaluate_user_missing_direction_keeps_eta_level():
+    """No movement_direction provided → behaves exactly like before (no penalty)."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 4
+
+
+# ---------------------------------------------------------------------------
 # GET /api/v1/siat/affected-users
 # ---------------------------------------------------------------------------
 
