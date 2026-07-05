@@ -295,3 +295,62 @@ export async function syncCachedZones(zones: Zone[]) {
     console.error('[Map] Error saving cached zones:', error)
   }
 }
+
+export type ActiveCyclone = {
+  id: number
+  source: string
+  name: string
+  latitude: number
+  longitude: number
+  windKmh: number | null
+  movementDirection: string | null
+  movementDirectionDeg: number | null
+  movementSpeedKmh: number | null
+  categoryCode: string
+  categoryLabel: string
+  advisoryTime: string | null
+}
+
+type ActiveCycloneResponse = {
+  id: number
+  source: string
+  name: string
+  lat: number
+  lon: number
+  wind_kmh: number | null
+  movement_direction: string | null
+  movement_direction_deg: number | null
+  movement_speed_kmh: number | null
+  category_code: string
+  category_label: string
+  advisory_time: string | null
+}
+
+function normalizeActiveCyclone(item: ActiveCycloneResponse): ActiveCyclone {
+  return {
+    id: item.id,
+    source: item.source,
+    name: item.name,
+    latitude: Number(item.lat),
+    longitude: Number(item.lon),
+    windKmh: item.wind_kmh ?? null,
+    movementDirection: item.movement_direction ?? null,
+    movementDirectionDeg: item.movement_direction_deg ?? null,
+    movementSpeedKmh: item.movement_speed_kmh ?? null,
+    categoryCode: item.category_code,
+    categoryLabel: item.category_label,
+    advisoryTime: item.advisory_time ?? null,
+  }
+}
+
+// Always requires real Firebase auth — unlike mapFetch, there is no dev-auth
+// bypass for this endpoint (see DEV_BYPASS_MAP_AUTH), so it calls authFetch directly.
+export async function loadActiveCyclones(): Promise<ActiveCyclone[]> {
+  const { authFetch } = await import('../../utils/api')
+  const response = await authFetch(`${API_BASE_URL}/api/v1/siat/active-cyclones`)
+  if (!response.ok) {
+    throw new Error(`Failed to load active cyclones: ${response.status}`)
+  }
+  const data: { total: number; cyclones: ActiveCycloneResponse[] } = await response.json()
+  return data.cyclones.map(normalizeActiveCyclone)
+}

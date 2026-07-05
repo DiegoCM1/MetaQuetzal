@@ -890,3 +890,85 @@ async def test_smn_level5_overrides_quiet_hours():
 
     assert total == 1
     mock_mark.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# inject_and_run_cycle() derives status from wind — service-level test
+# ---------------------------------------------------------------------------
+
+class _FakeCycloneReq:
+    def __init__(self, wind_kmh: float):
+        self.name = "FALSO-TEST"
+        self.lat = 21.0
+        self.lon = -98.0
+        self.wind_kmh = wind_kmh
+        self.movement_speed_kmh = 10.0
+        self.movement_direction = "N"
+
+
+@pytest.mark.asyncio
+async def test_inject_and_run_cycle_classifies_low_wind_as_td():
+    """Low-wind fake cyclone must be saved as TD, not the old hardcoded 'HU'."""
+    from app.features.siat.service import inject_and_run_cycle
+
+    db = MagicMock()
+    with patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, return_value=99) as mock_save, \
+         patch(f"{_SVC}.run_cycle", new_callable=AsyncMock, return_value=FAKE_CYCLE_RESULT):
+        await inject_and_run_cycle(db, _FakeCycloneReq(wind_kmh=50.0))
+
+    saved_cyclone = mock_save.call_args.args[1]
+    assert saved_cyclone["status"] == "TD"
+
+
+@pytest.mark.asyncio
+async def test_inject_and_run_cycle_classifies_high_wind_as_hu():
+    """High-wind fake cyclone still resolves to HU."""
+    from app.features.siat.service import inject_and_run_cycle
+
+    db = MagicMock()
+    with patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, return_value=99) as mock_save, \
+         patch(f"{_SVC}.run_cycle", new_callable=AsyncMock, return_value=FAKE_CYCLE_RESULT):
+        await inject_and_run_cycle(db, _FakeCycloneReq(wind_kmh=200.0))
+
+    saved_cyclone = mock_save.call_args.args[1]
+    assert saved_cyclone["status"] == "HU"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/siat/active-cyclones
+# ---------------------------------------------------------------------------
+
+_FAKE_ACTIVE_CYCLONES = [
+    {
+        "id": 1,
+        "source": "FAKE",
+        "name": "FALSO-1",
+        "lat": 21.0,
+        "lon": -98.0,
+        "wind_kmh": 160.0,
+        "movement_direction": "N",
+        "movement_direction_deg": 0.0,
+        "movement_speed_kmh": 20.0,
+        "category_code": "HU",
+        "category_label": "Huracán",
+        "advisory_time": datetime.now(timezone.utc),
+    },
+]
+
+
+def test_active_cyclones_requires_auth():
+    """No Authorization header → 422 (FastAPI header validation)."""
+    r = client.get("/api/v1/siat/active-cyclones")
+    assert r.status_code == 422
+
+
+def test_active_cyclones_returns_expected_shape():
+    """Any authenticated user (no admin allowlist) gets the enriched cyclone list."""
+    with _mock_auth_email(NON_ADMIN_EMAIL):
+        with patch(f"{_ROUTER}.get_active_cyclones", new_callable=AsyncMock, return_value=_FAKE_ACTIVE_CYCLONES):
+            r = client.get("/api/v1/siat/active-cyclones", headers=AUTH_HEADERS)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1
+    assert body["cyclones"][0]["category_label"] == "Huracán"
+    assert body["cyclones"][0]["movement_direction_deg"] == 0.0
