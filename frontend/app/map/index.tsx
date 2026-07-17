@@ -42,6 +42,7 @@ import { authFetch } from "../../utils/api";
 import { API_BASE_URL } from "../../utils/config";
 import * as Network from "expo-network";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { enqueueSOS, hasPendingSOSItem, getPendingSOSItem, flushSOSQueue, clearSOSQueue } from "./sosQueue";
 import type { Zone, ZoneType } from "./types";
 
@@ -57,6 +58,9 @@ interface MapProps {
   // Present only when navigated from sos-receiver — undefined for hurricane alerts.
   // Empty string means SOS context but no phone registered.
   focusSosPhone?: string;
+  // Called when the user dismisses the SOS banner via its back button, so the
+  // parent can clear its frozen focus state instead of it persisting forever.
+  onDismissFocus?: () => void;
 }
 
 // SIAT level (this user's risk) — used only for the focusLat/focusLon marker
@@ -127,8 +131,9 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
   );
 });
 
-export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel, focusSosPhone }: MapProps = {}) {
+export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel, focusSosPhone, onDismissFocus }: MapProps = {}) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
@@ -525,6 +530,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       let lon: number | undefined;
       let gpsFailed = false;
       let permDenied = false;
+      let usedFallbackCoords = false;
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         try {
@@ -539,6 +545,15 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
           lon = coords.longitude;
         } catch {
           gpsFailed = true;
+          // Live GPS fix timed out (cold GPS, indoors, etc). Fall back to the
+          // location already resolved when the map screen mounted rather than
+          // sending the SOS with no coordinates at all — it's from this same
+          // session, so it's far more likely to be current than nothing.
+          if (currentCoords) {
+            lat = currentCoords.latitude;
+            lon = currentCoords.longitude;
+            usedFallbackCoords = true;
+          }
         }
       } else {
         permDenied = true;
@@ -559,6 +574,8 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       // 3. Online: mostrar feedback de GPS si aplica
       if (permDenied) {
         toast.info("Permiso de ubicación denegado", { description: "Se enviará el SOS sin coordenadas." });
+      } else if (usedFallbackCoords) {
+        toast.info("Ubicación aproximada", { description: "No se pudo obtener tu posición exacta a tiempo; se usó tu última ubicación conocida." });
       } else if (gpsFailed) {
         toast.info("Sin ubicación precisa", { description: "Se enviará el SOS sin coordenadas." });
       }
@@ -700,7 +717,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
 
       {/* SOS context banner — only shown when navigated from sos-receiver */}
       {focusSosPhone !== undefined && focusTitle != null && (
-        <View style={sosBanner.bar}>
+        <View style={[sosBanner.bar, { paddingTop: insets.top + 10 }]}>
           <View style={sosBanner.left}>
             <MaterialCommunityIcons name="alarm-light" size={16} color="#030810" />
             <Text style={sosBanner.name} numberOfLines={1}>{focusTitle}</Text>
@@ -718,7 +735,10 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
             )}
             <Pressable
               style={sosBanner.backBtn}
-              onPress={() => router.back()}
+              onPress={() => {
+                onDismissFocus?.();
+                router.back();
+              }}
               android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
             >
               <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
@@ -730,8 +750,11 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       {/* Layer selector — shifted down when SOS banner is visible */}
       <Pressable
         onPress={() => setLayerModalVisible(true)}
-        className={`absolute ${focusSosPhone !== undefined ? 'top-20' : 'top-12'} right-4 p-3 rounded-full`}
-        style={{ backgroundColor: 'rgba(8, 15, 30, 0.85)' }}
+        className="absolute right-4 p-3 rounded-full"
+        style={{
+          top: insets.top + (focusSosPhone !== undefined ? 56 : 12),
+          backgroundColor: 'rgba(8, 15, 30, 0.85)',
+        }}
       >
         <MaterialCommunityIcons name="layers-outline" size={24} color="white" />
       </Pressable>
