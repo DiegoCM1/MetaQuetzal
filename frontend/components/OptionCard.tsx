@@ -40,33 +40,34 @@ export default function OptionCard({ title, subtitle, icon, route, onPress, righ
                 colors={gradients.header}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                className="py-4 px-5 flex-row items-center"
             >
-                <MaterialCommunityIcons name={icon} size={24} color={contentColor} />
+                <View className="py-4 px-5 flex-row items-center">
+                    <MaterialCommunityIcons name={icon} size={24} color={contentColor} />
 
-                <View className="flex-1 ml-4">
-                    <Text className="font-poppins-semibold text-lg" style={{ color: contentColor }}>
-                        {title}
-                    </Text>
-                    {subtitle ? (
-                        <Text
-                            className="font-poppins text-xs mt-0.5"
-                            style={{ color: danger ? "rgba(239,68,68,0.85)" : "rgba(255,255,255,0.7)" }}
-                        >
-                            {subtitle}
+                    <View className="flex-1 ml-4">
+                        <Text className="font-poppins-semibold text-lg" style={{ color: contentColor }}>
+                            {title}
                         </Text>
+                        {subtitle ? (
+                            <Text
+                                className="font-poppins text-xs mt-0.5"
+                                style={{ color: danger ? "rgba(239,68,68,0.85)" : "rgba(255,255,255,0.7)" }}
+                            >
+                                {subtitle}
+                            </Text>
+                        ) : null}
+                    </View>
+
+                    {rightElement ? (
+                        rightElement
+                    ) : (route || onPress) ? (
+                        <MaterialCommunityIcons
+                            name="chevron-right"
+                            size={24}
+                            color={danger ? "#EF4444" : "rgba(255,255,255,0.7)"}
+                        />
                     ) : null}
                 </View>
-
-                {rightElement ? (
-                    rightElement
-                ) : (route || onPress) ? (
-                    <MaterialCommunityIcons 
-                        name="chevron-right" 
-                        size={24} 
-                        color={danger ? "#EF4444" : "rgba(255,255,255,0.7)"} 
-                    />
-                ) : null}
             </LinearGradient>
         </Pressable>
     );
