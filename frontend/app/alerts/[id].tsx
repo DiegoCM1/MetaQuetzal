@@ -197,7 +197,7 @@ export default function AlertDetailsScreen() {
               {impactLabel.toUpperCase()}
             </Text>
             <Text style={{ color: 'white', fontFamily: fonts.poppinsSemiBold, fontSize: 15 }}>
-              Categoría {alert.level}
+              Nivel {alert.level}
             </Text>
           </LinearGradient>
 
