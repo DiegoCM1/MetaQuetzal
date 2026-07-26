@@ -16,7 +16,8 @@ from app.features.sos_invite.router import router as sos_invite_router
 from app.features.sos_trigger.router import router as sos_trigger_router
 from app.features.siat.service import ensure_siat_tables, run_cycle
 from app.features.alerts.providers.smn import fetch_latest_bulletin
-from app.features.alerts.service import persist_smn_bulletin_if_new
+from app.features.alerts.providers.smn_ciclon import fetch_active_advisories
+from app.features.alerts.service import persist_smn_bulletin_if_new, persist_smn_cyclone_advisory_if_new
 import app.core.firebase
 import asyncio
 import logging
@@ -68,6 +69,9 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         """))
         await conn.execute(text(
             "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS pdf_url TEXT"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS cyclone_meta JSONB"
         ))
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)"
@@ -208,6 +212,20 @@ async def _siat_background_loop():
                             "SMN: new bulletin persisted — '%s'",
                             (bulletin.get("headline") or "")[:60],
                         )
+
+                for ocean in ("atlantico", "pacifico"):
+                    try:
+                        advisories = await fetch_active_advisories(ocean)
+                        for advisory in advisories:
+                            inserted = await persist_smn_cyclone_advisory_if_new(db, advisory)
+                            if inserted:
+                                logger.info(
+                                    "SMN: new cyclone advisory persisted — ocean=%s system=%s",
+                                    ocean, advisory.get("system_name"),
+                                )
+                    except Exception:
+                        logger.exception("SMN cyclone advisory cycle failed (ocean=%s)", ocean)
+
                 result = await run_cycle(db)
                 logger.info(
                     "SIAT background cycle: cyclones=%d users=%d notif=%d",

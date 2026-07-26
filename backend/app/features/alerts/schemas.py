@@ -125,9 +125,28 @@ class SMNBulletin(BaseModel):
     source: str
 
 
+class SMNCycloneAdvisory(BaseModel):
+    ocean: str | None          # "atlantico" | "pacifico"
+    system_name: str | None
+    aviso_num: int | None
+    level: int
+    synthesis: str | None
+    location_text: str | None  # e.g. "820 km al sur-suroeste de Zihuatanejo, Gro."
+    lat: float | None
+    lon: float | None
+    movement_text: str | None
+    wind_sustained_kmh: float | None
+    wind_gusts_kmh: float | None
+    pressure_hpa: float | None
+    recommendations: str | None
+    pdf_url: str | None
+    issued_at: datetime
+
+
 class ActiveAlertsResponse(BaseModel):
     generated_at: datetime
     user_siat: SiatUserState | None
     cyclonic_alerts: list[ActiveAlertItem]
     general_alerts: list[ActiveAlertItem]
     smn_bulletin: SMNBulletin | None
+    smn_cyclone_advisories: list[SMNCycloneAdvisory]
