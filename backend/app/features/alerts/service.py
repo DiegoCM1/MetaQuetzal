@@ -68,14 +68,156 @@ async def persist_smn_bulletin_if_new(db: AsyncSession, bulletin: dict) -> bool:
     return True
 
 
+async def persist_smn_cyclone_advisory_if_new(db: AsyncSession, advisory: dict) -> bool:
+    """
+    Insert an SMN cyclone advisory (Atlántico/Pacífico) into the alerts table
+    if it hasn't been persisted yet. Mirrors persist_smn_bulletin_if_new — same
+    table, same dedup-by-title-within-a-window strategy.
+    """
+    ocean_label = "Atlántico" if advisory.get("ocean") == "atlantico" else "Pacífico"
+    system_name = advisory.get("system_name") or "Sistema ciclónico"
+    aviso_num = advisory.get("aviso_num")
+    title = f"SMN Ciclón {ocean_label}: {system_name}"
+    if aviso_num:
+        title += f" — Aviso #{aviso_num}"
+    title = title[:255]
+
+    existing = await db.execute(
+        text("SELECT id FROM alerts WHERE title = :title AND timestamp > NOW() - INTERVAL '24 hours'"),
+        {"title": title},
+    )
+    existing_row = existing.mappings().first()
+    if existing_row:
+        pdf_url = advisory.get("pdf_url")
+        if pdf_url:
+            await db.execute(
+                text("UPDATE alerts SET pdf_url = :pdf_url WHERE id = :id AND pdf_url IS NULL"),
+                {"pdf_url": pdf_url, "id": existing_row["id"]},
+            )
+            await db.commit()
+        logger.debug("SMN cyclone advisory already persisted: '%s'", title)
+        return False
+
+    level = _smn_headline_to_level(advisory.get("synthesis") or system_name)
+    short = (advisory.get("synthesis") or f"Aviso de ciclón tropical — {system_name}")[:500]
+
+    factors = []
+    if advisory.get("location_text"):
+        factors.append(f"Distancia: {advisory['location_text']}")
+    if advisory.get("wind_sustained_kmh") is not None:
+        factors.append(f"Vientos sostenidos: {advisory['wind_sustained_kmh']:.0f} km/h")
+    if advisory.get("wind_gusts_kmh") is not None:
+        factors.append(f"Rachas: {advisory['wind_gusts_kmh']:.0f} km/h")
+    if advisory.get("pressure_hpa") is not None:
+        factors.append(f"Presión: {advisory['pressure_hpa']:.0f} hPa")
+    if advisory.get("movement_text"):
+        factors.append(f"Desplazamiento: {advisory['movement_text']}")
+
+    recommendations = [advisory["recommendations"]] if advisory.get("recommendations") else []
+
+    # Structured fields with no dedicated column — kept queryable/typed for
+    # get_smn_cyclone_advisories() instead of re-parsing them back out of `factors`.
+    cyclone_meta = {
+        "ocean": advisory.get("ocean"),
+        "system_name": system_name,
+        "aviso_num": aviso_num,
+        "location_text": advisory.get("location_text"),
+        "movement_text": advisory.get("movement_text"),
+        "wind_sustained_kmh": advisory.get("wind_sustained_kmh"),
+        "wind_gusts_kmh": advisory.get("wind_gusts_kmh"),
+        "pressure_hpa": advisory.get("pressure_hpa"),
+    }
+
+    await db.execute(
+        text("""
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations,
+                                 pdf_url, cyclone_meta)
+            VALUES (:level, 0, :title, :short, :lat, :lon,
+                    CAST(:factors AS jsonb), CAST(:recommendations AS jsonb), :pdf_url,
+                    CAST(:cyclone_meta AS jsonb))
+        """),
+        {
+            "level": level, "title": title, "short": short,
+            "lat": advisory.get("lat"), "lon": advisory.get("lon"),
+            "factors": json.dumps(factors),
+            "recommendations": json.dumps(recommendations),
+            "pdf_url": advisory.get("pdf_url"),
+            "cyclone_meta": json.dumps(cyclone_meta),
+        },
+    )
+    await db.commit()
+    logger.info("SMN cyclone advisory persisted: level=%d title='%s'", level, title)
+    return True
+
+
 async def get_alerts(db: AsyncSession, limit: int, offset: int):
     result = await db.execute(text("""SELECT id, timestamp, level, score, title, short
        FROM alerts
       ORDER BY timestamp DESC
       LIMIT :limit OFFSET :offset"""),
       {"limit": limit, "offset": offset})
-    
+
     return result.mappings().all()
+
+
+async def get_general_alerts_for_active(db: AsyncSession, limit: int):
+    """
+    System/admin alerts for the /active feed. Excludes SMN cyclone advisories
+    (cyclone_meta IS NOT NULL) — those get their own dedicated section
+    (see get_smn_cyclone_advisories) so they aren't shown twice.
+    """
+    result = await db.execute(
+        text("""
+            SELECT id, timestamp, level, score, title, short
+            FROM alerts
+            WHERE cyclone_meta IS NULL
+            ORDER BY timestamp DESC
+            LIMIT :limit
+        """),
+        {"limit": limit},
+    )
+    return result.mappings().all()
+
+
+async def get_smn_cyclone_advisories(db: AsyncSession) -> list[dict]:
+    """
+    Latest persisted SMN cyclone advisory per (ocean, system), within the last
+    24h — older advisories for the same system are superseded, not "still active".
+    """
+    result = await db.execute(
+        text("""
+            SELECT DISTINCT ON (cyclone_meta->>'ocean', cyclone_meta->>'system_name')
+                id, timestamp, level, title, short, lat, lon, pdf_url, recommendations, cyclone_meta
+            FROM alerts
+            WHERE cyclone_meta IS NOT NULL
+              AND timestamp > NOW() - INTERVAL '24 hours'
+            ORDER BY cyclone_meta->>'ocean', cyclone_meta->>'system_name', timestamp DESC
+        """)
+    )
+    rows = result.mappings().all()
+
+    advisories = []
+    for row in rows:
+        meta = row["cyclone_meta"] or {}
+        recs = row["recommendations"] or []
+        advisories.append({
+            "ocean": meta.get("ocean"),
+            "system_name": meta.get("system_name"),
+            "aviso_num": meta.get("aviso_num"),
+            "level": row["level"],
+            "synthesis": row["short"],
+            "location_text": meta.get("location_text"),
+            "lat": row["lat"],
+            "lon": row["lon"],
+            "movement_text": meta.get("movement_text"),
+            "wind_sustained_kmh": meta.get("wind_sustained_kmh"),
+            "wind_gusts_kmh": meta.get("wind_gusts_kmh"),
+            "pressure_hpa": meta.get("pressure_hpa"),
+            "recommendations": recs[0] if recs else None,
+            "pdf_url": row["pdf_url"],
+            "issued_at": row["timestamp"],
+        })
+    return advisories
 
 async def get_alert_by_id(db: AsyncSession, id):
     result = await db.execute(text("SELECT * FROM alerts WHERE id = :id LIMIT 1"),
