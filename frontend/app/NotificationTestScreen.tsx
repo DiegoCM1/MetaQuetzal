@@ -1,94 +1,84 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Switch, Alert, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
-import * as Location from 'expo-location';
-import { toast } from 'sonner-native';
-import { colors } from '../utils/theme';
-import { authFetch } from '../utils/api';
-import { API_BASE_URL } from '../utils/config';
-import { darkMapStyle } from './map/mapStyle';
-import { DEFAULT_REGION } from './map/config';
-
-type MCIName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-
-type NotificationTestType = 'hurricane_l2' | 'hurricane_l3' | 'hurricane_l4' | 'sos_test' | 'generic';
-
-type TestButton = {
-  label: string;
-  icon: MCIName;
-  color: string;
-  type: NotificationTestType;
-};
-
-const BUTTONS: TestButton[] = [
-  { label: 'Huracán Nivel 2 — Verde',               icon: 'weather-hurricane',  color: colors.brandGreen,   type: 'hurricane_l2' },
-  { label: 'Huracán Nivel 3 — Amarillo',             icon: 'weather-hurricane',  color: colors.brandYellow,  type: 'hurricane_l3' },
-  { label: 'Huracán Nivel 4 — Naranja (fullscreen)', icon: 'alert-octagram',     color: colors.brandOrange,  type: 'hurricane_l4' },
-  { label: 'SOS de prueba',                         icon: 'alarm-light-outline', color: colors.brandRed,     type: 'sos_test' },
-  { label: 'Push genérico',                         icon: 'bell-outline',        color: colors.brandBlue,    type: 'generic' },
-];
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  TextInput,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MapView, { Marker } from "react-native-maps";
+import * as Location from "expo-location";
+import { toast } from "sonner-native";
+import { colors } from "../utils/theme";
+import { authFetch } from "../utils/api";
+import { API_BASE_URL } from "../utils/config";
+import { darkMapStyle } from "./map/mapStyle";
+import { DEFAULT_REGION } from "./map/config";
 
 // Same 16-point compass abbreviations the backend's direction.py parses —
 // collapsed to 8 for a simpler chip row (backend also accepts the numeric bearing NHC sends).
-const COMPASS_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
-type CompassDirection = typeof COMPASS_DIRECTIONS[number];
+const COMPASS_DIRECTIONS = [
+  "N",
+  "NE",
+  "E",
+  "SE",
+  "S",
+  "SW",
+  "W",
+  "NW",
+] as const;
+type CompassDirection = (typeof COMPASS_DIRECTIONS)[number];
 
 // Same defaults FakeCycloneRequest uses in backend/app/features/siat/schemas.py
-const DEFAULT_CYCLONE_NAME = 'FALSO-1';
-const DEFAULT_WIND_KMH = '120';
-const DEFAULT_SPEED_KMH = '20';
-const DEFAULT_DIRECTION: CompassDirection = 'NW';
+const DEFAULT_CYCLONE_NAME = "FALSO-1";
+const DEFAULT_WIND_KMH = "120";
+const DEFAULT_SPEED_KMH = "20";
+const DEFAULT_DIRECTION: CompassDirection = "NW";
 const DEFAULT_LAT = 21.0;
 const DEFAULT_LON = -98.0;
 
 export default function NotificationTestScreen() {
-  const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
-  const [onlyMe, setOnlyMe] = useState(true);
   const [cycloneLoading, setCycloneLoading] = useState(false);
-
   const [resetLoading, setResetLoading] = useState(false);
-  const [smnLoading, setSmnLoading] = useState(false);
 
   const [cycloneName, setCycloneName] = useState(DEFAULT_CYCLONE_NAME);
   const [cycloneLat, setCycloneLat] = useState(String(DEFAULT_LAT));
   const [cycloneLon, setCycloneLon] = useState(String(DEFAULT_LON));
   const [windKmh, setWindKmh] = useState(DEFAULT_WIND_KMH);
   const [speedKmh, setSpeedKmh] = useState(DEFAULT_SPEED_KMH);
-  const [direction, setDirection] = useState<CompassDirection>(DEFAULT_DIRECTION);
+  const [direction, setDirection] =
+    useState<CompassDirection>(DEFAULT_DIRECTION);
   const [locatingSelf, setLocatingSelf] = useState(false);
 
   const markerLat = Number(cycloneLat);
   const markerLon = Number(cycloneLon);
-  const hasValidMarker = Number.isFinite(markerLat) && Number.isFinite(markerLon);
-
-  const confirmBroadcast = (): Promise<boolean> =>
-    new Promise(resolve =>
-      Alert.alert(
-        '¿Enviar a todos?',
-        'Esto mandará la notificación a TODOS los dispositivos registrados en esta base de datos.',
-        [
-          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
-          { text: 'Enviar', style: 'destructive', onPress: () => resolve(true) },
-        ],
-      ),
-    );
+  const hasValidMarker =
+    Number.isFinite(markerLat) && Number.isFinite(markerLon);
 
   const useMyLocation = async () => {
     if (locatingSelf) return;
     setLocatingSelf(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        toast.error('Permiso denegado', { description: 'Activa el permiso de ubicación para usar tu posición actual.' });
+      if (status !== "granted") {
+        toast.error("Permiso denegado", {
+          description:
+            "Activa el permiso de ubicación para usar tu posición actual.",
+        });
         return;
       }
-      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { coords } = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
       setCycloneLat(coords.latitude.toFixed(5));
       setCycloneLon(coords.longitude.toFixed(5));
     } catch (e) {
-      toast.error('No se pudo obtener tu ubicación', { description: String(e) });
+      toast.error("No se pudo obtener tu ubicación", {
+        description: String(e),
+      });
     } finally {
       setLocatingSelf(false);
     }
@@ -103,23 +93,33 @@ export default function NotificationTestScreen() {
     const speed = Number(speedKmh);
 
     if (!cycloneName.trim()) {
-      toast.error('Nombre requerido', { description: 'Escribe un nombre para el ciclón de prueba.' });
+      toast.error("Nombre requerido", {
+        description: "Escribe un nombre para el ciclón de prueba.",
+      });
       return;
     }
     if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-      toast.error('Latitud inválida', { description: 'Debe ser un número entre -90 y 90.' });
+      toast.error("Latitud inválida", {
+        description: "Debe ser un número entre -90 y 90.",
+      });
       return;
     }
     if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
-      toast.error('Longitud inválida', { description: 'Debe ser un número entre -180 y 180.' });
+      toast.error("Longitud inválida", {
+        description: "Debe ser un número entre -180 y 180.",
+      });
       return;
     }
     if (!Number.isFinite(wind) || wind <= 0) {
-      toast.error('Viento inválido', { description: 'Debe ser un número mayor a 0.' });
+      toast.error("Viento inválido", {
+        description: "Debe ser un número mayor a 0.",
+      });
       return;
     }
     if (!Number.isFinite(speed) || speed < 0) {
-      toast.error('Velocidad inválida', { description: 'Debe ser un número mayor o igual a 0.' });
+      toast.error("Velocidad inválida", {
+        description: "Debe ser un número mayor o igual a 0.",
+      });
       return;
     }
 
@@ -134,37 +134,57 @@ export default function NotificationTestScreen() {
 
     setCycloneLoading(true);
     try {
-      console.log('[SIAT] inject-cyclone →', body.name, body);
-      const res = await authFetch(`${API_BASE_URL}/api/v1/siat/inject-cyclone`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      console.log('[SIAT] inject-cyclone status:', res.status);
+      console.log("[SIAT] inject-cyclone →", body.name, body);
+      const res = await authFetch(
+        `${API_BASE_URL}/api/v1/siat/inject-cyclone`,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        },
+      );
+      console.log("[SIAT] inject-cyclone status:", res.status);
       if (res.status === 403) {
-        console.warn('[SIAT] inject-cyclone 403 — sin acceso');
-        toast.error('Sin acceso', { description: 'Pide que agreguen tu email a NOTIFICATION_TEST_ADMIN_EMAILS en backend/.env' });
+        console.warn("[SIAT] inject-cyclone 403 — sin acceso");
+        toast.error("Sin acceso", {
+          description:
+            "Pide que agreguen tu email a NOTIFICATION_TEST_ADMIN_EMAILS en backend/.env",
+        });
         return;
       }
       if (res.status === 422) {
         const err = await res.json().catch(() => ({}));
-        console.warn('[SIAT] inject-cyclone 422 — sin ubicación:', err.detail);
-        toast.error('Sin ubicación registrada', { description: err.detail || 'Configura tu ubicación en el perfil antes de inyectar.' });
+        console.warn("[SIAT] inject-cyclone 422 — sin ubicación:", err.detail);
+        toast.error("Sin ubicación registrada", {
+          description:
+            err.detail ||
+            "Configura tu ubicación en el perfil antes de inyectar.",
+        });
         return;
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[SIAT] inject-cyclone OK — users_evaluated:', data.users_evaluated, 'notifications_sent:', data.notifications_sent, 'assessments:', data.assessments);
+      console.log(
+        "[SIAT] inject-cyclone OK — users_evaluated:",
+        data.users_evaluated,
+        "notifications_sent:",
+        data.notifications_sent,
+        "assessments:",
+        data.assessments,
+      );
       const firstAssessment = data.assessments?.[0];
       const detail = firstAssessment
         ? `${data.users_evaluated} eval. · Nivel ${firstAssessment.siat_level} ${firstAssessment.siat_color} · ${firstAssessment.distance_km?.toFixed(0)} km`
         : `${data.users_evaluated} evaluado(s)`;
-      const notifDesc = data.notifications_sent > 0
-        ? `Push enviado · ${detail}`
-        : `Sin push · ${detail} · (revisa quiet hours o nivel mínimo)`;
-      toast.success(`Ciclón inyectado · ${body.name}`, { description: notifDesc });
+      const notifDesc =
+        data.notifications_sent > 0
+          ? `Push enviado · ${detail}`
+          : `Sin push · ${detail} · (revisa quiet hours o nivel mínimo)`;
+      toast.success(`Ciclón inyectado · ${body.name}`, {
+        description: notifDesc,
+      });
     } catch (e) {
-      console.error('[SIAT] inject-cyclone error:', e);
-      toast.error('Error al inyectar ciclón', { description: String(e) });
+      console.error("[SIAT] inject-cyclone error:", e);
+      toast.error("Error al inyectar ciclón", { description: String(e) });
     } finally {
       setCycloneLoading(false);
     }
@@ -174,83 +194,33 @@ export default function NotificationTestScreen() {
     if (resetLoading) return;
     setResetLoading(true);
     try {
-      console.log('[SIAT] reset-state →');
-      const res = await authFetch(`${API_BASE_URL}/api/v1/siat/reset-state`, { method: 'POST' });
-      console.log('[SIAT] reset-state status:', res.status);
+      console.log("[SIAT] reset-state →");
+      const res = await authFetch(`${API_BASE_URL}/api/v1/siat/reset-state`, {
+        method: "POST",
+      });
+      console.log("[SIAT] reset-state status:", res.status);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      console.log('[SIAT] reset-state OK');
-      toast.success('Estado SIAT reiniciado', { description: 'La siguiente inyección evaluará desde nivel 0.' });
+      console.log("[SIAT] reset-state OK");
+      toast.success("Estado SIAT reiniciado", {
+        description: "La siguiente inyección evaluará desde nivel 0.",
+      });
     } catch (e) {
-      console.error('[SIAT] reset-state error:', e);
-      toast.error('Error al reiniciar', { description: String(e) });
+      console.error("[SIAT] reset-state error:", e);
+      toast.error("Error al reiniciar", { description: String(e) });
     } finally {
       setResetLoading(false);
     }
   };
 
-  const injectSmnAlert = async () => {
-    if (smnLoading) return;
-    setSmnLoading(true);
-    try {
-      console.log('[SMN] inject-smn-alert → level 3');
-      const res = await authFetch(`${API_BASE_URL}/api/v1/siat/inject-smn-alert`, {
-        method: 'POST',
-        body: JSON.stringify({ level: 3, title: 'SMN: Alerta Meteorológica de Prueba [TEST]', short: 'Prueba de alerta nacional SMN/CONAGUA generada por el equipo BluEye.' }),
-      });
-      console.log('[SMN] inject-smn-alert status:', res.status);
-      if (res.status === 403) {
-        console.warn('[SMN] inject-smn-alert 403 — sin acceso');
-        toast.error('Sin acceso', { description: 'Pide que agreguen tu email a NOTIFICATION_TEST_ADMIN_EMAILS en backend/.env' });
-        return;
-      }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      console.log('[SMN] inject-smn-alert OK — notifications_sent:', data.notifications_sent, 'users_evaluated:', data.users_evaluated);
-      const desc = data.notifications_sent > 0
-        ? `Push enviado a ${data.notifications_sent} dispositivo(s) · ${data.users_evaluated} usuario(s) evaluados`
-        : `${data.users_evaluated} usuario(s) evaluados · sin push (revisa prefs)`;
-      toast.success('Alerta SMN inyectada', { description: desc });
-    } catch (e) {
-      console.error('[SMN] inject-smn-alert error:', e);
-      toast.error('Error al inyectar alerta SMN', { description: String(e) });
-    } finally {
-      setSmnLoading(false);
-    }
-  };
-
-  const sendTest = async (index: number) => {
-    if (loadingIndex !== null) return;
-    if (!onlyMe && !(await confirmBroadcast())) return;
-    setLoadingIndex(index);
-    const btn = BUTTONS[index];
-    console.log('[NotifTest] sendTest →', btn.type, '| only_me:', onlyMe);
-    try {
-      const res = await authFetch(`${API_BASE_URL}/api/v1/notifications/test`, {
-        method: 'POST',
-        body: JSON.stringify({ type: btn.type, only_me: onlyMe }),
-      });
-      console.log('[NotifTest] sendTest status:', res.status);
-      if (res.status === 403) {
-        console.warn('[NotifTest] sendTest 403 — sin acceso');
-        toast.error('Sin acceso', { description: 'Pide que agreguen tu email a NOTIFICATION_TEST_ADMIN_EMAILS en backend/.env' });
-        return;
-      }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      console.log('[NotifTest] sendTest OK — success_count:', data.success_count, 'failure_count:', data.failure_count);
-      const desc = onlyMe ? 'Solo tu dispositivo' : `${data.success_count} dispositivo(s)`;
-      toast.success('Enviado', { description: desc });
-    } catch (e) {
-      console.error('[NotifTest] sendTest error:', e);
-      toast.error('Error al enviar', { description: String(e) });
-    } finally {
-      setLoadingIndex(null);
-    }
-  };
-
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-transparent">
-      <ScrollView className="flex-1 px-6 pt-6" showsVerticalScrollIndicator={false}>
+    <SafeAreaView
+      edges={["top", "left", "right", "bottom"]}
+      className="flex-1 bg-transparent"
+    >
+      <ScrollView
+        className="flex-1 px-6 pt-6"
+        showsVerticalScrollIndicator={false}
+      >
         <Text className="text-xl font-poppins-semibold text-white mb-1">
           Dev: Notificaciones
         </Text>
@@ -258,64 +228,18 @@ export default function NotificationTestScreen() {
           Herramienta interna — solo visible en staging/dev
         </Text>
 
-        {/* Destino de la notificación */}
-        <View
-          className="flex-row items-center justify-between mb-6 rounded-2xl px-5 py-4"
-          style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}
-        >
-          <View className="flex-1 mr-4">
-            <Text className="text-sm font-poppins-semibold text-white">Solo mi dispositivo</Text>
-            <Text className="text-xs font-poppins text-white/50 mt-0.5">
-              {onlyMe ? 'Push solo a tus tokens registrados' : 'Broadcast a TODOS los dispositivos'}
-            </Text>
-          </View>
-          <Switch
-            value={onlyMe}
-            onValueChange={setOnlyMe}
-            trackColor={{ false: 'rgba(255,255,255,0.15)', true: colors.brandBlue }}
-            thumbColor="white"
-          />
-        </View>
-
-        {BUTTONS.map((btn, index) => (
-          <TouchableOpacity
-            key={btn.type}
-            onPress={() => sendTest(index)}
-            disabled={loadingIndex !== null}
-            className="flex-row items-center mb-4 rounded-2xl px-5 py-4"
-            style={{
-              backgroundColor: `${btn.color}22`,
-              borderWidth: 1,
-              borderColor: btn.color,
-              opacity: loadingIndex !== null && loadingIndex !== index ? 0.5 : 1,
-            }}
-          >
-            {loadingIndex === index ? (
-              <ActivityIndicator size="small" color={btn.color} style={{ marginRight: 12 }} />
-            ) : (
-              <MaterialCommunityIcons name={btn.icon} size={22} color={btn.color} style={{ marginRight: 12 }} />
-            )}
-            <Text className="flex-1 font-poppins-semibold text-sm" style={{ color: 'white' }}>
-              {btn.label}
-            </Text>
-            {loadingIndex !== null && loadingIndex !== index && (
-              <Text className="text-xs font-poppins text-white/30">espera...</Text>
-            )}
-          </TouchableOpacity>
-        ))}
-
         {/* Sección: inyección de ciclón falso */}
         <Text className="text-base font-poppins-semibold text-white mt-4 mb-1">
           Motor SIAT — Ciclón Falso
         </Text>
         <Text className="text-xs font-poppins text-white/50 mb-4">
-          Crea un ciclón de prueba con los parámetros que quieras y corre el ciclo SIAT
-          completo end-to-end.
+          Crea un ciclón de prueba con los parámetros que quieras y corre el
+          ciclo SIAT completo end-to-end.
         </Text>
 
         <View
           className="mb-4 rounded-2xl overflow-hidden"
-          style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' }}
+          style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}
         >
           <MapView
             style={{ height: 180 }}
@@ -332,7 +256,11 @@ export default function NotificationTestScreen() {
                 coordinate={{ latitude: markerLat, longitude: markerLon }}
                 anchor={{ x: 0.5, y: 0.5 }}
               >
-                <MaterialCommunityIcons name="weather-hurricane" size={28} color={colors.brandRed} />
+                <MaterialCommunityIcons
+                  name="weather-hurricane"
+                  size={28}
+                  color={colors.brandRed}
+                />
               </Marker>
             )}
           </MapView>
@@ -340,36 +268,53 @@ export default function NotificationTestScreen() {
             onPress={useMyLocation}
             disabled={locatingSelf}
             className="flex-row items-center justify-center py-2.5"
-            style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
           >
-            {locatingSelf
-              ? <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
-              : <MaterialCommunityIcons name="crosshairs-gps" size={16} color="white" style={{ marginRight: 8 }} />}
-            <Text className="font-poppins text-xs text-white/70">Usar mi ubicación actual</Text>
+            {locatingSelf ? (
+              <ActivityIndicator
+                size="small"
+                color="white"
+                style={{ marginRight: 8 }}
+              />
+            ) : (
+              <MaterialCommunityIcons
+                name="crosshairs-gps"
+                size={16}
+                color="white"
+                style={{ marginRight: 8 }}
+              />
+            )}
+            <Text className="font-poppins text-xs text-white/70">
+              Usar mi ubicación actual
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View className="flex-row gap-3 mb-3">
           <View className="flex-1">
-            <Text className="font-poppins text-xs text-white/50 mb-1">Latitud</Text>
+            <Text className="font-poppins text-xs text-white/50 mb-1">
+              Latitud
+            </Text>
             <TextInput
               value={cycloneLat}
               onChangeText={setCycloneLat}
               keyboardType="numbers-and-punctuation"
               placeholderTextColor="rgba(255,255,255,0.3)"
               className="rounded-lg px-3 py-2 font-poppins text-white"
-              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+              style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }}
             />
           </View>
           <View className="flex-1">
-            <Text className="font-poppins text-xs text-white/50 mb-1">Longitud</Text>
+            <Text className="font-poppins text-xs text-white/50 mb-1">
+              Longitud
+            </Text>
             <TextInput
               value={cycloneLon}
               onChangeText={setCycloneLon}
               keyboardType="numbers-and-punctuation"
               placeholderTextColor="rgba(255,255,255,0.3)"
               className="rounded-lg px-3 py-2 font-poppins text-white"
-              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+              style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }}
             />
           </View>
         </View>
@@ -380,30 +325,34 @@ export default function NotificationTestScreen() {
           onChangeText={setCycloneName}
           placeholderTextColor="rgba(255,255,255,0.3)"
           className="rounded-lg px-3 py-2 mb-3 font-poppins text-white"
-          style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+          style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }}
         />
 
         <View className="flex-row gap-3 mb-3">
           <View className="flex-1">
-            <Text className="font-poppins text-xs text-white/50 mb-1">Viento (km/h)</Text>
+            <Text className="font-poppins text-xs text-white/50 mb-1">
+              Viento (km/h)
+            </Text>
             <TextInput
               value={windKmh}
               onChangeText={setWindKmh}
               keyboardType="numeric"
               placeholderTextColor="rgba(255,255,255,0.3)"
               className="rounded-lg px-3 py-2 font-poppins text-white"
-              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+              style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }}
             />
           </View>
           <View className="flex-1">
-            <Text className="font-poppins text-xs text-white/50 mb-1">Velocidad (km/h)</Text>
+            <Text className="font-poppins text-xs text-white/50 mb-1">
+              Velocidad (km/h)
+            </Text>
             <TextInput
               value={speedKmh}
               onChangeText={setSpeedKmh}
               keyboardType="numeric"
               placeholderTextColor="rgba(255,255,255,0.3)"
               className="rounded-lg px-3 py-2 font-poppins text-white"
-              style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+              style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }}
             />
           </View>
         </View>
@@ -416,12 +365,20 @@ export default function NotificationTestScreen() {
               onPress={() => setDirection(dir)}
               className="rounded-full px-4 py-2"
               style={{
-                backgroundColor: direction === dir ? colors.brandBlue : 'rgba(255,255,255,0.06)',
+                backgroundColor:
+                  direction === dir
+                    ? colors.brandBlue
+                    : "rgba(255,255,255,0.06)",
                 borderWidth: 1,
-                borderColor: direction === dir ? colors.brandBlue : 'rgba(255,255,255,0.2)',
+                borderColor:
+                  direction === dir
+                    ? colors.brandBlue
+                    : "rgba(255,255,255,0.2)",
               }}
             >
-              <Text className="font-poppins-semibold text-xs text-white">{dir}</Text>
+              <Text className="font-poppins-semibold text-xs text-white">
+                {dir}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -437,49 +394,57 @@ export default function NotificationTestScreen() {
             opacity: cycloneLoading ? 0.6 : 1,
           }}
         >
-          {cycloneLoading
-            ? <ActivityIndicator size="small" color={colors.brandRed} style={{ marginRight: 12 }} />
-            : <MaterialCommunityIcons name="weather-hurricane" size={22} color={colors.brandRed} style={{ marginRight: 12 }} />}
-          <Text className="font-poppins-semibold text-sm text-white">Inyectar ciclón</Text>
+          {cycloneLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={colors.brandRed}
+              style={{ marginRight: 12 }}
+            />
+          ) : (
+            <MaterialCommunityIcons
+              name="weather-hurricane"
+              size={22}
+              color={colors.brandRed}
+              style={{ marginRight: 12 }}
+            />
+          )}
+          <Text className="font-poppins-semibold text-sm text-white">
+            Inyectar ciclón
+          </Text>
         </TouchableOpacity>
 
         {/* Reset estado SIAT */}
         <TouchableOpacity
           onPress={resetSiatState}
           disabled={resetLoading}
-          className="flex-row items-center mb-4 rounded-2xl px-5 py-4"
-          style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
-        >
-          {resetLoading
-            ? <ActivityIndicator size="small" color="white" style={{ marginRight: 12 }} />
-            : <MaterialCommunityIcons name="refresh" size={22} color="white" style={{ marginRight: 12 }} />}
-          <View className="flex-1">
-            <Text className="font-poppins-semibold text-sm text-white">Limpiar estado SIAT</Text>
-            <Text className="font-poppins text-xs text-white/50">Permite volver a disparar escalación desde el mismo nivel</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Sección: alerta SMN nacional */}
-        <Text className="text-base font-poppins-semibold text-white mt-4 mb-1">
-          Ruta SMN/CONAGUA
-        </Text>
-        <Text className="text-xs font-poppins text-white/50 mb-4">
-          Inyecta una alerta nacional (sin coords) y la procesa vía geocercado.{'\n'}
-          Nivel 3 — AMARILLO por defecto. Llega a todos los usuarios elegibles.
-        </Text>
-
-        <TouchableOpacity
-          onPress={injectSmnAlert}
-          disabled={smnLoading}
           className="flex-row items-center mb-8 rounded-2xl px-5 py-4"
-          style={{ backgroundColor: `${colors.brandYellow}22`, borderWidth: 1, borderColor: colors.brandYellow }}
+          style={{
+            backgroundColor: "rgba(255,255,255,0.06)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.2)",
+          }}
         >
-          {smnLoading
-            ? <ActivityIndicator size="small" color={colors.brandYellow} style={{ marginRight: 12 }} />
-            : <MaterialCommunityIcons name="weather-cloudy-alert" size={22} color={colors.brandYellow} style={{ marginRight: 12 }} />}
+          {resetLoading ? (
+            <ActivityIndicator
+              size="small"
+              color="white"
+              style={{ marginRight: 12 }}
+            />
+          ) : (
+            <MaterialCommunityIcons
+              name="refresh"
+              size={22}
+              color="white"
+              style={{ marginRight: 12 }}
+            />
+          )}
           <View className="flex-1">
-            <Text className="font-poppins-semibold text-sm text-white">Alerta SMN Nacional — Amarillo</Text>
-            <Text className="font-poppins text-xs text-white/50">Nivel 3 · Sin geocoordenadas · Todos los usuarios</Text>
+            <Text className="font-poppins-semibold text-sm text-white">
+              Limpiar estado SIAT
+            </Text>
+            <Text className="font-poppins text-xs text-white/50">
+              Permite volver a disparar escalación desde el mismo nivel
+            </Text>
           </View>
         </TouchableOpacity>
       </ScrollView>
