@@ -219,18 +219,30 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
     }, [])
   );
 
-  // Al volver al foco: refrescar tormentas activas (reales + de prueba) desde la DB,
-  // así una tormenta inyectada sigue apareciendo después de recargar la app.
+  // Refresca tormentas activas (reales + de prueba) al llegar al foco, y luego
+  // cada 60s mientras la pantalla siga enfocada — sin esto, un ciclón que se
+  // actualiza (o se corrige tras un glitch del feed del NHC) no se refleja
+  // hasta que el usuario cierre y reabra la app.
   useFocusEffect(
     useCallback(() => {
-      (async () => {
+      let isActive = true;
+
+      const fetchCyclones = async () => {
         try {
           const cyclones = await loadActiveCyclones();
-          setActiveCyclones(cyclones);
+          if (isActive) setActiveCyclones(cyclones);
         } catch (error) {
           console.warn('[Map] Failed to load active cyclones:', error);
         }
-      })();
+      };
+
+      fetchCyclones();
+      const interval = setInterval(fetchCyclones, 60000);
+
+      return () => {
+        isActive = false;
+        clearInterval(interval);
+      };
     }, [])
   );
 
@@ -255,6 +267,22 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       longitudeDelta: 3,
     }, 800);
   }, [focusLat, focusLon]);
+
+  // Active cyclones are real ocean-going storms — usually far outside the
+  // tight zoom the map defaults to around the user's own location, so without
+  // this they're effectively invisible even though they're plotted correctly.
+  const focusActiveCyclones = () => {
+    if (activeCyclones.length === 0) {
+      toast('Sin ciclones activos', { description: 'No hay huracanes o tormentas tropicales activos en este momento.' });
+      return;
+    }
+    const coordinates = activeCyclones.map(c => ({ latitude: c.latitude, longitude: c.longitude }));
+    if (userLocation) coordinates.push(userLocation);
+    mapRef.current?.fitToCoordinates(coordinates, {
+      edgePadding: { top: 80, right: 60, bottom: 120, left: 60 },
+      animated: true,
+    });
+  };
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -837,6 +865,36 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
         }}
       >
         <MaterialCommunityIcons name="navigation-variant" size={24} color="#FFFFFF" />
+      </Pressable>
+
+      {/* Ver ciclones activos — reales (Fausto/Genevieve, etc.) suelen estar muy
+          mar adentro, fuera del zoom por default; esto centra la cámara en ellos. */}
+      <Pressable
+        onPress={focusActiveCyclones}
+        style={{
+          position: 'absolute',
+          bottom: 168,
+          right: 16,
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          backgroundColor: 'rgba(8, 15, 30, 0.85)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MaterialCommunityIcons name="weather-hurricane" size={24} color="#FFFFFF" />
+        {activeCyclones.length > 0 && (
+          <View style={{
+            position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 9,
+            backgroundColor: colors.brandRed, alignItems: 'center', justifyContent: 'center',
+            paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#fff',
+          }}>
+            <Text style={{ color: '#fff', fontSize: 10, fontFamily: fonts.poppinsSemiBold }}>
+              {activeCyclones.length}
+            </Text>
+          </View>
+        )}
       </Pressable>
 
       {/* SOS FAB */}
