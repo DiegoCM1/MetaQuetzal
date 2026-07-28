@@ -163,6 +163,21 @@ export async function setupNotificationChannels() {
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     bypassDnd: true,
   });
+  // Invite / reject / contact-added pushes declare this channel id backend-side
+  // (sos_contacts/service.py, sos_invite/service.py) but it was never created
+  // here — Android silently fell back to its default channel (no heads-up, no
+  // guaranteed sound) for all three, making a successfully-sent invite push
+  // easy to miss entirely. HIGH (not MAX/bypassDnd) — important, but not the
+  // "someone needs help right now" signal that sos_emergency is.
+  await Notifications.setNotificationChannelAsync("sos_alerts", {
+    name: "Contactos SOS",
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    enableVibrate: true,
+    showBadge: true,
+    sound: "default",
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+  });
   // Silent channel for background data-refresh pushes — no banner, no sound, hidden in drawer
   await Notifications.setNotificationChannelAsync("contacts_refresh_silent", {
     name: "Sincronización de contactos",

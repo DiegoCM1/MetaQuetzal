@@ -196,6 +196,65 @@ def test_evaluate_user_distant_slow_cyclone_is_azul():
 
 
 # ---------------------------------------------------------------------------
+# evaluate_user() — direction-aware level adjustment
+# ---------------------------------------------------------------------------
+# Cyclone due south of the user (same longitude), so bearing cyclone→user is
+# due north (0°). Distance ~222 km, speed 20 km/h → ETA ~11.1h → baseline
+# level 4 (NARANJA) before any heading adjustment. wind_kmh=50 keeps the
+# distance-only floor at level 2, low enough that the -1/-2 adjustments are
+# visible instead of being clamped back up by the floor.
+
+_DIRECTION_CYCLONE_BASE = {
+    "name": "HEADING-TEST",
+    "status": "HU",
+    "lat": 18.0,
+    "lon": -99.0,
+    "wind_kmh": 50.0,
+    "movement_speed_kmh": 20.0,
+}
+_DIRECTION_USER_LAT, _DIRECTION_USER_LON = 20.0, -99.0
+
+
+def test_evaluate_user_approaching_keeps_eta_level():
+    """Heading ~toward the user (bearing diff <= 60°) → no adjustment."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE, "movement_direction": "N"}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 4
+
+
+def test_evaluate_user_lateral_steps_down_one_level():
+    """Heading roughly perpendicular (60° < diff <= 120°) → level - 1."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE, "movement_direction": "E"}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 3
+
+
+def test_evaluate_user_departing_steps_down_two_levels():
+    """Heading away from the user (diff > 120°) → level - 2."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE, "movement_direction": "S"}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 2
+
+
+def test_evaluate_user_departing_never_drops_below_distance_floor():
+    """A departing cyclone close enough that distance alone floors the level."""
+    cyclone = {
+        **_DIRECTION_CYCLONE_BASE,
+        "wind_kmh": 100.0,  # floor: distance < 300 and wind >= 100 → floor level 4
+        "movement_direction": "S",
+    }
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 4  # ETA-based (4) - 2 = 2, but floor is 4
+
+
+def test_evaluate_user_missing_direction_keeps_eta_level():
+    """No movement_direction provided → behaves exactly like before (no penalty)."""
+    cyclone = {**_DIRECTION_CYCLONE_BASE}
+    result = evaluate_user(_DIRECTION_USER_LAT, _DIRECTION_USER_LON, cyclone)
+    assert result["siat_level"] == 4
+
+
+# ---------------------------------------------------------------------------
 # GET /api/v1/siat/affected-users
 # ---------------------------------------------------------------------------
 
@@ -357,6 +416,34 @@ async def test_run_cycle_sends_push_when_prefs_allow():
         result = await run_cycle(db)
 
     assert result["notifications_sent"] == 1
+
+
+# ---------------------------------------------------------------------------
+# _upsert_cyclone_alert — must not be double-notified via the SMN geofenced path
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_upsert_cyclone_alert_marks_notified_at_immediately():
+    """
+    Regression test: a cyclone escalation alert must be created with
+    notified_at already set. It gets its own targeted push via _push_per_user
+    right after this call, inside run_cycle — leaving notified_at NULL let
+    _get_pending_smn_alerts() pick up this same brand-new row later in the
+    SAME cycle and fire a SECOND push for it through the generic SMN/
+    geofenced path (observed live: two distinct pushes for one escalation).
+    """
+    from app.features.siat.service import _upsert_cyclone_alert
+
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=MagicMock(
+        **{"mappings.return_value.first.return_value": {"id": "test-uuid"}}
+    ))
+
+    await _upsert_cyclone_alert(db, _FAKE_CYCLONE, _ASSESSMENT_LEVEL_3)
+
+    sql_text = str(db.execute.call_args.args[0])
+    assert "notified_at" in sql_text
+    assert "NOW()" in sql_text
 
 
 # ---------------------------------------------------------------------------
@@ -763,6 +850,61 @@ async def test_run_cycle_with_extra_cyclones():
     assert result["notifications_sent"] == 1
 
 
+# ---------------------------------------------------------------------------
+# run_cycle() persists the WORST threat per cycle, not the last-evaluated one
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_cycle_persists_highest_level_regardless_of_evaluation_order():
+    """
+    Regression test: with two simultaneously active cyclones, user_alert_states
+    must end up reflecting the MOST severe assessment of the cycle — even when
+    the weaker cyclone happens to be evaluated last in the loop. Previously,
+    _upsert_user_state was called unconditionally per (cyclone, user) pair, so
+    whichever cyclone was last in the list silently overwrote a more dangerous
+    one evaluated earlier in the same cycle.
+    """
+    from app.features.siat.service import run_cycle
+
+    strong_cyclone = {"name": "STRONG", "status": "HU", "lat": 19.0, "lon": -99.0,
+                       "wind_kmh": 200.0, "movement_speed_kmh": 20.0}
+    weak_cyclone = {"name": "WEAK", "status": "TS", "lat": 10.0, "lon": -104.0,
+                     "wind_kmh": 80.0, "movement_speed_kmh": 15.0}
+
+    def _evaluate_side_effect(user_lat, user_lon, cyclone):
+        return _ASSESSMENT_LEVEL_5 if cyclone["name"] == "STRONG" else _ASSESSMENT_LEVEL_2
+
+    prefs = {"siat_enabled": True, "min_siat_level": 2, "map_events_enabled": True}
+    db = MagicMock()
+    db.commit = AsyncMock()
+    upsert_calls = []
+
+    async def _record_upsert(db, user_id, level, color, cyclone_id):
+        upsert_calls.append({"user_id": user_id, "level": level, "color": color})
+
+    with patch(f"{_SVC}.fetch_active_cyclones", new_callable=AsyncMock,
+               return_value=[strong_cyclone, weak_cyclone]), \
+         patch(f"{_SVC}._get_users_with_location", new_callable=AsyncMock, return_value=[_FAKE_USER]), \
+         patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, side_effect=[101, 102]), \
+         patch(f"{_SVC}.evaluate_user", side_effect=_evaluate_side_effect), \
+         patch(f"{_SVC}._get_user_state", new_callable=AsyncMock, return_value={"current_level": 1}), \
+         patch(f"{_SVC}._save_assessment", new_callable=AsyncMock), \
+         patch(f"{_SVC}._upsert_user_state", side_effect=_record_upsert), \
+         patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=prefs), \
+         patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
+         patch(f"{_SVC}._push_per_user", new_callable=AsyncMock, return_value=1), \
+         patch(f"{_SVC}._mark_notified", new_callable=AsyncMock), \
+         patch(f"{_SVC}._notify_smn_alerts", new_callable=AsyncMock, return_value=0), \
+         patch(f"{_SVC}._upsert_cyclone_alert", new_callable=AsyncMock, return_value="test-alert-uuid"):
+        await run_cycle(db)
+
+    # user_alert_states must be written exactly once for this user, with the
+    # STRONG cyclone's level (5) — never overwritten down to WEAK's level (2)
+    # even though WEAK was evaluated last.
+    assert len(upsert_calls) == 1
+    assert upsert_calls[0] == {"user_id": 1, "level": 5, "color": "ROJO"}
+
+
 @pytest.mark.asyncio
 async def test_smn_national_alert_no_coords_notifies_all_eligible_users():
     """Alerta nacional (lat/lon NULL) → sin filtro de distancia → todos los usuarios elegibles reciben push."""
@@ -831,3 +973,85 @@ async def test_smn_level5_overrides_quiet_hours():
 
     assert total == 1
     mock_mark.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# inject_and_run_cycle() derives status from wind — service-level test
+# ---------------------------------------------------------------------------
+
+class _FakeCycloneReq:
+    def __init__(self, wind_kmh: float):
+        self.name = "FALSO-TEST"
+        self.lat = 21.0
+        self.lon = -98.0
+        self.wind_kmh = wind_kmh
+        self.movement_speed_kmh = 10.0
+        self.movement_direction = "N"
+
+
+@pytest.mark.asyncio
+async def test_inject_and_run_cycle_classifies_low_wind_as_td():
+    """Low-wind fake cyclone must be saved as TD, not the old hardcoded 'HU'."""
+    from app.features.siat.service import inject_and_run_cycle
+
+    db = MagicMock()
+    with patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, return_value=99) as mock_save, \
+         patch(f"{_SVC}.run_cycle", new_callable=AsyncMock, return_value=FAKE_CYCLE_RESULT):
+        await inject_and_run_cycle(db, _FakeCycloneReq(wind_kmh=50.0))
+
+    saved_cyclone = mock_save.call_args.args[1]
+    assert saved_cyclone["status"] == "TD"
+
+
+@pytest.mark.asyncio
+async def test_inject_and_run_cycle_classifies_high_wind_as_hu():
+    """High-wind fake cyclone still resolves to HU."""
+    from app.features.siat.service import inject_and_run_cycle
+
+    db = MagicMock()
+    with patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, return_value=99) as mock_save, \
+         patch(f"{_SVC}.run_cycle", new_callable=AsyncMock, return_value=FAKE_CYCLE_RESULT):
+        await inject_and_run_cycle(db, _FakeCycloneReq(wind_kmh=200.0))
+
+    saved_cyclone = mock_save.call_args.args[1]
+    assert saved_cyclone["status"] == "HU"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/siat/active-cyclones
+# ---------------------------------------------------------------------------
+
+_FAKE_ACTIVE_CYCLONES = [
+    {
+        "id": 1,
+        "source": "FAKE",
+        "name": "FALSO-1",
+        "lat": 21.0,
+        "lon": -98.0,
+        "wind_kmh": 160.0,
+        "movement_direction": "N",
+        "movement_direction_deg": 0.0,
+        "movement_speed_kmh": 20.0,
+        "category_code": "HU",
+        "category_label": "Huracán",
+        "advisory_time": datetime.now(timezone.utc),
+    },
+]
+
+
+def test_active_cyclones_requires_auth():
+    """No Authorization header → 422 (FastAPI header validation)."""
+    r = client.get("/api/v1/siat/active-cyclones")
+    assert r.status_code == 422
+
+
+def test_active_cyclones_returns_expected_shape():
+    """Any authenticated user (no admin allowlist) gets the enriched cyclone list."""
+    with _mock_auth_email(NON_ADMIN_EMAIL):
+        with patch(f"{_ROUTER}.get_active_cyclones", new_callable=AsyncMock, return_value=_FAKE_ACTIVE_CYCLONES):
+            r = client.get("/api/v1/siat/active-cyclones", headers=AUTH_HEADERS)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1
+    assert body["cyclones"][0]["category_label"] == "Huracán"
+    assert body["cyclones"][0]["movement_direction_deg"] == 0.0

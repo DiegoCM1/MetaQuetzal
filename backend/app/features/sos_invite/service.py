@@ -11,6 +11,14 @@ from app.features.notifications.service import get_tokens_for_users, _send_multi
 logger = logging.getLogger(__name__)
 
 DEEP_LINK_BASE = "blueye://sos-invite"
+# Known limitation: this is a bare custom scheme, not a universal/app link
+# (app.json has no associatedDomains / autoVerify intent filter). If the invitee
+# doesn't have BluEye installed, tapping a manually-shared share_url does nothing —
+# there's no web fallback to the store and no deferred-deep-link resume after
+# install. They have to install the app on their own, then re-tap the original
+# share message. Fixing this needs a real deferred-deep-link setup (Firebase
+# Dynamic Links, Branch.io, or a first-party https:// landing page + App Links),
+# not a one-line patch.
 
 
 async def create_invite(
@@ -19,11 +27,19 @@ async def create_invite(
     inviter_display_name: str,
     contact_id: int,
 ) -> dict:
+    # Match on the last 10 digits rather than an exact string: the contact's phone
+    # comes verbatim from the device address book (may carry +52, dashes, spaces),
+    # while the invitee's own phone was typed by hand during onboarding — an exact
+    # match almost never survives that formatting gap, so invites silently fell
+    # back to manual share instead of reaching an existing app user.
     contact = await db.execute(
         text("""
             SELECT sc.name, sc.link_status, sc.user_id, sc.phone, u.id AS invitee_user_id
             FROM sos_contacts sc
-            LEFT JOIN users u ON u.phone = sc.phone
+            LEFT JOIN users u ON
+                length(regexp_replace(sc.phone, '[^0-9]', '', 'g')) >= 10
+                AND right(regexp_replace(u.phone, '[^0-9]', '', 'g'), 10)
+                    = right(regexp_replace(sc.phone, '[^0-9]', '', 'g'), 10)
             WHERE sc.id = :id
         """),
         {"id": contact_id},

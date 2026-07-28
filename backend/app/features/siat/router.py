@@ -5,12 +5,12 @@ from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.features.siat.schemas import (
-    AffectedUsersResponse, FakeCycloneRequest, InjectCycloneResponse,
+    ActiveCyclonesResponse, AffectedUsersResponse, FakeCycloneRequest, InjectCycloneResponse,
     InjectSMNAlertRequest, InjectSMNAlertResponse, ResetStateResponse,
     RunCycleResponse, UserSiatStatus,
 )
 from app.features.siat.service import (
-    get_affected_users, get_user_siat_status, inject_and_run_cycle,
+    get_active_cyclones, get_affected_users, get_user_siat_status, inject_and_run_cycle,
     inject_smn_test_alert, reset_user_siat_state, run_cycle,
 )
 from app.features.users.service import get_user_by_firebase_uid
@@ -131,3 +131,16 @@ async def siat_user_status(user_id: int, db: AsyncSession = Depends(get_db)):
     if status is None:
         raise HTTPException(status_code=404, detail="No SIAT assessment found for this user")
     return status
+
+
+@router.get("/api/v1/siat/active-cyclones", response_model=ActiveCyclonesResponse)
+async def siat_active_cyclones(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Cyclones (real + test) recent enough to display on the map, with their
+    intensity category and parsed heading. Any authenticated user can read this.
+    """
+    cyclones = await get_active_cyclones(db)
+    return {"total": len(cyclones), "cyclones": cyclones}

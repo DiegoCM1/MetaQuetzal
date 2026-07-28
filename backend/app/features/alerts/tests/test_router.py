@@ -47,24 +47,27 @@ def test_alerts_active_returns_structure():
     with _mock_auth():
         with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=fake_db_user):
             with patch(f"{_ROUTER}.get_user_siat_state", new_callable=AsyncMock, return_value=fake_siat):
-                with patch(f"{_ROUTER}.get_alerts", new_callable=AsyncMock, return_value=[]):
-                    with patch(f"{_ROUTER}.fetch_latest_bulletin", new_callable=AsyncMock, return_value=None):
-                        r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
+                with patch(f"{_ROUTER}.get_general_alerts_for_active", new_callable=AsyncMock, return_value=[]):
+                    with patch(f"{_ROUTER}.get_smn_cyclone_advisories", new_callable=AsyncMock, return_value=[]):
+                        with patch(f"{_ROUTER}.fetch_latest_bulletin", new_callable=AsyncMock, return_value=None):
+                            r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
     assert r.status_code == 200
     body = r.json()
     assert "user_siat" in body
     assert "cyclonic_alerts" in body
     assert "general_alerts" in body
     assert "smn_bulletin" in body
+    assert "smn_cyclone_advisories" in body
 
 
 def test_alerts_active_no_profile_still_returns_200():
     """User without profile should still get a valid (empty) response."""
     with _mock_auth():
         with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=None):
-            with patch(f"{_ROUTER}.get_alerts", new_callable=AsyncMock, return_value=[]):
-                with patch(f"{_ROUTER}.fetch_latest_bulletin", new_callable=AsyncMock, return_value=None):
-                    r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
+            with patch(f"{_ROUTER}.get_general_alerts_for_active", new_callable=AsyncMock, return_value=[]):
+                with patch(f"{_ROUTER}.get_smn_cyclone_advisories", new_callable=AsyncMock, return_value=[]):
+                    with patch(f"{_ROUTER}.fetch_latest_bulletin", new_callable=AsyncMock, return_value=None):
+                        r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
     assert r.status_code == 200
     body = r.json()
     assert body["user_siat"] is None
@@ -76,9 +79,10 @@ def test_alerts_active_has_generated_at():
     from datetime import datetime
     with _mock_auth():
         with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=None):
-            with patch(f"{_ROUTER}.get_alerts", new_callable=AsyncMock, return_value=[]):
-                with patch(f"{_ROUTER}.fetch_latest_bulletin", new_callable=AsyncMock, return_value=None):
-                    r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
+            with patch(f"{_ROUTER}.get_general_alerts_for_active", new_callable=AsyncMock, return_value=[]):
+                with patch(f"{_ROUTER}.get_smn_cyclone_advisories", new_callable=AsyncMock, return_value=[]):
+                    with patch(f"{_ROUTER}.fetch_latest_bulletin", new_callable=AsyncMock, return_value=None):
+                        r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
     assert r.status_code == 200
     body = r.json()
     assert "generated_at" in body
@@ -91,15 +95,53 @@ def test_alerts_active_smn_failure_does_not_break():
     """SMN raising an exception must not break /active — smn_bulletin is null, status 200."""
     with _mock_auth():
         with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=None):
-            with patch(f"{_ROUTER}.get_alerts", new_callable=AsyncMock, return_value=[]):
-                with patch(
-                    f"{_ROUTER}.fetch_latest_bulletin",
-                    new_callable=AsyncMock,
-                    side_effect=Exception("network error"),
-                ):
-                    r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
+            with patch(f"{_ROUTER}.get_general_alerts_for_active", new_callable=AsyncMock, return_value=[]):
+                with patch(f"{_ROUTER}.get_smn_cyclone_advisories", new_callable=AsyncMock, return_value=[]):
+                    with patch(
+                        f"{_ROUTER}.fetch_latest_bulletin",
+                        new_callable=AsyncMock,
+                        side_effect=Exception("network error"),
+                    ):
+                        r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
     assert r.status_code == 200
     assert r.json()["smn_bulletin"] is None
+
+
+def test_alerts_active_includes_cyclone_advisories():
+    """smn_cyclone_advisories surfaces the structured rows from the DB, separate
+    from general_alerts."""
+    fake_advisory = {
+        "ocean": "pacifico",
+        "system_name": "Tormenta Tropical Genevieve",
+        "aviso_num": 5,
+        "level": 3,
+        "synthesis": "TORMENTA TROPICAL GENEVIEVE AL SUR DEL TERRITORIO NACIONAL.",
+        "location_text": "820 km al sur-suroeste de Zihuatanejo, Gro.",
+        "lat": 10.8,
+        "lon": -104.3,
+        "movement_text": "Hacia el oeste-noroeste (300°) a 24 km/h",
+        "wind_sustained_kmh": 95,
+        "wind_gusts_kmh": 110,
+        "pressure_hpa": 997,
+        "recommendations": "No se emiten recomendaciones.",
+        "pdf_url": "https://smn.conagua.gob.mx/tools/GUI/PortalLaravel/public/generatePDF/10635",
+        "issued_at": "2026-07-25T15:00:00+00:00",
+    }
+    with _mock_auth():
+        with patch(f"{_ROUTER}.get_user_by_firebase_uid", new_callable=AsyncMock, return_value=None):
+            with patch(f"{_ROUTER}.get_general_alerts_for_active", new_callable=AsyncMock, return_value=[]):
+                with patch(
+                    f"{_ROUTER}.get_smn_cyclone_advisories",
+                    new_callable=AsyncMock,
+                    return_value=[fake_advisory],
+                ):
+                    with patch(f"{_ROUTER}.fetch_latest_bulletin", new_callable=AsyncMock, return_value=None):
+                        r = client.get("/api/v1/alerts/active", headers=AUTH_HEADERS)
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["smn_cyclone_advisories"]) == 1
+    assert body["smn_cyclone_advisories"][0]["system_name"] == "Tormenta Tropical Genevieve"
+    assert body["smn_cyclone_advisories"][0]["wind_sustained_kmh"] == 95
 
 
 # ---------------------------------------------------------------------------
