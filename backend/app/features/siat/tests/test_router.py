@@ -419,6 +419,34 @@ async def test_run_cycle_sends_push_when_prefs_allow():
 
 
 # ---------------------------------------------------------------------------
+# _upsert_cyclone_alert — must not be double-notified via the SMN geofenced path
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_upsert_cyclone_alert_marks_notified_at_immediately():
+    """
+    Regression test: a cyclone escalation alert must be created with
+    notified_at already set. It gets its own targeted push via _push_per_user
+    right after this call, inside run_cycle — leaving notified_at NULL let
+    _get_pending_smn_alerts() pick up this same brand-new row later in the
+    SAME cycle and fire a SECOND push for it through the generic SMN/
+    geofenced path (observed live: two distinct pushes for one escalation).
+    """
+    from app.features.siat.service import _upsert_cyclone_alert
+
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=MagicMock(
+        **{"mappings.return_value.first.return_value": {"id": "test-uuid"}}
+    ))
+
+    await _upsert_cyclone_alert(db, _FAKE_CYCLONE, _ASSESSMENT_LEVEL_3)
+
+    sql_text = str(db.execute.call_args.args[0])
+    assert "notified_at" in sql_text
+    assert "NOW()" in sql_text
+
+
+# ---------------------------------------------------------------------------
 # SMN/CONAGUA alerts → geocercado push — service-level tests
 # ---------------------------------------------------------------------------
 
@@ -820,6 +848,61 @@ async def test_run_cycle_with_extra_cyclones():
     assert result["cyclones_found"] == 1   # NHC=0, extra=1
     assert len(result["assessments"]) == 1
     assert result["notifications_sent"] == 1
+
+
+# ---------------------------------------------------------------------------
+# run_cycle() persists the WORST threat per cycle, not the last-evaluated one
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_run_cycle_persists_highest_level_regardless_of_evaluation_order():
+    """
+    Regression test: with two simultaneously active cyclones, user_alert_states
+    must end up reflecting the MOST severe assessment of the cycle — even when
+    the weaker cyclone happens to be evaluated last in the loop. Previously,
+    _upsert_user_state was called unconditionally per (cyclone, user) pair, so
+    whichever cyclone was last in the list silently overwrote a more dangerous
+    one evaluated earlier in the same cycle.
+    """
+    from app.features.siat.service import run_cycle
+
+    strong_cyclone = {"name": "STRONG", "status": "HU", "lat": 19.0, "lon": -99.0,
+                       "wind_kmh": 200.0, "movement_speed_kmh": 20.0}
+    weak_cyclone = {"name": "WEAK", "status": "TS", "lat": 10.0, "lon": -104.0,
+                     "wind_kmh": 80.0, "movement_speed_kmh": 15.0}
+
+    def _evaluate_side_effect(user_lat, user_lon, cyclone):
+        return _ASSESSMENT_LEVEL_5 if cyclone["name"] == "STRONG" else _ASSESSMENT_LEVEL_2
+
+    prefs = {"siat_enabled": True, "min_siat_level": 2, "map_events_enabled": True}
+    db = MagicMock()
+    db.commit = AsyncMock()
+    upsert_calls = []
+
+    async def _record_upsert(db, user_id, level, color, cyclone_id):
+        upsert_calls.append({"user_id": user_id, "level": level, "color": color})
+
+    with patch(f"{_SVC}.fetch_active_cyclones", new_callable=AsyncMock,
+               return_value=[strong_cyclone, weak_cyclone]), \
+         patch(f"{_SVC}._get_users_with_location", new_callable=AsyncMock, return_value=[_FAKE_USER]), \
+         patch(f"{_SVC}._save_cyclone", new_callable=AsyncMock, side_effect=[101, 102]), \
+         patch(f"{_SVC}.evaluate_user", side_effect=_evaluate_side_effect), \
+         patch(f"{_SVC}._get_user_state", new_callable=AsyncMock, return_value={"current_level": 1}), \
+         patch(f"{_SVC}._save_assessment", new_callable=AsyncMock), \
+         patch(f"{_SVC}._upsert_user_state", side_effect=_record_upsert), \
+         patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=prefs), \
+         patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
+         patch(f"{_SVC}._push_per_user", new_callable=AsyncMock, return_value=1), \
+         patch(f"{_SVC}._mark_notified", new_callable=AsyncMock), \
+         patch(f"{_SVC}._notify_smn_alerts", new_callable=AsyncMock, return_value=0), \
+         patch(f"{_SVC}._upsert_cyclone_alert", new_callable=AsyncMock, return_value="test-alert-uuid"):
+        await run_cycle(db)
+
+    # user_alert_states must be written exactly once for this user, with the
+    # STRONG cyclone's level (5) — never overwritten down to WEAK's level (2)
+    # even though WEAK was evaluated last.
+    assert len(upsert_calls) == 1
+    assert upsert_calls[0] == {"user_id": 1, "level": 5, "color": "ROJO"}
 
 
 @pytest.mark.asyncio

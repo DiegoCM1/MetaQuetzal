@@ -49,7 +49,7 @@ export default function AlarmScreen() {
               style={{ backgroundColor: categoryBadgeColor }}
             >
               <Text className="text-white font-bold text-sm">
-                Categoría {alertData.category}
+                Nivel {alertData.category}
               </Text>
             </View>
           </View>

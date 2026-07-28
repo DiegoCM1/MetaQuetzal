@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bluai",
     "slug": "react-native-blueye",
-    "version": "1.8.2",
+    "version": "1.9.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -36,7 +36,7 @@
       }
     },
     "android": {
-      "versionCode": 13,
+      "versionCode": 14,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -106,7 +106,7 @@
         "projectId": "ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
       }
     },
-    "runtimeVersion": "1.8.2",
+    "runtimeVersion": "1.9.0",
     "updates": {
       "url": "https://u.expo.dev/ed07ab1d-33c0-4d51-bec1-7d6c9d0e5fe9"
     },
