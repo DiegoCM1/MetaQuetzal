@@ -18,8 +18,16 @@ from app.features.alerts.schemas import (
     OneCallAlertsResponse,
     SiatUserState,
     SMNBulletin,
+    SMNCycloneAdvisory,
 )
-from app.features.alerts.service import create_alert, get_alert_by_id, get_alerts, get_user_siat_state
+from app.features.alerts.service import (
+    create_alert,
+    get_alert_by_id,
+    get_alerts,
+    get_general_alerts_for_active,
+    get_smn_cyclone_advisories,
+    get_user_siat_state,
+)
 from app.features.alerts.providers.smn import fetch_latest_bulletin
 from app.features.users.service import get_user_by_firebase_uid
 from app.core.auth import get_current_user
@@ -99,8 +107,9 @@ async def get_active_alerts(
                     short=assessment_reason,
                 ))
 
-    # --- System alerts (admin-created, most recent 5) ---
-    raw_alerts = await get_alerts(db, limit=5, offset=0)
+    # --- System alerts (admin-created, most recent 5) — excludes SMN cyclone
+    # advisories, which get their own dedicated section below ---
+    raw_alerts = await get_general_alerts_for_active(db, limit=5)
     general_alerts = [
         ActiveAlertItem(
             source="SYSTEM",
@@ -122,12 +131,17 @@ async def get_active_alerts(
     except Exception as exc:
         logger.warning("SMN bulletin unavailable, continuing without it: %s", exc)
 
+    # --- SMN cyclone advisories (Atlántico/Pacífico), structured, from DB ---
+    raw_cyclone_advisories = await get_smn_cyclone_advisories(db)
+    smn_cyclone_advisories = [SMNCycloneAdvisory(**a) for a in raw_cyclone_advisories]
+
     return ActiveAlertsResponse(
         generated_at=datetime.now(timezone.utc),
         user_siat=user_siat,
         cyclonic_alerts=cyclonic_alerts,
         general_alerts=general_alerts,
         smn_bulletin=smn_bulletin,
+        smn_cyclone_advisories=smn_cyclone_advisories,
     )
 
 

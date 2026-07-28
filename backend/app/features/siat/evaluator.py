@@ -8,19 +8,25 @@ Maps cyclone proximity + intensity to the five official SIAT-CT levels:
   4 - NARANJA   (peligro alto, 6–12 h)
   5 - ROJO      (impacto inminente / en curso, < 6 h)
 
-Primary strategy: ETA-based (distance / movement speed).
+Primary strategy: ETA-based (distance / movement speed), adjusted by heading:
+a cyclone heading toward the user keeps the full ETA-based level; one moving
+laterally is stepped down by one level; one moving away is stepped down by
+two levels. The adjusted level is always floored at what plain distance +
+wind intensity alone would justify (see `_level_from_distance`), so a nearby
+"departing" cyclone is never trivialized to AZUL.
 Stationary cyclone fallback: distance + wind intensity with conservative thresholds.
 Out-of-range: cyclones beyond MAX_THREAT_DISTANCE_KM are flagged — the service
 layer skips DB writes and notifications for these to reduce noise.
 
-Known limitation: ETA is straight-line distance / speed and does NOT account for
-the cyclone's bearing or forecast track. A cyclone moving away from the user
-produces the same ETA as one approaching at the same speed. The implementation
-errs on the side of over-alerting (false positives) rather than missing threats.
+Known limitation: heading is a straight-line bearing parsed from the cyclone's
+reported movement direction, not the official NHC forecast cone — a cyclone
+that curves back toward the user after "moving away" isn't accounted for.
 Incorporating NHC forecast cone data would eliminate this in a future version.
 """
 
 import math
+
+from app.features.siat.direction import angular_difference, bearing_deg, parse_movement_direction
 
 SIAT_COLORS: dict[int, str] = {
     1: "AZUL",
@@ -103,6 +109,18 @@ def evaluate_user(user_lat: float, user_lon: float, cyclone: dict) -> dict:
     if speed > 0:
         eta_hours: float | None = distance_km / speed
         level = _level_from_eta(eta_hours)
+
+        floor_level = _level_from_distance(distance_km, cyclone.get("wind_kmh", 0.0))
+        heading_deg = parse_movement_direction(cyclone.get("movement_direction"))
+        if heading_deg is not None:
+            bearing_to_user = bearing_deg(cyclone["lat"], cyclone["lon"], user_lat, user_lon)
+            angular_diff = angular_difference(heading_deg, bearing_to_user)
+            if angular_diff > 120:
+                level -= 2
+            elif angular_diff > 60:
+                level -= 1
+        level = max(level, floor_level, 1)
+
         eta_label = f"ETA estimada: {eta_hours:.1f}h"
     else:
         eta_hours = None

@@ -150,7 +150,13 @@ function AuthGate({ children }) {
       return
     }
     const inAuthGroup = segments[0] === '(auth)'
-    if (!user && !inAuthGroup) {
+    // sos-invite previews are public (GET /sos-invitations/preview/{token} needs no
+    // auth) — someone tapping a manually-shared invite link often isn't logged in
+    // yet. Bouncing them to /(auth) here drops the token with nowhere to resume
+    // from, silently losing the invite. Let the screen itself gate the "Aceptar"
+    // action behind login instead.
+    const isSosInviteRoute = segments[0] === 'sos-invite'
+    if (!user && !inAuthGroup && !isSosInviteRoute) {
       router.replace('/(auth)')
     } else if (user && inAuthGroup) {
       const checkAndRoute = async () => {

@@ -23,6 +23,8 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from app.features.siat.classification import classify_wind_kmh, classification_label
+from app.features.siat.direction import parse_movement_direction
 from app.features.siat.evaluator import evaluate_user, haversine_km
 from app.features.siat.providers.nhc import fetch_active_cyclones
 from app.features.notifications.service import get_tokens_for_users
@@ -245,7 +247,17 @@ async def _mark_notified(db: AsyncSession, user_id: int, level: int) -> None:
 async def _upsert_cyclone_alert(
     db: AsyncSession, cyclone: dict, assessment: dict
 ) -> str:
-    """Create an alerts record for a SIAT cyclone escalation. Returns the alert UUID."""
+    """
+    Create an alerts record for a SIAT cyclone escalation. Returns the alert UUID.
+
+    notified_at is set to NOW() here (not left NULL) because this escalation
+    already gets its own targeted push via _push_per_user, right after this
+    call, in run_cycle. Leaving it NULL made _get_pending_smn_alerts() pick up
+    this same brand-new row later in the SAME cycle and fire a SECOND push for
+    it through the generic SMN/geofenced path (_notify_smn_alerts) — a real
+    duplicate notification for one escalation, observed live. That path is for
+    national bulletins / admin-created alerts, not SIAT cyclone escalations.
+    """
     level = assessment["siat_level"]
     color = assessment["siat_color"]
     label = _COLOR_LABELS.get(color, color)
@@ -253,8 +265,8 @@ async def _upsert_cyclone_alert(
     short = (assessment.get("reason") or f"Ciclón a {assessment.get('distance_km', '?'):.0f} km")[:500]
     result = await db.execute(
         text("""
-            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations)
-            VALUES (:level, 0, :title, :short, :lat, :lon, '[]', '[]')
+            INSERT INTO alerts (level, score, title, short, lat, lon, factors, recommendations, notified_at)
+            VALUES (:level, 0, :title, :short, :lat, :lon, '[]', '[]', NOW())
             RETURNING id
         """),
         {
@@ -471,7 +483,7 @@ async def inject_and_run_cycle(db: AsyncSession, req) -> dict:
     fake_cyclone: dict = {
         "source": "FAKE",
         "name": req.name,
-        "status": "HU",
+        "status": classify_wind_kmh(req.wind_kmh),
         "lat": req.lat,
         "lon": req.lon,
         "wind_kmh": req.wind_kmh,
@@ -497,7 +509,8 @@ async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) 
     logger.info("SIAT run-cycle: %d cyclone(s), %d user(s) with location", len(cyclones), len(users))
 
     all_assessments: list[dict] = []
-    escalations: dict[int, dict] = {}  # user_id → highest assessment this cycle
+    escalations: dict[int, dict] = {}  # user_id → highest assessment this cycle (for the push decision)
+    best_assessment: dict[int, dict] = {}  # user_id → highest-LEVEL assessment this cycle (for persisted state)
     cyclone_map: dict[int, dict] = {}  # cyclone_id → cyclone data (for alert creation)
 
     for cyclone in (cyclones if users else []):
@@ -520,6 +533,9 @@ async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) 
                     )
                     continue
 
+                # Reads the state from BEFORE this cycle started — user_alert_states
+                # is only written once per user, after every cyclone has been
+                # evaluated (see below), so this stays stable across the whole loop.
                 old_state = await _get_user_state(db, user["id"])
                 old_level = old_state["current_level"] if old_state else None
                 new_level = assessment["siat_level"]
@@ -533,7 +549,14 @@ async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) 
                 )
 
                 await _save_assessment(db, user["id"], cyclone_id, assessment)
-                await _upsert_user_state(db, user["id"], new_level, assessment["siat_color"], cyclone_id)
+
+                # Track the worst active threat per user across ALL cyclones this
+                # cycle. Persisting per-cyclone here (instead of after the loop)
+                # would make current_level reflect whichever cyclone happened to
+                # be evaluated last, not the most dangerous one.
+                prev_best = best_assessment.get(user["id"])
+                if prev_best is None or new_level > prev_best["siat_level"]:
+                    best_assessment[user["id"]] = {**assessment, "cyclone_id": cyclone_id}
 
                 if new_level >= _NOTIFY_MIN_LEVEL and (old_level is None or new_level > old_level):
                     prefs = await get_preferences(db, user["id"])
@@ -565,6 +588,13 @@ async def run_cycle(db: AsyncSession, extra_cyclones: list[dict] | None = None) 
                     user["id"], cyclone.get("name"), exc, exc_info=True,
                 )
                 continue
+
+    # Persist current_level ONCE per user, using the worst threat found this
+    # cycle across every active cyclone — not per-cyclone inside the loop above.
+    for user_id, assessment in best_assessment.items():
+        await _upsert_user_state(
+            db, user_id, assessment["siat_level"], assessment["siat_color"], assessment["cyclone_id"]
+        )
 
     notifications_sent = 0
     if escalations:
@@ -612,3 +642,42 @@ async def get_user_siat_status(db: AsyncSession, user_id: int) -> dict | None:
         {"uid": user_id},
     )
     return result.mappings().first()
+
+
+async def get_active_cyclones(db: AsyncSession, max_age_hours: int = 72) -> list[dict]:
+    """
+    Cyclones (real + fake) recent enough to still be worth showing on the map.
+    Enriches each row with its intensity classification and a parsed heading
+    in degrees, for the map's category label and direction arrow.
+
+    Excludes (0, 0): a storm that's no longer in NHC's live feed (dissipated,
+    or the feed dropped it) stops getting fresh saves, so a row from before a
+    transient feed glitch — or from before the nhc.py provider fix — can sit
+    at (0, 0) for the entire max_age_hours window with no further write to
+    correct it. (0, 0) is never a plausible position for a storm this feed
+    tracks, so it's filtered here rather than trusted blindly.
+    """
+    result = await db.execute(
+        text("""
+            SELECT id, source, name, lat, lon, wind_kmh,
+                   movement_direction, movement_speed_kmh, advisory_time
+            FROM cyclone_events
+            WHERE advisory_time > NOW() - make_interval(hours => :max_age_hours)
+              AND NOT (lat = 0 AND lon = 0)
+            ORDER BY advisory_time DESC
+        """),
+        {"max_age_hours": max_age_hours},
+    )
+    rows = result.mappings().all()
+
+    cyclones = []
+    for row in rows:
+        wind_kmh = row["wind_kmh"] or 0.0
+        category_code = classify_wind_kmh(wind_kmh)
+        cyclones.append({
+            **row,
+            "category_code": category_code,
+            "category_label": classification_label(category_code),
+            "movement_direction_deg": parse_movement_direction(row["movement_direction"]),
+        })
+    return cyclones

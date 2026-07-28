@@ -32,6 +32,11 @@ export default function SosInviteScreen() {
       console.warn('[QA_SOS_INVITE] no token → error stage');
       setStage("error"); setErrorMsg("Enlace inválido."); return;
     }
+    // Persist unconditionally on arrival — not just for the push-notification path
+    // (_layout.tsx). A manually-shared link can land here before the user is
+    // logged in; without this, the token has nowhere else it gets saved and the
+    // invite is lost the moment they navigate away to sign in.
+    AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, token).catch(() => {});
     const url = `${API_BASE_URL}/api/v1/sos-invitations/preview/${token}`;
     console.log('[QA_SOS_INVITE] fetching preview | url:', url);
     fetch(url)

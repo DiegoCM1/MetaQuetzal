@@ -27,11 +27,13 @@ import {
   deleteZone,
   formatRelativeTime,
   generateZoneId,
+  loadActiveCyclones,
   loadZones,
   reverseGeocodeAddress,
   syncCachedZones,
   updateZone,
   voteZone,
+  type ActiveCyclone,
 } from "./service";
 import { darkMapStyle } from "./mapStyle";
 import { DEFAULT_REGION, REPORTING_DISTANCE_METERS, ZONE_TYPES } from "./config";
@@ -40,6 +42,7 @@ import { authFetch } from "../../utils/api";
 import { API_BASE_URL } from "../../utils/config";
 import * as Network from "expo-network";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { enqueueSOS, hasPendingSOSItem, getPendingSOSItem, flushSOSQueue, clearSOSQueue } from "./sosQueue";
 import type { Zone, ZoneType } from "./types";
 
@@ -55,8 +58,13 @@ interface MapProps {
   // Present only when navigated from sos-receiver — undefined for hurricane alerts.
   // Empty string means SOS context but no phone registered.
   focusSosPhone?: string;
+  // Called when the user dismisses the SOS banner via its back button, so the
+  // parent can clear its frozen focus state instead of it persisting forever.
+  onDismissFocus?: () => void;
 }
 
+// SIAT level (this user's risk) — used only for the focusLat/focusLon marker
+// that comes from a push notification.
 const LEVEL_COLORS: Record<number, string> = {
   1: '#4CAF50',
   2: '#4CAF50',
@@ -65,12 +73,21 @@ const LEVEL_COLORS: Record<number, string> = {
   5: '#F44336',
 }
 
+// Storm intensity classification — deliberately separate from LEVEL_COLORS.
+// A weak depression heading straight at someone can carry a high SIAT level,
+// so mixing the two palettes would misrepresent one or the other.
+const CATEGORY_COLORS: Record<string, string> = {
+  HU: '#F44336',
+  TS: '#FF9800',
+  TD: '#FFC107',
+}
+
 const HurricaneMarker = React.memo(function HurricaneMarker({
-  lat, lon, title, level,
-}: { lat: number; lon: number; title?: string; level?: number }) {
+  lat, lon, title, level, categoryCode, directionDeg,
+}: { lat: number; lon: number; title?: string; level?: number; categoryCode?: string; directionDeg?: number | null }) {
   const [tracksViewChanges, setTracksViewChanges] = useState(true);
   console.log('[QA_MAP] HurricaneMarker render | lat:', lat, '| lon:', lon);
-  const color = LEVEL_COLORS[level ?? 3];
+  const color = categoryCode ? (CATEGORY_COLORS[categoryCode] ?? CATEGORY_COLORS.TD) : LEVEL_COLORS[level ?? 3];
   return (
     <Marker coordinate={{ latitude: lat, longitude: lon }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracksViewChanges} title={title}>
       <View
@@ -80,7 +97,9 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
         }}
         style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color, borderWidth: 2, borderColor: 'white', alignItems: 'center', justifyContent: 'center' }}
       >
-        <MaterialCommunityIcons name="weather-hurricane" size={28} color="white" />
+        <View style={directionDeg != null ? { transform: [{ rotate: `${directionDeg}deg` }] } : undefined}>
+          <MaterialCommunityIcons name={directionDeg != null ? 'navigation' : 'weather-hurricane'} size={28} color="white" />
+        </View>
       </View>
     </Marker>
   );
@@ -112,8 +131,9 @@ const ZoneMarker = React.memo(function ZoneMarker({ zone, onPress }: { zone: Zon
   );
 });
 
-export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel, focusSosPhone }: MapProps = {}) {
+export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, focusLevel, focusSosPhone, onDismissFocus }: MapProps = {}) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
@@ -138,6 +158,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
   const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [hasPendingSOS, setHasPendingSOS] = useState(false);
   const [linkedContactCount, setLinkedContactCount] = useState<number | null>(null);
+  const [activeCyclones, setActiveCyclones] = useState<ActiveCyclone[]>([]);
 
   // Al montar y al volver al foco: verificar cola con control de antigüedad.
   // Items < 30 min → flush automático. Items > 30 min → pedir confirmación al usuario.
@@ -198,6 +219,33 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
     }, [])
   );
 
+  // Refresca tormentas activas (reales + de prueba) al llegar al foco, y luego
+  // cada 60s mientras la pantalla siga enfocada — sin esto, un ciclón que se
+  // actualiza (o se corrige tras un glitch del feed del NHC) no se refleja
+  // hasta que el usuario cierre y reabra la app.
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchCyclones = async () => {
+        try {
+          const cyclones = await loadActiveCyclones();
+          if (isActive) setActiveCyclones(cyclones);
+        } catch (error) {
+          console.warn('[Map] Failed to load active cyclones:', error);
+        }
+      };
+
+      fetchCyclones();
+      const interval = setInterval(fetchCyclones, 60000);
+
+      return () => {
+        isActive = false;
+        clearInterval(interval);
+      };
+    }, [])
+  );
+
   // Al volver a foreground (desde background): re-chequear cola tras flush de _layout
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -219,6 +267,22 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       longitudeDelta: 3,
     }, 800);
   }, [focusLat, focusLon]);
+
+  // Active cyclones are real ocean-going storms — usually far outside the
+  // tight zoom the map defaults to around the user's own location, so without
+  // this they're effectively invisible even though they're plotted correctly.
+  const focusActiveCyclones = () => {
+    if (activeCyclones.length === 0) {
+      toast('Sin ciclones activos', { description: 'No hay huracanes o tormentas tropicales activos en este momento.' });
+      return;
+    }
+    const coordinates = activeCyclones.map(c => ({ latitude: c.latitude, longitude: c.longitude }));
+    if (userLocation) coordinates.push(userLocation);
+    mapRef.current?.fitToCoordinates(coordinates, {
+      edgePadding: { top: 80, right: 60, bottom: 120, left: 60 },
+      animated: true,
+    });
+  };
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -494,6 +558,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       let lon: number | undefined;
       let gpsFailed = false;
       let permDenied = false;
+      let usedFallbackCoords = false;
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         try {
@@ -508,6 +573,15 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
           lon = coords.longitude;
         } catch {
           gpsFailed = true;
+          // Live GPS fix timed out (cold GPS, indoors, etc). Fall back to the
+          // location already resolved when the map screen mounted rather than
+          // sending the SOS with no coordinates at all — it's from this same
+          // session, so it's far more likely to be current than nothing.
+          if (currentCoords) {
+            lat = currentCoords.latitude;
+            lon = currentCoords.longitude;
+            usedFallbackCoords = true;
+          }
         }
       } else {
         permDenied = true;
@@ -528,6 +602,8 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       // 3. Online: mostrar feedback de GPS si aplica
       if (permDenied) {
         toast.info("Permiso de ubicación denegado", { description: "Se enviará el SOS sin coordenadas." });
+      } else if (usedFallbackCoords) {
+        toast.info("Ubicación aproximada", { description: "No se pudo obtener tu posición exacta a tiempo; se usó tu última ubicación conocida." });
       } else if (gpsFailed) {
         toast.info("Sin ubicación precisa", { description: "Se enviará el SOS sin coordenadas." });
       }
@@ -646,6 +722,17 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
           <ZoneMarker key={zone.id} zone={zone} onPress={() => handleCirclePress(zone)} />
         ))}
 
+        {activeCyclones.map((cyclone) => (
+          <HurricaneMarker
+            key={cyclone.id}
+            lat={cyclone.latitude}
+            lon={cyclone.longitude}
+            title={`${cyclone.name} — ${cyclone.categoryLabel}`}
+            categoryCode={cyclone.categoryCode}
+            directionDeg={cyclone.movementDirectionDeg}
+          />
+        ))}
+
         {focusLat != null && focusLon != null && (
           <HurricaneMarker
             lat={focusLat}
@@ -658,7 +745,7 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
 
       {/* SOS context banner — only shown when navigated from sos-receiver */}
       {focusSosPhone !== undefined && focusTitle != null && (
-        <View style={sosBanner.bar}>
+        <View style={[sosBanner.bar, { paddingTop: insets.top + 10 }]}>
           <View style={sosBanner.left}>
             <MaterialCommunityIcons name="alarm-light" size={16} color="#030810" />
             <Text style={sosBanner.name} numberOfLines={1}>{focusTitle}</Text>
@@ -676,7 +763,10 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
             )}
             <Pressable
               style={sosBanner.backBtn}
-              onPress={() => router.back()}
+              onPress={() => {
+                onDismissFocus?.();
+                router.back();
+              }}
               android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
             >
               <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
@@ -688,8 +778,11 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
       {/* Layer selector — shifted down when SOS banner is visible */}
       <Pressable
         onPress={() => setLayerModalVisible(true)}
-        className={`absolute ${focusSosPhone !== undefined ? 'top-20' : 'top-12'} right-4 p-3 rounded-full`}
-        style={{ backgroundColor: 'rgba(8, 15, 30, 0.85)' }}
+        className="absolute right-4 p-3 rounded-full"
+        style={{
+          top: insets.top + (focusSosPhone !== undefined ? 56 : 12),
+          backgroundColor: 'rgba(8, 15, 30, 0.85)',
+        }}
       >
         <MaterialCommunityIcons name="layers-outline" size={24} color="white" />
       </Pressable>
@@ -772,6 +865,36 @@ export default function WeatherMapNativewind({ focusLat, focusLon, focusTitle, f
         }}
       >
         <MaterialCommunityIcons name="navigation-variant" size={24} color="#FFFFFF" />
+      </Pressable>
+
+      {/* Ver ciclones activos — reales (Fausto/Genevieve, etc.) suelen estar muy
+          mar adentro, fuera del zoom por default; esto centra la cámara en ellos. */}
+      <Pressable
+        onPress={focusActiveCyclones}
+        style={{
+          position: 'absolute',
+          bottom: 168,
+          right: 16,
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          backgroundColor: 'rgba(8, 15, 30, 0.85)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MaterialCommunityIcons name="weather-hurricane" size={24} color="#FFFFFF" />
+        {activeCyclones.length > 0 && (
+          <View style={{
+            position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18, borderRadius: 9,
+            backgroundColor: colors.brandRed, alignItems: 'center', justifyContent: 'center',
+            paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#fff',
+          }}>
+            <Text style={{ color: '#fff', fontSize: 10, fontFamily: fonts.poppinsSemiBold }}>
+              {activeCyclones.length}
+            </Text>
+          </View>
+        )}
       </Pressable>
 
       {/* SOS FAB */}
