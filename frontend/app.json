@@ -55,12 +55,7 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_CONTACTS"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCnJQJAIvATM2Vlcs-Atss8_tA2MYj_Hg4"
-        }
-      }
+      ]
     },
     "web": {
       "bundler": "metro"
@@ -68,6 +63,13 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      [
+        "react-native-maps",
+        {
+          "iosGoogleMapsApiKey": "AIzaSyA7WPPSf4wIo-f52ESWanqP-Np72_tx9YE",
+          "androidGoogleMapsApiKey": "AIzaSyB2swiDQepQYT1AjRlo_LiIoIh_JFWmhoU"
+        }
+      ],
       [
         "expo-contacts",
         {
