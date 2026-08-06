@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { toast } from "sonner-native";
 import { colors } from "../utils/theme";
@@ -242,6 +242,7 @@ export default function NotificationTestScreen() {
           style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}
         >
           <MapView
+            provider={PROVIDER_GOOGLE}
             style={{ height: 180 }}
             initialRegion={DEFAULT_REGION}
             customMapStyle={darkMapStyle}
