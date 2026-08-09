@@ -46,6 +46,7 @@ EXPECTED_TABLES = {
     "cyclone_events",
     "siat_assessments",
     "user_alert_states",
+    "subscriptions",
 }
 
 

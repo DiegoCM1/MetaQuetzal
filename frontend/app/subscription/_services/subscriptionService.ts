@@ -1,94 +1,132 @@
-// Subscription service with mock data
+import { Plan, Subscription } from '../_types';
+import { API_BASE_URL } from '../../../utils/config';
+import { authFetch } from '../../../utils/api';
 
-import { Plan, FamilyMember } from '../_types';
-
-export const PLANS: Plan[] = [
+const FALLBACK_PLANS: Plan[] = [
   {
-    id: 'basic',
-    name: 'Plan Básico',
-    description: 'Para familias pequeñas',
+    slug: 'free',
+    name: 'Bluai',
+    description: 'Protección básica para ti',
+    monthlyPrice: null,
+    annualPrice: null,
+    annualDiscount: 0,
+    features: ['IA Empática Offline', 'Mapa de Riesgos y Apoyo', 'Alertas SIAT-CT Oficiales'],
+    isFree: true,
+  },
+  {
+    slug: 'safe',
+    name: 'Bluai Safe',
+    description: 'Para familias que quieren estar siempre conectadas',
     monthlyPrice: 4.99,
-    annualPrice: 49.99,
+    annualPrice: 49.90,
+    annualDiscount: 17,
+    features: ['Todo el plan Gratuito', 'Geolocalización de Familiares', 'Botón de Pánico'],
+    isFree: false,
+  },
+  {
+    slug: 'guard',
+    name: 'Blu Guard',
+    description: 'Gestión de equipos y personal crítico',
+    monthlyPrice: 9.99,
+    annualPrice: 99.90,
     annualDiscount: 17,
     features: [
-      'Alertas para hasta 3 miembros',
-      'Notificaciones en tiempo real',
-      'Contenido educativo básico',
-      'Soporte por email',
+      'Todo el plan Safe',
+      'Gestión de Personal Crítico',
+      'Dashboard Predictivo Centralizado',
+      'Comunicación Ininterrumpida',
     ],
+    isFree: false,
+  },
+  {
+    slug: 'edu',
+    name: 'Blu Edu',
+    description: 'Para instituciones educativas',
+    monthlyPrice: null,
+    annualPrice: null,
+    annualDiscount: 0,
+    features: ['Todo el plan Gratuito', 'Geolocalización', 'Botón de Pánico', 'Módulos de Resiliencia'],
+    isFree: true,
+  },
+];
+
+function mapPlan(raw: Record<string, unknown>): Plan {
+  return {
+    slug: String(raw.slug),
+    name: String(raw.name),
+    description: String(raw.description ?? ''),
+    monthlyPrice: raw.monthly_price != null ? Number(raw.monthly_price) : null,
+    annualPrice: raw.annual_price != null ? Number(raw.annual_price) : null,
+    annualDiscount: Number(raw.annual_discount ?? 0),
+    features: Array.isArray(raw.features) ? raw.features.map(String) : [],
+    isFree: Boolean(raw.is_free),
+  };
+}
+
+export async function getPlans(): Promise<Plan[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/payments/plans`);
+    if (!res.ok) return FALLBACK_PLANS;
+    const data = await res.json();
+    if (!Array.isArray(data)) return FALLBACK_PLANS;
+    return data.map(mapPlan);
+  } catch {
+    return FALLBACK_PLANS;
   }
-];
+}
 
-/**
- * Get all available plans
- */
-export const getPlans = async (): Promise<Plan[]> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  return PLANS;
-};
+export async function getSubscription(): Promise<Subscription> {
+  try {
+    const res = await authFetch(`${API_BASE_URL}/api/v1/payments/subscription`);
+    if (!res.ok) return { planSlug: 'free', status: 'active', currentPeriodEnd: null };
+    const data = await res.json();
+    return {
+      planSlug: String(data.plan_slug ?? 'free'),
+      status: data.status ?? 'active',
+      currentPeriodEnd: data.current_period_end ?? null,
+    };
+  } catch {
+    return { planSlug: 'free', status: 'active', currentPeriodEnd: null };
+  }
+}
 
-/**
- * Get a specific plan by ID
- */
-export const getPlanById = async (id: string): Promise<Plan | null> => {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return PLANS.find((plan) => plan.id === id) || null;
-};
+export async function getFamilyMembers() {
+  return [] as import('../_types').FamilyMember[];
+}
 
-/**
- * Calculate savings for annual billing
- */
-export const calculateAnnualSavings = (plan: Plan): number => {
-  const monthlyTotal = plan.monthlyPrice * 12;
-  const savings = monthlyTotal - plan.annualPrice;
-  return Math.round(savings * 100) / 100;
-};
+export async function devSimulateSubscription(
+  planSlug: string,
+  billingPeriod: 'monthly' | 'annual' = 'monthly',
+): Promise<Subscription> {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/payments/dev/simulate`, {
+    method: 'POST',
+    body: JSON.stringify({ plan_slug: planSlug, billing_period: billingPeriod }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Error ${res.status}`);
+  }
+  const data = await res.json();
+  return {
+    planSlug: String(data.plan_slug ?? planSlug),
+    status: 'active',
+    currentPeriodEnd: data.current_period_end ?? null,
+  };
+}
 
-// Mock family members data
-export const MOCK_FAMILY_MEMBERS: FamilyMember[] = [
-  {
-    id: '1',
-    name: 'Persona 1',
-    initials: 'AA',
-    distance: 3,
-    distanceUnit: 'km',
-    avatarColor: '#9CA3AF',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Persona 2',
-    initials: 'AA',
-    distance: 16,
-    distanceUnit: 'km',
-    avatarColor: '#3B82F6',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Persona 3',
-    initials: 'AA',
-    distance: 20,
-    distanceUnit: 'km',
-    avatarColor: '#A855F7',
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    name: 'Persona 4',
-    initials: 'AA',
-    distance: 50,
-    distanceUnit: 'mts',
-    avatarColor: '#EF4444',
-    lastUpdated: new Date().toISOString(),
-  },
-];
-
-/**
- * Get family members
- */
-export const getFamilyMembers = async (): Promise<FamilyMember[]> => {
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  return MOCK_FAMILY_MEMBERS;
-};
+export async function createCheckoutSession(
+  planSlug: string,
+  billingPeriod: 'monthly' | 'annual',
+  provider: 'stripe' | 'mercadopago' | 'auto' = 'auto',
+): Promise<string> {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/payments/checkout`, {
+    method: 'POST',
+    body: JSON.stringify({ plan_slug: planSlug, billing_period: billingPeriod, provider }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Error ${res.status}`);
+  }
+  const data = await res.json();
+  return String(data.checkout_url);
+}
