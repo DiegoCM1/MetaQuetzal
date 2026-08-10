@@ -1,5 +1,6 @@
 import "../global.css";
-import { clearOnboardingData } from './onboarding/_services/onboardingService';
+import { clearOnboardingData } from "./onboarding/_services/onboardingService";
+import { resetAllTours } from "../features/tour/tourService";
 import { Alert, Text, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -12,78 +13,99 @@ import OptionCard from "../components/OptionCard";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { modelStatus, optIn, optOut, retryDownload, downloadProgress, modelFailure } = useModel();
+  const {
+    modelStatus,
+    optIn,
+    optOut,
+    retryDownload,
+    downloadProgress,
+    modelFailure,
+  } = useModel();
   const { signOut, deleteAccount } = useAuth();
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Eliminar cuenta',
-      '¿Estás seguro? Esta acción es permanente y no se puede deshacer.',
+      "Eliminar cuenta",
+      "¿Estás seguro? Esta acción es permanente y no se puede deshacer.",
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Eliminar',
-          style: 'destructive',
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             try {
-              await deleteAccount()
+              await deleteAccount();
             } catch {
-              Alert.alert('Error', 'No se pudo eliminar la cuenta. Intenta de nuevo.')
+              Alert.alert(
+                "Error",
+                "No se pudo eliminar la cuenta. Intenta de nuevo.",
+              );
             }
           },
         },
-      ]
-    )
-  }
+      ],
+    );
+  };
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Cerrar sesión',
-      '¿Estás seguro que deseas cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Cerrar sesión', style: 'destructive', onPress: signOut },
-      ]
-    );
+    Alert.alert("Cerrar sesión", "¿Estás seguro que deseas cerrar sesión?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Cerrar sesión", style: "destructive", onPress: signOut },
+    ]);
   };
 
   const handleResetOnboarding = async () => {
     Alert.alert(
-      'Reiniciar Onboarding',
-      '¿Estás seguro? Esto borrará tus datos y mostrará el wizard de nuevo.',
+      "Reiniciar Onboarding",
+      "¿Estás seguro? Esto borrará tus datos y mostrará el wizard de nuevo.",
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Reiniciar',
-          style: 'destructive',
+          text: "Reiniciar",
+          style: "destructive",
           onPress: async () => {
             await clearOnboardingData();
-            router.replace('/onboarding/step1');
+            router.replace("/onboarding/step1");
           },
         },
-      ]
+      ],
     );
+  };
+
+  const handleReplayTutorial = async () => {
+    try {
+      await resetAllTours();
+      // replace, not push: the map has to *gain focus* for `useTourGate` to
+      // re-evaluate, and leaving Ajustes on the stack would just let the user
+      // walk back into a screen whose flags no longer match what they saw.
+      router.replace("/(tabs)/MapScreen");
+    } catch {
+      Alert.alert(
+        "Error",
+        "No se pudo reiniciar el tutorial. Intenta de nuevo.",
+      );
+    }
   };
 
   const handleDownloadModel = () => {
     Alert.alert(
-      'Descargar modelo IA',
-      'El modelo se descargará en segundo plano. Puedes seguir usando la app mientras tanto.',
+      "Descargar modelo IA",
+      "El modelo se descargará en segundo plano. Puedes seguir usando la app mientras tanto.",
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Descargar', onPress: optIn },
-      ]
+        { text: "Cancelar", style: "cancel" },
+        { text: "Descargar", onPress: optIn },
+      ],
     );
   };
 
   const handleDeleteModel = () => {
     Alert.alert(
-      'Eliminar modelo IA',
-      '¿Estás seguro? Tendrás que descargarlo de nuevo para usar el modo sin conexión.',
+      "Eliminar modelo IA",
+      "¿Estás seguro? Tendrás que descargarlo de nuevo para usar el modo sin conexión.",
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: optOut },
-      ]
+        { text: "Cancelar", style: "cancel" },
+        { text: "Eliminar", style: "destructive", onPress: optOut },
+      ],
     );
   };
 
@@ -91,25 +113,36 @@ export default function SettingsScreen() {
     <SafeAreaView className="flex-1 bg-transparent" edges={["top", "bottom"]}>
       <ScreenHeader title="Ajustes" />
 
-      <ScrollView
-        className="flex-1 pt-6"
-        showsVerticalScrollIndicator={false}
-      >
-
+      <ScrollView className="flex-1 pt-6" showsVerticalScrollIndicator={false}>
         <OptionCard
           icon="bell-outline"
           title="Notificaciones"
-          onPress={() => router.push('/NotificationPreferencesScreen')}
+          onPress={() => router.push("/NotificationPreferencesScreen")}
         />
 
-        <OptionCard icon="restore" title="Reiniciar Onboarding" onPress={handleResetOnboarding} />
+        <OptionCard
+          icon="school-outline"
+          title="Ver tutorial de nuevo"
+          subtitle="Repite la guía del mapa y del menú Más"
+          onPress={handleReplayTutorial}
+        />
+
+        <OptionCard
+          icon="restore"
+          title="Reiniciar Onboarding"
+          onPress={handleResetOnboarding}
+        />
 
         {/* AI offline model — one card per lifecycle status (single source of truth). */}
-        {modelStatus === 'idle' && (
-          <OptionCard icon="chip" title="Activar modo sin conexión" onPress={handleDownloadModel} />
+        {modelStatus === "idle" && (
+          <OptionCard
+            icon="chip"
+            title="Activar modo sin conexión"
+            onPress={handleDownloadModel}
+          />
         )}
 
-        {modelStatus === 'checking' && (
+        {modelStatus === "checking" && (
           <OptionCard
             icon="cloud-download-outline"
             title="Preparando descarga..."
@@ -117,7 +150,7 @@ export default function SettingsScreen() {
           />
         )}
 
-        {modelStatus === 'downloading' && (
+        {modelStatus === "downloading" && (
           <OptionCard
             icon="cloud-download-outline"
             title="Descargando modelo IA..."
@@ -129,7 +162,7 @@ export default function SettingsScreen() {
           />
         )}
 
-        {modelStatus === 'reconnecting' && (
+        {modelStatus === "reconnecting" && (
           <OptionCard
             icon="autorenew"
             title="Reconectando..."
@@ -142,7 +175,7 @@ export default function SettingsScreen() {
           />
         )}
 
-        {modelStatus === 'loading' && (
+        {modelStatus === "loading" && (
           <OptionCard
             icon="cog-sync-outline"
             title="Cargando modelo en memoria..."
@@ -150,7 +183,7 @@ export default function SettingsScreen() {
           />
         )}
 
-        {modelStatus === 'failed' && modelFailure && (
+        {modelStatus === "failed" && modelFailure && (
           <OptionCard
             icon="alert-circle-outline"
             title={`${MODEL_FAILURE_LABEL[modelFailure.type]} — reintentar`}
@@ -160,22 +193,34 @@ export default function SettingsScreen() {
           />
         )}
 
-        {modelStatus === 'ready' && (
+        {modelStatus === "ready" && (
           <OptionCard
             icon="check-circle-outline"
             title="Modelo IA listo"
             onPress={handleDeleteModel}
             rightElement={
-              <MaterialCommunityIcons name="trash-can-outline" color="#EF4444" size={22} />
+              <MaterialCommunityIcons
+                name="trash-can-outline"
+                color="#EF4444"
+                size={22}
+              />
             }
           />
         )}
 
-        <OptionCard icon="logout" title="Cerrar sesión" onPress={handleSignOut} danger />
-        <OptionCard icon="account-remove-outline" title="Eliminar cuenta" onPress={handleDeleteAccount} danger />
-
+        <OptionCard
+          icon="logout"
+          title="Cerrar sesión"
+          onPress={handleSignOut}
+          danger
+        />
+        <OptionCard
+          icon="account-remove-outline"
+          title="Eliminar cuenta"
+          onPress={handleDeleteAccount}
+          danger
+        />
       </ScrollView>
-
     </SafeAreaView>
   );
 }
