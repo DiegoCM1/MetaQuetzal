@@ -80,14 +80,27 @@ export function useTourGate({
             return;
           }
 
-          // Marked as soon as the tutorial is *offered*, not when it finishes.
-          // A crash or a force-quit mid-tour would otherwise re-trigger it on
-          // every launch with no way out; Ajustes has a replay entry for
-          // anyone who wants it back.
-          await markTourSeen(tourId);
-          if (cancelled) return;
-
           timer = setTimeout(() => {
+            // Marked when the tutorial actually reaches the screen — not when
+            // it is scheduled. A crash or force-quit mid-tour still won't
+            // re-trigger it (Ajustes has a replay entry for anyone who wants
+            // it back), but an interruption *during* the delay above now costs
+            // nothing.
+            //
+            // That distinction is the whole point. This effect can tear down
+            // for reasons that have nothing to do with the user — a blur, an
+            // `enabled` flip when a queued SOS resolves, any dependency
+            // changing identity — and the cleanup clears this timer. Writing
+            // the flag before the timer meant every one of those paths lost
+            // the tutorial *permanently*: the re-run reads "seen" and gives
+            // up. Written here, an interrupted attempt is simply offered again
+            // on the next focus.
+            //
+            // Not awaited: `markTourSeen` swallows its own errors, and making
+            // the user wait on a disk write before the first bubble appears
+            // would trade a real delay for nothing.
+            markTourSeen(tourId);
+
             if (withIntro) {
               tourLog(`showing intro card for "${tourId}"`);
               setIntroVisible(true);
