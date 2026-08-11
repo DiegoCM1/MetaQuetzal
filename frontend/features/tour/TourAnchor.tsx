@@ -20,6 +20,11 @@ interface FillProps {
   index: number;
   /** Cover the parent exactly — for targets whose size isn't known statically. */
   fill: true;
+  /**
+   * Trim the covered area, for when the parent is bigger than the thing worth
+   * spotlighting — e.g. a wrapper whose child carries its own margins.
+   */
+  inset?: { top?: number; bottom?: number; left?: number; right?: number };
   width?: never;
   height?: never;
   bottom?: never;
@@ -53,10 +58,10 @@ export function TourAnchor(props: BoxProps | FillProps) {
   const style = props.fill
     ? {
         position: "absolute" as const,
-        top: offsetY,
-        left: 0,
-        right: 0,
-        bottom: -offsetY,
+        top: offsetY + (props.inset?.top ?? 0),
+        left: props.inset?.left ?? 0,
+        right: props.inset?.right ?? 0,
+        bottom: -offsetY + (props.inset?.bottom ?? 0),
         pointerEvents: "none" as const,
       }
     : {

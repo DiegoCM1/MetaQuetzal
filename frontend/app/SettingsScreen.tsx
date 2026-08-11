@@ -121,13 +121,6 @@ export default function SettingsScreen() {
         />
 
         <OptionCard
-          icon="school-outline"
-          title="Ver tutorial de nuevo"
-          subtitle="Repite la guía del mapa y del menú Más"
-          onPress={handleReplayTutorial}
-        />
-
-        <OptionCard
           icon="restore"
           title="Reiniciar Onboarding"
           onPress={handleResetOnboarding}
@@ -207,6 +200,13 @@ export default function SettingsScreen() {
             }
           />
         )}
+
+        <OptionCard
+          icon="school-outline"
+          title="Como funciona Bluai"
+          subtitle="Repite el tutorial de la app"
+          onPress={handleReplayTutorial}
+        />
 
         <OptionCard
           icon="logout"

@@ -45,8 +45,19 @@ export const MORE_TOUR = {
   SOS_CONTACTS: 1,
 } as const;
 
-/** Routes in `MoreScreen`'s `items` array that carry a spotlight. */
-export const MORE_TOUR_ROUTES: Record<string, number> = {
+/**
+ * Routes in `MoreScreen`'s `items` array that carry a spotlight.
+ *
+ * Keyed by route rather than list position on purpose: `items` is built
+ * conditionally (`IS_DEV_BUILD`, the commented-out Suscripción entry), so an
+ * index would silently re-point a bubble at the wrong card the next time
+ * someone edits the list. `MoreScreen` asserts in dev that every key here
+ * matches a real item and that every step has an anchor.
+ *
+ * `| undefined` is deliberate — most routes are not targets, and the lookup
+ * must admit that rather than claiming a number for every string.
+ */
+export const MORE_TOUR_ROUTES: Record<string, number | undefined> = {
   "/local-chat": MORE_TOUR.OFFLINE_CHAT,
   "/SOSContactsScreen": MORE_TOUR.SOS_CONTACTS,
 };
