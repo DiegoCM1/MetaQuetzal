@@ -1,7 +1,8 @@
 import "../../global.css";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Markdown from "react-native-markdown-display";
 import {
+  Animated,
   View,
   TextInput,
   Text,
@@ -22,6 +23,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useChat } from "./_hooks/useChat"
 import { useModel } from "./_context/ModelContext"
 
+// Permanent accuracy caveat pinned above the composer. Bluai is an emergency
+// product: the model can be confidently wrong, and official channels always win.
+const AI_DISCLAIMER =
+  "Bluai usa IA y puede cometer errores. Verifica siempre con fuentes oficiales.";
 
 export default function ChatAIScreen() {
   const { messages, input, setInput, isLoading, isStreaming, restartConversation, handleSendMessage, stop } = useChat()
@@ -34,6 +39,31 @@ export default function ChatAIScreen() {
   const keyboardOffset = Platform.OS === 'ios' ? tabBarHeight : 0
   const canStop = isStreaming && modelMode === 'online'
   const showThinking = isLoading && !isStreaming
+
+  // The disclaimer marks a *finished* answer, so it only shows when the newest
+  // message is a bot reply that has actually landed. Checking the text rather
+  // than the loading flags is deliberate: useChat pushes an empty 'bot'
+  // placeholder at send time, and the offline path never sets isStreaming and
+  // can drop isLoading for a frame before generation starts. An empty string is
+  // true for every one of those in-flight states, on both providers.
+  const lastMessage = messages[messages.length - 1];
+  const showDisclaimer =
+    !isLoading &&
+    !isStreaming &&
+    lastMessage?.role === "bot" &&
+    !lastMessage.error &&
+    lastMessage.text.trim().length > 0;
+
+  // Fade in on arrival; hide instantly when the user sends again so clearing it
+  // feels like a response to their input rather than a lagging animation.
+  const disclaimerOpacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(disclaimerOpacity, {
+      toValue: showDisclaimer ? 1 : 0,
+      duration: showDisclaimer ? 260 : 0,
+      useNativeDriver: true,
+    }).start();
+  }, [showDisclaimer, disclaimerOpacity]);
 
   const markdownStyles = {
     body: {
@@ -147,6 +177,22 @@ export default function ChatAIScreen() {
                 </View>
               )}
             />
+          )}
+
+          {/* AI accuracy disclaimer — appears once a finished bot reply is the
+              newest message, clears as soon as the user sends again.
+              Font scaling is capped: at a large accessibility text size this
+              row would otherwise grow tall enough to squeeze the message list
+              on Android, where the keyboard compresses the container. */}
+          {showDisclaimer && (
+            <Animated.View style={{ opacity: disclaimerOpacity }}>
+              <Text
+                className="px-2 pb-2 text-center font-poppins text-[10px] leading-4 text-white/40"
+                maxFontSizeMultiplier={1.3}
+              >
+                {AI_DISCLAIMER}
+              </Text>
+            </Animated.View>
           )}
 
           {/* Input Area */}
