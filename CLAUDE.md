@@ -12,7 +12,7 @@ Bluai — hurricane early-warning platform. React Native (Expo) **mobile** app +
 
 ## Commands
 
-### Backend (`cd backend`, venv activated)
+### Backend (`cd backend`, venv activated — Python 3.12, pinned in `backend/.python-version`)
 - Run dev server: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload` — `--host 0.0.0.0` lets a physical device on the same Wi-Fi reach it (bare `--reload` binds localhost only, unreachable from a phone). Pointing the app at a local backend: see `docs/STAGING.md`.
 - Run all tests: `pytest`
 - Run one test file: `pytest app/features/ai/tests/test_x.py`
@@ -43,6 +43,9 @@ All live features verify Firebase tokens via `app.core.firebase`. Use the same d
 
 ### SIAT runs on a background loop
 `main.py` spawns a 30-min background task (`_siat_background_loop`) that evaluates cyclones and sends pushes. It starts in `lifespan`, not per-request.
+
+### One worker — a blocking call freezes everything
+Single uvicorn worker (`Procfile`), so any sync call inside an `async def` stalls all in-flight requests. Wrap blocking/CPU work in `asyncio.to_thread(...)`. **Don't add `--workers`:** `_siat_background_loop` starts per worker → duplicate pushes.
 
 ### Frontend routing is file-based (expo-router)
 Routes live in `frontend/app/`. Route groups: `(auth)`, `(tabs)`. **Underscore-prefixed dirs are NOT routes** — `_components`, `_hooks`, `_services`, `_utils`, `_types.ts` are colocated private code for a route. Maps use `react-native-maps`.
