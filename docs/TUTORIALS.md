@@ -69,7 +69,8 @@ follow-up. Keeps both under the 400-line PR limit.
 | 0 | **Own intro card**, before `start()` | — | "Tu zona en tiempo real: ciclones activos y reportes de tu comunidad." + `Ver tutorial` / `Ahora no` |
 | 1 | `AttachStep`, circle | SOS FAB `index.tsx:901` | Avisa a tus contactos con tu ubicación. **No lo presiones ahora.** ⚠️ Aún no tienes contactos — configúralos en **Más → Contactos SOS**. |
 | 2 | `TourAnchor fill`, rectangle | The **IA tab's `Pressable`** inside `CustomTabBar` (guarded by `AI_TAB_NAME`, `(tabs)/_layout.tsx`) — *not* the bar root: the copy is about one tab, so lighting up all four leaves the user matching the sentence against four buttons. | **La IA funciona sin internet, en tu teléfono.** |
-| 3 | `AttachStep` | `+ event` FAB `index.tsx:831` | Aquí reportas lo que ves — inundaciones, bloqueos, peligros — para tu comunidad. |
+| 3 | `TourAnchor fill`, rectangle | The **Alertas tab's `Pressable`** (guarded by `ALERTS_TAB_NAME`) — same treatment as step 2, one cell to the right. | **Alertas oficiales.** Avisos de ciclón del SMN y el historial de tu zona. |
+| 4 | `AttachStep` | `+ event` FAB `index.tsx:831` | Aquí reportas lo que ves — inundaciones, bloqueos, peligros — para tu comunidad. |
 
 **Optional 4th — the cyclones button** (`bottom 168`). Genuinely non-obvious: the comment at
 `index.tsx:870` notes real cyclones "suelen estar muy mar adentro, fuera del zoom por default," so

@@ -23,12 +23,15 @@ const TABS = [
 ] as const;
 
 /**
- * The tab Tutorial 1 spotlights. Named rather than compared inline so the
+ * The tabs Tutorial 1 spotlights. Named rather than compared inline so a
  * spotlight and the tab it points at cannot drift apart: `TABS` is `as const`,
- * so if this route is ever renamed there, the comparison below stops
- * type-checking instead of silently matching nothing and dropping the anchor.
+ * so renaming a route there makes the comparisons below stop type-checking
+ * (TS2367 — the types no longer overlap) instead of silently matching nothing
+ * and dropping the anchor. A dropped anchor fails *quietly* — the overlay dims
+ * the screen and draws no spotlight at all.
  */
 const AI_TAB_NAME = "ChatAIScreen";
+const ALERTS_TAB_NAME = "AlertsHistoryScreen";
 
 const MARKER_WIDTH = 28;
 
@@ -105,13 +108,15 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               height: "100%",
             }}
           >
-            {/* Invisible spotlight target for Tutorial 1, scoped to this one
-                tab so the cutout matches what the bubble actually talks about.
-                `fill` sizes it to this Pressable, so the bar's own layout —
-                and the tab's own press handling — stay untouched by tour
-                code. */}
+            {/* Invisible spotlight targets for Tutorial 1, scoped to the one
+                tab each step actually talks about. `fill` sizes them to this
+                Pressable, so the bar's own layout — and the tab's own press
+                handling — stay untouched by tour code. */}
             {tab.name === AI_TAB_NAME && (
               <TourAnchor index={MAP_TOUR.AI_TAB} fill />
+            )}
+            {tab.name === ALERTS_TAB_NAME && (
+              <TourAnchor index={MAP_TOUR.ALERTS_TAB} fill />
             )}
 
             <MaterialCommunityIcons

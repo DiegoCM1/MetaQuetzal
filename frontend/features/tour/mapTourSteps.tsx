@@ -14,7 +14,7 @@ import { TourBox } from "./TourBox";
  * That's why the intro is a plain modal (`TourIntroCard`) rather than a step.
  */
 
-const TOTAL = 3;
+const TOTAL = 4;
 
 export const mapTourSteps: TourStep[] = [
   {
@@ -53,6 +53,21 @@ export const mapTourSteps: TourStep[] = [
         total={TOTAL}
         title="La IA funciona sin internet"
         body="El asistente vive en tu teléfono. Si te quedas sin señal durante un huracán, sigue respondiendo."
+      />
+    ),
+  },
+  {
+    // Same treatment as the IA tab, one cell to the right — see the padding
+    // note above; these two are siblings in the same bar and share the reason
+    // for hugging their target tightly.
+    shape: { type: "rectangle", padding: 4 },
+    placement: "top",
+    render: (props) => (
+      <TourBox
+        {...props}
+        total={TOTAL}
+        title="Alertas oficiales"
+        body="Avisos de ciclón del SMN y el historial de tu zona. Cuando algo cambia, aquí está el detalle completo."
       />
     ),
   },
