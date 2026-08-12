@@ -1,12 +1,33 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { ReactNode } from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import type { RenderProps } from "react-native-spotlight-tour";
 
 import { colors } from "../../utils/theme";
 
+/**
+ * Inline emphasis for a run of words inside `body` — use it to make a
+ * navigation path the eye can find without re-reading the sentence
+ * (`Ve a <TourStrong>Más → Ajustes</TourStrong>`).
+ *
+ * It swaps the *family*, not `fontWeight`. Only two Poppins faces are bundled
+ * (Light and SemiBold, see `assets/fonts/`), and `fontWeight` layered on a
+ * custom `fontFamily` is a coin flip in React Native: Android ignores it
+ * without a registered matching face, iOS falls back to the system font. The
+ * SemiBold family is the brand sheet's `emphasis` token, so this is the
+ * heaviest weight that stays on-brand.
+ *
+ * Nested `Text` inherits size, colour and leading from the body it sits in —
+ * this only overrides the family, so it never breaks the line.
+ */
+export function TourStrong({ children }: { children: ReactNode }) {
+  return <Text className="font-poppins-semibold">{children}</Text>;
+}
+
 interface Props extends RenderProps {
   title: string;
-  body: string;
+  /** `ReactNode`, not `string`, so copy can wrap runs in `TourStrong`. */
+  body: ReactNode;
   /** Extra emphasis line — used for the SOS "no tienes contactos" warning. */
   warning?: string;
   total: number;
@@ -15,7 +36,8 @@ interface Props extends RenderProps {
 /**
  * Branded replacement for the library's own `TourBox`, whose defaults are
  * English and unstyled. Kept as a single component so copy changes never touch
- * layout: `mapTourSteps` / `moreTourSteps` pass strings, this owns the looks.
+ * layout: `mapTourSteps` / `moreTourSteps` pass copy, this owns the looks —
+ * including emphasis, which they mark with `TourStrong` rather than styling.
  *
  * Styled with `className` against the tailwind tokens rather than imperative
  * values out of `theme.ts` — `className` is the system (`docs/BRAND.md`).

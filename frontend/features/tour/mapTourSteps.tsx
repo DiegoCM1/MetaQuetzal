@@ -1,6 +1,6 @@
 import type { TourStep } from "react-native-spotlight-tour";
 
-import { TourBox } from "./TourBox";
+import { TourBox, TourStrong } from "./TourBox";
 
 /**
  * Tutorial 1 — MapScreen. Passive: every step is read-and-tap-next.
@@ -30,7 +30,14 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Botón de emergencia"
-        body="Envía tu ubicación a tus contactos SOS con un toque. Úsalo si estás en peligro; incluso si no hay señal, se enviará en cuanto vuelva la conexión. Ve a Más → Contactos SOS para agregar contactos."
+        body={
+          <>
+            Envía tu ubicación a tus contactos SOS con un toque. Úsalo si estás
+            en peligro; incluso si no hay señal, se enviará en cuanto vuelva la
+            conexión. Ve a la sección{" "}
+            <TourStrong>Más → Contactos SOS</TourStrong> para agregar contactos.
+          </>
+        }
       />
     ),
   },
@@ -51,7 +58,14 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Asistente de emergencia"
-        body="Pregúntale qué hacer antes, durante y después de un huracán. Responde en línea por defecto; para que también funcione sin internet, actívalo en Más → Ajustes."
+        body={
+          <>
+            Pregúntale qué hacer antes, durante y después de un huracán.
+            Responde en línea por defecto; para que también funcione sin
+            internet, actívalo en la sección{" "}
+            <TourStrong>Más → Ajustes</TourStrong>.
+          </>
+        }
       />
     ),
   },
