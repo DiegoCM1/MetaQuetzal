@@ -36,9 +36,16 @@ export const mapTourSteps: TourStep[] = [
     ),
   },
   {
-    // One step for the whole bar, not one per tab. Mapa / Alertas / Más are
-    // self-evident from their labels; only IA has a property you can't guess.
-    shape: { type: "rectangle", padding: 8 },
+    // Still one step, but aimed at the IA tab alone rather than the whole bar.
+    // Mapa / Alertas / Más are self-evident from their labels; only IA has a
+    // property you can't guess — which is what makes it the only tab worth a
+    // step, and equally the only one worth lighting up. A cutout around all
+    // four leaves the user matching this copy against four buttons.
+    //
+    // Padding is small on purpose: the tabs are flex:1 siblings with no gap
+    // between them, so anything generous here bleeds into the neighbours and
+    // gives back the ambiguity the narrower target just removed.
+    shape: { type: "rectangle", padding: 4 },
     placement: "top",
     render: (props) => (
       <TourBox

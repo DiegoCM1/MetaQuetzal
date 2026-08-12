@@ -22,6 +22,14 @@ const TABS = [
   { name: "MoreScreen", label: "Más", icon: "menu" },
 ] as const;
 
+/**
+ * The tab Tutorial 1 spotlights. Named rather than compared inline so the
+ * spotlight and the tab it points at cannot drift apart: `TABS` is `as const`,
+ * so if this route is ever renamed there, the comparison below stops
+ * type-checking instead of silently matching nothing and dropping the anchor.
+ */
+const AI_TAB_NAME = "ChatAIScreen";
+
 const MARKER_WIDTH = 28;
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
@@ -61,10 +69,6 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         setTabBarWidth(e.nativeEvent.layout.width - 12);
       }}
     >
-      {/* Invisible spotlight target covering the bar. `fill` sizes it to this
-            View, so the bar's own layout stays untouched by tour code. */}
-      <TourAnchor index={MAP_TOUR.TABS} fill />
-
       {/* Animated marker row */}
       <View style={{ height: 6, marginBottom: 2 }}>
         <Animated.View
@@ -101,6 +105,15 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               height: "100%",
             }}
           >
+            {/* Invisible spotlight target for Tutorial 1, scoped to this one
+                tab so the cutout matches what the bubble actually talks about.
+                `fill` sizes it to this Pressable, so the bar's own layout —
+                and the tab's own press handling — stay untouched by tour
+                code. */}
+            {tab.name === AI_TAB_NAME && (
+              <TourAnchor index={MAP_TOUR.AI_TAB} fill />
+            )}
+
             <MaterialCommunityIcons
               name={tab.icon}
               size={22}

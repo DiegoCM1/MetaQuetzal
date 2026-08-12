@@ -68,7 +68,7 @@ follow-up. Keeps both under the 400-line PR limit.
 |---|---|---|---|
 | 0 | **Own intro card**, before `start()` | — | "Tu zona en tiempo real: ciclones activos y reportes de tu comunidad." + `Ver tutorial` / `Ahora no` |
 | 1 | `AttachStep`, circle | SOS FAB `index.tsx:901` | Avisa a tus contactos con tu ubicación. **No lo presiones ahora.** ⚠️ Aún no tienes contactos — configúralos en **Más → Contactos SOS**. |
-| 2 | `AttachStep fill`, rectangle | `CustomTabBar` root, `(tabs)/_layout.tsx:42` | **La IA funciona sin internet, en tu teléfono.** |
+| 2 | `TourAnchor fill`, rectangle | The **IA tab's `Pressable`** inside `CustomTabBar` (guarded by `AI_TAB_NAME`, `(tabs)/_layout.tsx`) — *not* the bar root: the copy is about one tab, so lighting up all four leaves the user matching the sentence against four buttons. | **La IA funciona sin internet, en tu teléfono.** |
 | 3 | `AttachStep` | `+ event` FAB `index.tsx:831` | Aquí reportas lo que ves — inundaciones, bloqueos, peligros — para tu comunidad. |
 
 **Optional 4th — the cyclones button** (`bottom 168`). Genuinely non-obvious: the comment at
@@ -95,7 +95,7 @@ these over intuition — several contradict what the library's docs imply.
 | A step with no `AttachStep` renders an **invisible** bubble | `spot` starts at zero-size and only `AttachStep` changes it; the tooltip only fades in when size > 0. Also: `spot` is **sticky** — a later step without `AttachStep` silently keeps the previous spotlight. |
 | **Library is JS-only** — no `android/`/`ios/` dirs in the tarball | `npm i` + `npx expo start -c` is enough. No `expo run:*` rebuild. `newArchEnabled` is irrelevant — nothing to autolink. |
 | `@react-navigation/bottom-tabs` renders the `tabBar` prop inside its own JSX | **Wrap `<Tabs>` in `(tabs)/_layout.tsx:103`.** That single placement puts both `CustomTabBar` and every tab screen (incl. the map) inside the context. |
-| `AttachStep` injects a wrapper `<View style={{alignSelf: fill ? 'stretch' : 'flex-start'}}>` | **Tab bar needs `fill`** or it collapses to content width. |
+| `AttachStep` injects a wrapper `<View style={{alignSelf: fill ? 'stretch' : 'flex-start'}}>` | Sidestepped, not used: `TourAnchor` passes its own `position:'absolute'` style, so `alignSelf` never applies. Note `TourAnchor`'s `fill` prop is **ours** (cover the parent exactly) and is not forwarded to `AttachStep`'s same-named prop. |
 | **The map FABs are `position:'absolute'`** (`:831`, `:853`, `:872`, `:901`) | Wrapping one puts a non-positioned wrapper around it, so `measureInWindow` returns the *wrapper's* box (≈zero, wrong place). **Move the absolute positioning onto `AttachStep`'s `style` prop and strip it from the child.** |
 | `AttachStep` `cloneElement`s and measures its own wrapper — it never forwards a ref | The earlier `OptionCard` / `forwardRef` concern was over-stated. Not an issue. |
 | `nativeDriver` defaults to `true`; shapes animate SVG props through `Animated` | **Unverified on Fabric + svg 15.12.1.** If the spotlight fails to draw or throws, set `nativeDriver={false}` — one prop. |
