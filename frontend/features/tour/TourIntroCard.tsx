@@ -25,21 +25,11 @@ export function TourIntroCard({ visible, onAccept, onDecline }: Props) {
       animationType="fade"
       onRequestClose={onDecline}
     >
-      <View
-        className="flex-1 items-center justify-center px-8"
-        style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
-      >
-        <View
-          className="w-full rounded-3xl p-6"
-          style={{ backgroundColor: colors.brandSurface }}
-        >
+      <View className="flex-1 items-center justify-center px-8 bg-black/60">
+        <View className="w-full rounded-2xl p-6 bg-brand-surface">
           <View
-            className="self-center items-center justify-center rounded-full mb-4"
-            style={{
-              width: 56,
-              height: 56,
-              backgroundColor: "rgba(49,103,255,0.15)",
-            }}
+            className="self-center items-center justify-center rounded-full mb-4 bg-brand-blue/15"
+            style={{ width: 56, height: 56 }}
           >
             <MaterialCommunityIcons
               name="map-search-outline"
@@ -51,15 +41,16 @@ export function TourIntroCard({ visible, onAccept, onDecline }: Props) {
           <Text className="font-poppins-semibold text-xl text-white text-center mb-2">
             Tu zona en tiempo real
           </Text>
-          <Text className="font-poppins text-sm text-white/70 text-center leading-5">
+          <Text className="font-poppins text-sm text-white text-center leading-5">
             Aquí ves los ciclones activos y los reportes de tu comunidad. Te
-            mostramos lo importante en 3 pasos rápidos.
+            mostramos lo importante en 4 pasos rápidos.
           </Text>
 
           <Pressable
             onPress={onAccept}
-            className="rounded-full py-3 mt-6 items-center active:opacity-80"
-            style={{ backgroundColor: colors.brandBlue }}
+            className="rounded-full py-3 mt-6 items-center bg-brand-blue active:opacity-80"
+            accessibilityRole="button"
+            accessibilityLabel="Ver tutorial"
           >
             <Text className="font-poppins-semibold text-white">
               Ver tutorial
@@ -69,8 +60,10 @@ export function TourIntroCard({ visible, onAccept, onDecline }: Props) {
             onPress={onDecline}
             className="py-3 mt-1 items-center"
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Omitir el tutorial"
           >
-            <Text className="font-poppins text-sm text-white/50">Ahora no</Text>
+            <Text className="font-poppins text-sm text-white/70">Ahora no</Text>
           </Pressable>
         </View>
       </View>

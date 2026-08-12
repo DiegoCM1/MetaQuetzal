@@ -30,8 +30,7 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Botón de emergencia"
-        body="Avisa a tus contactos dónde estás. No lo presiones ahora — solo queremos que sepas dónde está."
-        warning="⚠️ Aún no tienes contactos configurados. Ve a Más → Contactos SOS para agregarlos."
+        body="Envía tu ubicación a tus contactos SOS con un toque. Úsalo si estás en peligro; si no hay señal, queda en cola y se envía en cuanto vuelva. Ve a Más → Contactos SOS para agregar contactos."
       />
     ),
   },
@@ -51,15 +50,12 @@ export const mapTourSteps: TourStep[] = [
       <TourBox
         {...props}
         total={TOTAL}
-        title="La IA funciona sin internet"
-        body="El asistente vive en tu teléfono. Si te quedas sin señal durante un huracán, sigue respondiendo."
+        title="Asistente de emergencia"
+        body="Pregúntale qué hacer antes, durante y después de un huracán. Responde en línea por defecto; para que también funcione sin internet, actívalo en Más → Ajustes."
       />
     ),
   },
   {
-    // Same treatment as the IA tab, one cell to the right — see the padding
-    // note above; these two are siblings in the same bar and share the reason
-    // for hugging their target tightly.
     shape: { type: "rectangle", padding: 4 },
     placement: "top",
     render: (props) => (
@@ -67,19 +63,25 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Alertas oficiales"
-        body="Avisos de ciclón del SMN y el historial de tu zona. Cuando algo cambia, aquí está el detalle completo."
+        body="Avisos de ciclón del SMN y el historial de tu zona. Entra cuando quieras confirmar una alerta o ver el detalle completo."
       />
     ),
   },
   {
     shape: { type: "circle", padding: 12 },
-    placement: "left",
+    // "top", not "left". This FAB is anchored `right: 16` and is 48 wide, so a
+    // tooltip placed beside it gets `screenWidth - 64` to live in — under 300
+    // on a common phone, less than the bubble's own width. `shift` cannot
+    // rescue an element that is wider than the space it has, so it rendered
+    // half off the left edge. Above the FAB it has the whole screen to shift
+    // within, which is exactly why every other step already uses "top".
+    placement: "top",
     render: (props) => (
       <TourBox
         {...props}
         total={TOTAL}
         title="Reporta lo que ves"
-        body="Inundaciones, bloqueos, peligros o puntos de ayuda. Lo que reportas aparece en el mapa de quienes están cerca de ti."
+        body="Inundaciones, bloqueos, peligros o puntos de ayuda. Repórtalo en cuanto lo veas: aparece en el mapa de quienes están cerca de ti."
       />
     ),
   },

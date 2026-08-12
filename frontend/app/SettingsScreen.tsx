@@ -130,7 +130,7 @@ export default function SettingsScreen() {
         {modelStatus === "idle" && (
           <OptionCard
             icon="chip"
-            title="Activar modo sin conexión"
+            title="Instalar asistente de IA sin conexión"
             onPress={handleDownloadModel}
           />
         )}

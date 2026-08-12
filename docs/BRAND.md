@@ -21,9 +21,8 @@ colors:
   brand-green: "#00e774"    # safe / clear status
   brand-red: "#e24337"      # emergency / zona roja / errors
   brand-teal: "#4ed5de"     # map elements, secondary icons
-  # Surfaces — TODO(design): NOT tokenized yet. Hardcoded as ~#0a1c32 across
-  # DarkCard usages. Add as `brand-surface` to tailwind.config.js to kill the
-  # magic number. Until then this entry documents the de-facto value.
+  # Surfaces — tokenized. Lives in tailwind.config.js as `brand-surface`;
+  # reach for the class (`bg-brand-surface`), never the hex.
   brand-surface: "#0a1c32"
 typography:
   # Families registered in tailwind.config.js, loaded via expo-font in app/_layout.tsx
@@ -201,7 +200,9 @@ for `useTheme` only when you need the value *imperatively* (icon colors, switch 
 
 - ✅ **Do** use severity tokens for alert state; ✅ map/icon accents (`teal`/`cyan`) for chrome.
 - ✅ **Do** add new surface/elevation values as tokens, not inline hexes.
-- ❌ **Don't** hardcode `#0a1c32` — use `brand-surface` once it's tokenized (TODO above).
+- ❌ **Don't** hardcode `#0a1c32` — it is tokenized; use `bg-brand-surface`.
+- ❌ **Don't** dim body copy (`text-white/70` and friends). The type scale puts body
+  at plain white; 70% is for genuinely secondary chrome only (hints, skip links).
 - ❌ **Don't** define a color in `theme.ts` that isn't in `tailwind.config.js` (drift).
 - ❌ **Don't** reach for `StyleSheet.create` by default — `className` is the system.
 

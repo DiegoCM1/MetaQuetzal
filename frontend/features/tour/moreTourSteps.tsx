@@ -24,7 +24,7 @@ export const moreTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Chat sin internet"
-        body="Se conecta directo con teléfonos cercanos que tengan Bluai. Funciona aunque no haya red ni datos."
+        body="Se conecta directo con teléfonos cercanos que tengan Bluai, sin red ni datos. Úsalo cuando se caiga la señal y necesites coordinarte con quien esté alrededor."
       />
     ),
   },
@@ -35,7 +35,7 @@ export const moreTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Contactos SOS"
-        body="Las personas que reciben tu ubicación cuando presionas el botón de emergencia. Configúralos ahora, no durante la tormenta."
+        body="Son quienes reciben tu ubicación cuando usas el botón de emergencia. Configúralos ahora: en plena tormenta no vas a tener tiempo."
       />
     ),
   },
