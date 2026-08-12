@@ -23,12 +23,16 @@ import asyncio
 import logging
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
+# The AI router is imported optionally because it drags in sentence-transformers
+# (~1GB of torch). If that import fails in production the feature disappears
+# silently — the app boots fine and /ai/chat just 404s — so log the reason.
 try:
     from app.features.ai.router import router as ai_router
 except Exception:
+    logger.exception("AI router import failed; /ai/chat and /api/v1/ai/alert-summary will 404")
     ai_router = None
-
-logger = logging.getLogger(__name__)
 
 SIAT_CYCLE_INTERVAL_SECONDS = 30 * 60  # 30 minutes
 

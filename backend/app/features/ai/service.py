@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 import json
 import logging
@@ -196,7 +197,12 @@ async def chat(messages: list[dict], location: str | None = None, latitude: floa
             print(f"[chat:weather] weather fetch failed: {e}")
 
     try:
-        retrieved_chunks_list = retrieve(messages[-1].content)
+        # retrieve() is synchronous and slow twice over: a CPU-bound embedding
+        # pass through MiniLM, then a blocking psycopg2 connect + query. Called
+        # directly it would hold the event loop for the whole duration, freezing
+        # every other in-flight request on this worker — not just this chat.
+        # to_thread hands both off to a worker thread so the loop keeps serving.
+        retrieved_chunks_list = await asyncio.to_thread(retrieve, messages[-1].content)
         normalized_chunks = "\n\n".join(retrieved_chunks_list)
         message_for_ai = f"This is some additional context: {normalized_chunks}"
 

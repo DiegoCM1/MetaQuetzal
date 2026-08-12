@@ -1,5 +1,19 @@
+# File-global directive (its position does not scope it): adds PyTorch's own
+# wheel index alongside PyPI, which is where the +cpu builds below live.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 annotated-doc==0.0.4
-sentence-transformers
+
+# torch arrives as a transitive dependency of sentence-transformers. Left
+# unpinned, pip resolves PyPI's default Linux wheel, which bundles the NVIDIA
+# CUDA runtime (~2.5GB) — dead weight on Railway and CI, both CPU-only. The
+# "+cpu" local version identifier exists only on PyTorch's index, so pinning it
+# forces the right wheel deterministically. macOS publishes no +cpu wheel (and
+# has no CUDA build to avoid), hence the environment marker split.
+# NOTE: this pin means the app cannot use a GPU even where one is available.
+torch==2.11.0+cpu ; sys_platform == "linux"
+torch==2.11.0 ; sys_platform != "linux"
+sentence-transformers==5.4.0
 psycopg2-binary
 pgvector
 annotated-types==0.7.0
