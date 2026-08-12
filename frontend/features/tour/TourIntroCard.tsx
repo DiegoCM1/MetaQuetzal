@@ -42,7 +42,7 @@ export function TourIntroCard({ visible, onAccept, onDecline }: Props) {
             Tu zona en tiempo real
           </Text>
           <Text className="font-poppins text-sm text-white text-center leading-5">
-            Aquí ves los ciclones activos y los reportes de tu comunidad. Te
+            Aquí verás los huracanes activos y los reportes de tu comunidad. Te
             mostramos lo importante en 4 pasos rápidos.
           </Text>
 

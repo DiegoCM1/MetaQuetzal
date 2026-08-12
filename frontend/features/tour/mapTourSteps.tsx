@@ -30,7 +30,7 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Botón de emergencia"
-        body="Envía tu ubicación a tus contactos SOS con un toque. Úsalo si estás en peligro; si no hay señal, queda en cola y se envía en cuanto vuelva. Ve a Más → Contactos SOS para agregar contactos."
+        body="Envía tu ubicación a tus contactos SOS con un toque. Úsalo si estás en peligro; incluso si no hay señal, se enviará en cuanto vuelva la conexión. Ve a Más → Contactos SOS para agregar contactos."
       />
     ),
   },
@@ -63,7 +63,7 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Alertas oficiales"
-        body="Avisos de ciclón del SMN y el historial de tu zona. Entra cuando quieras confirmar una alerta o ver el detalle completo."
+        body="Avisos de huracánes del SMN y el historial de tu zona. Entra cuando quieras confirmar una alerta o ver el detalle completo."
       />
     ),
   },
