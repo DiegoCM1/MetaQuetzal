@@ -34,7 +34,8 @@ export type PushPhase =
   | "apns-register" // iOS only: registering with APNs for remote messages
   | "token" // fetching the FCM registration token
   | "backend" // POSTing the token to /api/v1/push-token
-  | "registered"; // done — token accepted and persisted
+  | "registered" // done — token accepted and persisted
+  | "unknown"; // a backstop caught something that escaped every guarded stage
 
 /** The named failure taxonomy. Every way registration can go wrong, named. */
 export type PushFailureType =
