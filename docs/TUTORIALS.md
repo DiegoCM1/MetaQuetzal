@@ -1,9 +1,5 @@
 # In-App Tutorials — Plan & Decisions
 
-> Status: **planned, not implemented**. Last updated 2026-08-09.
-> **v1 is passive only.** The interactive map-event step is designed but deliberately deferred —
-> see [DEFERRED](#deferred--interactive-map-event-step).
-
 ## Purpose
 
 The onboarding wizard (`app/onboarding/`) **extracts** data from the user. It never explains
