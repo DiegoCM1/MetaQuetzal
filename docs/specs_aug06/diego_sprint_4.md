@@ -64,7 +64,7 @@ response = await asyncio.to_thread(messaging.send_each_for_multicast, msg)
 
 Firebase corta el batch en **500 por llamada** (verificado contra la doc actual de `firebase-admin`: *"send_each is capped at 500 messages per call"*). Pasando 500 dispositivos afectados, la llamada **revienta**, el `except` se la traga, y **la alerta nacional no le llega a nadie**.
 
-**La campaña de RRSS/MEDIOS es el 13 de agosto.** Ese es el evento que nos puede cruzar el umbral.
+**La campaña de RRSS/MEDIOS es el lunes 17 de agosto.** Ese es el evento que nos puede cruzar el umbral.
 
 ### Qué hacer
 
