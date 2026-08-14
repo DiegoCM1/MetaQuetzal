@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Message } from '../_types'
 import { OnlineProvider } from '../_services/OnlineProvider'
 import { useModel } from '../_context/ModelContext'
-import { Alert } from 'react-native'
+import { Alert, Platform } from 'react-native'
 import * as Location from 'expo-location'
 
 const online = new OnlineProvider()
@@ -110,7 +110,12 @@ export function useChat() {
                 setModelMode('offline')
                 if (!modelReady) {
                     console.log('[useChat] offline + model not ready — showing error fallback')
-                    const errorText = 'Sin conexión y modelo IA no descargado. Conéctate a internet o descarga el modelo IA desde Ajustes.'
+                    // On iOS the offline model isn't offered (see SettingsScreen), so
+                    // pointing the user at Ajustes would send them to a card that
+                    // doesn't exist there.
+                    const errorText = Platform.OS === 'ios'
+                        ? 'Sin conexión. Conéctate a internet para usar el asistente.'
+                        : 'Sin conexión y modelo IA no descargado. Conéctate a internet o descarga el modelo IA desde Ajustes.'
                     setMessages(prev => {
                         if (prev.length === 0) return prev
                         const last = prev[prev.length - 1]
