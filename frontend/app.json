@@ -23,7 +23,7 @@
       "backgroundColor": "#030810"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.bluai.app",
       "googleServicesFile": "./GoogleService-Info.plist",
