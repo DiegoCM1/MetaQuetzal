@@ -95,18 +95,50 @@ patrón, no inventar uno nuevo.
 
 ## Falta — no es de iOS, pero iOS lo empeora
 
-### E. Corte de 500 + predicado de borrado ← **campaña el lunes 17**
+### E. Corte de 500 + predicado de borrado — **DIFERIDO (decisión 14/08)**
 
-- `siat/service.py:390` aplana **todos** los tokens en un solo `MulticastMessage`.
-  Firebase truena arriba de 500 (`ValueError`, antes de cualquier llamada de red) →
-  **la alerta nacional no le llega a nadie**.
-- `notifications/service.py:92` y `:153` borran el token ante **cualquier** fallo.
-  Debe ser solo `isinstance(r.exception, messaging.UnregisteredError)`. Hoy un
-  `QuotaExceededError` transitorio borra permanentemente un dispositivo bueno.
+> **Se pospone hasta después de mandar iOS.** iOS es lo urgente; E se retoma al terminar
+> la cadena de push. **Antes de dar por buena la decisión, correr en prod:**
+> ```sql
+> SELECT COUNT(*) FROM device_tokens;
+> ```
+> Abajo de 500 → diferir no cuesta nada. Arriba de 500 → ya está roto hoy y la campaña
+> del lunes 17 no le llega a nadie. Es la única cifra que cambia la decisión.
+
+**Son dos sends sin cota, no uno** (el doc antes solo listaba SIAT):
+
+| Sitio | De dónde salen los tokens | Cota |
+|---|---|---|
+| `notifications/service.py:141` `send_all_notifications` | `SELECT token FROM device_tokens` | **toda la tabla** |
+| `siat/service.py:396` `_push_smn_for_alert` | todos los usuarios afectados, aplanados | **sin cota** |
+
+`send_all_notifications` es **el camino de la campaña** (`POST /api/v1/notifications/send-all`,
+`router.py:85`, y un segundo endpoint en `:123`). SIAT es el loop automático de ciclones.
+El doc antes señalaba solo SIAT — es el equivocado para una campaña de marketing.
+
+Los otros cinco multicast están acotados **por uso actual, no por construcción**
+(`siat:319`, `notifications:80`, `notifications:109`, `sos_trigger:82`, `sos_invite:120`).
+Ninguno puede pasar de 500 hoy, pero nada en la firma lo impide — `send_contacts_refresh_push`
+recibe una *lista*. → Poner el chunking en el helper compartido, no en los dos call sites
+calientes; así los siete quedan acotados por construcción.
+
+**Falla en silencio:** `send_each_for_multicast` lanza `ValueError` **del lado del cliente,
+antes de cualquier llamada de red**. No hay error de Firebase, ni status HTTP, ni nada en la
+consola. En SIAT se lo traga el `except Exception` de `:414` y como nunca llama a
+`_mark_alert_notified`, reintenta el mismo fallo cada 30 min.
+
+**Borrado:** `notifications/service.py:92` y `:153` borran ante **cualquier** fallo. Debe ser
+solo `isinstance(r.exception, messaging.UnregisteredError)`. Hoy un `QuotaExceededError`
+transitorio borra permanentemente un dispositivo bueno. SIAT está limpio en esto: `:420-422`
+loguea y no borra.
 
 **Por qué importa para iOS:** en cuanto entren tokens de iOS, cualquier problema de
 APNs regresa fallos por-token, y este código responde **borrando esos dispositivos de
 la base**. Se registran, fallan, se borran, se re-registran — en loop invisible.
+
+**Tamaño cuando se retome:** ~120 líneas con tests, en `notifications/service.py` +
+`siat/service.py` + `notifications/tests/test_router.py`. Backend puro, sin build nativo,
+cubierto por `pytest` en CI.
 
 ### F. Borrado de cuenta (Guideline 5.1.1(v))
 
@@ -287,20 +319,18 @@ falla, es culpa de Fase 2 — no de algo preexistente.
 ## Orden sugerido
 
 ```
-E → A1 (install + check de manifest) → A2 (token) → D → C → B → F
+A1 (install + check de manifest) → A2 (token) → D → C → B → F → E
 ```
 
 `A → D → C → B` es la cadena de "push funciona en iOS", en orden de dependencia. Solo el
 test final de entrega necesita a Ivan.
 
-**E va primero porque es lo único con fecha externa** (campaña **lunes 17**, a 3 días).
-Es backend puro, lo cubre `pytest` en CI, y no depende de nada de iOS.
+**E se difirió el 14/08**: iOS es lo urgente y E no bloquea nada de iOS. Ver la nota en la
+sección E — la decisión solo se sostiene si `COUNT(*) FROM device_tokens` está abajo de 500.
 
-Antes de decidir su urgencia, correr en **prod**:
-```sql
-SELECT COUNT(*) FROM device_tokens;
-```
-Abajo de 500 es un bug latente. Arriba de 500 ya está roto hoy.
+**A1 va primero** porque A2 depende de él y porque es la única incógnita abierta del plan:
+hasta leer el manifest de RNFB en disco no sabemos si instalar `messaging` rompe el push en
+primer plano de **Android**, que es la plataforma que hoy sí está en producción.
 
 ### Los tres tipos de bloqueador (no confundirlos)
 
