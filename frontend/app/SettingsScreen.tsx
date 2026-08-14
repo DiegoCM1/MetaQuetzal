@@ -1,7 +1,7 @@
 import "../global.css";
 import { clearOnboardingData } from "./onboarding/_services/onboardingService";
 import { resetAllTours } from "../features/tour/tourService";
-import { Alert, Text, ScrollView, ActivityIndicator } from "react-native";
+import { Alert, Platform, Text, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -126,79 +126,89 @@ export default function SettingsScreen() {
           onPress={handleResetOnboarding}
         />
 
-        {/* AI offline model — one card per lifecycle status (single source of truth). */}
-        {modelStatus === "idle" && (
-          <OptionCard
-            icon="chip"
-            title="Instalar asistente de IA sin conexión"
-            onPress={handleDownloadModel}
-          />
-        )}
-
-        {modelStatus === "checking" && (
-          <OptionCard
-            icon="cloud-download-outline"
-            title="Preparando descarga..."
-            rightElement={<ActivityIndicator color="white" />}
-          />
-        )}
-
-        {modelStatus === "downloading" && (
-          <OptionCard
-            icon="cloud-download-outline"
-            title="Descargando modelo IA..."
-            rightElement={
-              <Text style={{ color: "white", fontWeight: "600" }}>
-                {Math.round(downloadProgress * 100)}%
-              </Text>
-            }
-          />
-        )}
-
-        {modelStatus === "reconnecting" && (
-          <OptionCard
-            icon="autorenew"
-            title="Reconectando..."
-            subtitle="Conexión interrumpida — reanudando la descarga"
-            rightElement={
-              <Text style={{ color: "white", fontWeight: "600" }}>
-                {Math.round(downloadProgress * 100)}%
-              </Text>
-            }
-          />
-        )}
-
-        {modelStatus === "loading" && (
-          <OptionCard
-            icon="cog-sync-outline"
-            title="Cargando modelo en memoria..."
-            rightElement={<ActivityIndicator color="white" />}
-          />
-        )}
-
-        {modelStatus === "failed" && modelFailure && (
-          <OptionCard
-            icon="alert-circle-outline"
-            title={`${MODEL_FAILURE_LABEL[modelFailure.type]} — reintentar`}
-            subtitle={modelFailure.message}
-            onPress={retryDownload}
-            danger
-          />
-        )}
-
-        {modelStatus === "ready" && (
-          <OptionCard
-            icon="check-circle-outline"
-            title="Modelo IA listo"
-            onPress={handleDeleteModel}
-            rightElement={
-              <MaterialCommunityIcons
-                name="trash-can-outline"
-                color="#EF4444"
-                size={22}
+        {/* AI offline model — one card per lifecycle status (single source of truth).
+            Android only this release: the executorch runtime does initialise on iOS
+            (it ships in the binary and the May 2026 iOS builds ran fine with it), but
+            the download → load → inference path has never been exercised there. Hiding
+            the entry point is what keeps that path unreachable, so an iOS user can't
+            pull a ~1 GB model we've never seen run. Remove this gate when iOS parity
+            ships — nothing else here is platform-specific. */}
+        {Platform.OS !== "ios" && (
+          <>
+            {modelStatus === "idle" && (
+              <OptionCard
+                icon="chip"
+                title="Instalar asistente de IA sin conexión"
+                onPress={handleDownloadModel}
               />
-            }
-          />
+            )}
+
+            {modelStatus === "checking" && (
+              <OptionCard
+                icon="cloud-download-outline"
+                title="Preparando descarga..."
+                rightElement={<ActivityIndicator color="white" />}
+              />
+            )}
+
+            {modelStatus === "downloading" && (
+              <OptionCard
+                icon="cloud-download-outline"
+                title="Descargando modelo IA..."
+                rightElement={
+                  <Text style={{ color: "white", fontWeight: "600" }}>
+                    {Math.round(downloadProgress * 100)}%
+                  </Text>
+                }
+              />
+            )}
+
+            {modelStatus === "reconnecting" && (
+              <OptionCard
+                icon="autorenew"
+                title="Reconectando..."
+                subtitle="Conexión interrumpida — reanudando la descarga"
+                rightElement={
+                  <Text style={{ color: "white", fontWeight: "600" }}>
+                    {Math.round(downloadProgress * 100)}%
+                  </Text>
+                }
+              />
+            )}
+
+            {modelStatus === "loading" && (
+              <OptionCard
+                icon="cog-sync-outline"
+                title="Cargando modelo en memoria..."
+                rightElement={<ActivityIndicator color="white" />}
+              />
+            )}
+
+            {modelStatus === "failed" && modelFailure && (
+              <OptionCard
+                icon="alert-circle-outline"
+                title={`${MODEL_FAILURE_LABEL[modelFailure.type]} — reintentar`}
+                subtitle={modelFailure.message}
+                onPress={retryDownload}
+                danger
+              />
+            )}
+
+            {modelStatus === "ready" && (
+              <OptionCard
+                icon="check-circle-outline"
+                title="Modelo IA listo"
+                onPress={handleDeleteModel}
+                rightElement={
+                  <MaterialCommunityIcons
+                    name="trash-can-outline"
+                    color="#EF4444"
+                    size={22}
+                  />
+                }
+              />
+            )}
+          </>
         )}
 
         <OptionCard

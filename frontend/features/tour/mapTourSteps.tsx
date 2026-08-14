@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import type { TourStep } from "react-native-spotlight-tour";
 
 import { TourBox, TourStrong } from "./TourBox";
@@ -58,13 +59,25 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Asistente de emergencia"
+        // The offline model is Android-only this release, and its entry point in
+        // Ajustes is hidden on iOS (see SettingsScreen). Sending an iPhone user
+        // there would point them at a card that isn't rendered — so the copy has
+        // to stop promising a capability that platform doesn't have. Drop this
+        // branch when iOS parity ships.
         body={
-          <>
-            Pregúntale qué hacer antes, durante y después de un huracán.
-            Responde en línea por defecto; para que también funcione sin
-            internet, actívalo en la sección{" "}
-            <TourStrong>Más → Ajustes</TourStrong>.
-          </>
+          Platform.OS === "ios" ? (
+            <>
+              Pregúntale qué hacer antes, durante y después de un huracán.
+              Necesita conexión a internet para responder.
+            </>
+          ) : (
+            <>
+              Pregúntale qué hacer antes, durante y después de un huracán.
+              Responde en línea por defecto; para que también funcione sin
+              internet, actívalo en la sección{" "}
+              <TourStrong>Más → Ajustes</TourStrong>.
+            </>
+          )
         }
       />
     ),

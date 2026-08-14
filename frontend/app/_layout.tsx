@@ -20,6 +20,12 @@ import {
   setForegroundNotificationHandler,
   addNotificationResponseListener,
 } from "../utils/pushNotifications";
+import {
+  pushBreadcrumb,
+  redactToken,
+  reportPushFailure,
+  toMessage,
+} from "../utils/pushTelemetry";
 import * as Notifications from "expo-notifications";
 import { Toaster, toast } from "sonner-native";
 import { initAnalytics, track, flush } from "../utils/analytics"
@@ -132,10 +138,19 @@ function AuthGate({ children }) {
   useEffect(() => {
     if (!authEnabled || !user) return
     registerForPushNotificationsAsync()
-      .then((token) => console.log("Token guardado:", token))
-      .catch(console.error)
+      .then((token) => pushBreadcrumb("registration finished", { tokenPrefix: redactToken(token) }))
+      // Backstop: every stage inside is individually guarded, so anything
+      // reaching here is genuinely unforeseen — which is exactly why it must
+      // not land in a console line nobody reads.
+      .catch((err) => reportPushFailure(
+        { type: "unknown", message: toMessage(err), phase: "unknown" },
+        { hasUid: !!user?.uid },
+      ))
     const tokenSub = Notifications.addPushTokenListener(({ data }) => {
-      sendTokenToBackend(data).catch(console.error)
+      sendTokenToBackend(data).catch((err) => reportPushFailure(
+        { type: "unknown", message: toMessage(err), phase: "token" },
+        { hasUid: !!user?.uid, tokenPrefix: redactToken(data) },
+      ))
     })
     return () => tokenSub.remove()
   }, [authEnabled, user?.uid])

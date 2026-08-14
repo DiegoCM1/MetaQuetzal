@@ -62,13 +62,38 @@ export default function LocalChatLobbyScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 36, gap: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        <StatusHero
-          advertising={chat.advertising}
-          discovering={chat.discovering}
-          connecting={chat.connecting}
-          peerName={connectedName}
-          error={chat.error}
-        />
+        {/* On an unsupported platform this isn't a fault, it's an unshipped
+            feature — but StatusHero only knows "error", so handing it the
+            provider's platform message rendered a red "Algo falló". Same
+            information, wrong story: a user reads it as a broken app rather
+            than one that hasn't got there yet. */}
+        {chat.supported ? (
+          <StatusHero
+            advertising={chat.advertising}
+            discovering={chat.discovering}
+            connecting={chat.connecting}
+            peerName={connectedName}
+            error={chat.error}
+          />
+        ) : (
+          <View className="rounded-2xl border border-white/10 bg-brand-surface p-5">
+            <View className="flex-row items-center gap-3">
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={26}
+                color="rgba(255,255,255,0.7)"
+              />
+              <Text className="font-poppins-semibold text-lg text-white">
+                Próximamente en iPhone
+              </Text>
+            </View>
+            <Text className="mt-3 font-poppins text-sm leading-5 text-white/60">
+              El chat sin internet se conecta directo con teléfonos cercanos por
+              Bluetooth. Por ahora funciona solo en Android — estamos trabajando
+              en la versión para iPhone.
+            </Text>
+          </View>
+        )}
 
         {chat.supported ? (
           <>

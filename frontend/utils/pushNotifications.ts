@@ -5,9 +5,20 @@ import * as IntentLauncher from "expo-intent-launcher";
 import { Alert, DeviceEventEmitter, Linking, Platform } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from '@react-native-firebase/auth';
 import { track } from "./analytics";
 import { authFetch } from './api'
 import { API_BASE_URL } from './config'
+import {
+  PUSH_FAILURE_COPY,
+  classifyBackendStatus,
+  pushBreadcrumb,
+  redactToken,
+  reportPushFailure,
+  resetPushFailureReporting,
+  toMessage,
+  type PushFailureType,
+} from './pushTelemetry'
 
 const BATTERY_OPT_ASKED_KEY  = '@blueeye:battery_opt_asked';
 const HEADS_UP_ASKED_KEY     = '@blueeye:heads_up_asked_v2'; // v2 = sos_emergency channel
@@ -22,7 +33,7 @@ export async function requestBatteryOptimizationExemption(): Promise<void> {
 
   Alert.alert(
     'Alertas de emergencia',
-    'Para que BluEye pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
+    'Para que Bluai pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
     [
       { text: 'Ahora no', style: 'cancel' },
       {
@@ -92,26 +103,50 @@ const _LAST_TOKEN_KEY = 'push_last_registered_token';
 // In-memory guard prevents concurrent calls with the same token from both POSTing
 let _registrationInFlight: string | null = null;
 
-export async function sendTokenToBackend(fcmToken: string): Promise<void> {
-  if (_registrationInFlight === fcmToken) return;
+/** Outcome of a registration attempt, so callers can react instead of guessing. */
+export type PushRegistrationResult =
+  | { ok: true }
+  | { ok: false; type: PushFailureType };
+
+// Telemetry must never be the thing that crashes the app: if Firebase isn't
+// initialised yet, "no uid" is the honest answer, not an exception.
+function _hasUid(): boolean {
+  try {
+    return !!getAuth().currentUser?.uid;
+  } catch {
+    return false;
+  }
+}
+
+export async function sendTokenToBackend(fcmToken: string): Promise<PushRegistrationResult> {
+  // Another call already owns this token's outcome — not our failure to report.
+  if (_registrationInFlight === fcmToken) return { ok: true };
   _registrationInFlight = fcmToken;  // set before any await — closes TOCTOU window
 
+  const tokenPrefix = redactToken(fcmToken);
   let success = false;
-  let lastErr: unknown;
+  let failureType: PushFailureType = 'backend-unreachable';
+  let lastMessage = '(no error object)';
+  let lastStatus: number | undefined;
+  let attempt = 0;
 
   try {
     // Persistent deduplication: skip if token already registered successfully
     try {
       const stored = await AsyncStorage.getItem(_LAST_TOKEN_KEY);
-      if (stored === fcmToken) return;   // finally handles _registrationInFlight = null
+      if (stored === fcmToken) {
+        pushBreadcrumb('token already registered — skipping POST', { tokenPrefix });
+        return { ok: true };             // finally handles _registrationInFlight = null
+      }
     } catch {
       // AsyncStorage unavailable — proceed with registration
     }
 
     const MAX = 3;
     for (let i = 0; i < MAX; i++) {
+      attempt = i + 1;
       try {
-        const res = await authFetch(`${API_BASE_URL}/push-token`, {
+        const res = await authFetch(`${API_BASE_URL}/api/v1/push-token`, {
           method: 'POST',
           body: JSON.stringify({ token: fcmToken }),
         });
@@ -120,13 +155,20 @@ export async function sendTokenToBackend(fcmToken: string): Promise<void> {
             await AsyncStorage.setItem(_LAST_TOKEN_KEY, fcmToken);
           } catch { /* best-effort; next launch will re-POST (idempotent) */ }
           track('push_token_saved', { ok: true });
+          pushBreadcrumb('token registered with backend', { tokenPrefix, attempt });
           success = true;
           break;
         }
+        // Record WHY before deciding whether to retry. Breaking out of the loop
+        // without capturing the reason is what made 4xx failures invisible.
+        lastStatus = res.status;
+        failureType = classifyBackendStatus(res.status);
+        lastMessage = `HTTP ${res.status}`;
         if (res.status < 500) break;                       // 4xx permanente — no reintentar
-        lastErr = new Error(`HTTP ${res.status}`);
       } catch (err) {
-        lastErr = err;                                     // error de red → reintentar
+        failureType = 'backend-unreachable';               // error de red → reintentar
+        lastMessage = toMessage(err);
+        lastStatus = undefined;
       }
       if (i < MAX - 1) await new Promise(r => setTimeout(r, 1000 * 2 ** i)); // 1s → 2s
     }
@@ -134,16 +176,21 @@ export async function sendTokenToBackend(fcmToken: string): Promise<void> {
     _registrationInFlight = null;
   }
 
-  if (!success) {
-    console.error('Error enviando token al backend después de retries:', lastErr);
-    track('push_token_saved', { ok: false, error: String(lastErr) });
-    if (lastErr !== undefined) {
-      // Only show Toast for transient failures (network errors, 5xx) — not for 4xx permanent
-      toast.error('No se pudieron activar notificaciones', {
-        description: 'Revisa tu conexión e intenta abrir la app de nuevo.',
-      });
-    }
+  if (success) return { ok: true };
+
+  reportPushFailure(
+    { type: failureType, message: lastMessage, phase: 'backend' },
+    { hasUid: _hasUid(), attempt, httpStatus: lastStatus, tokenPrefix },
+  );
+  track('push_token_saved', { ok: false, error: failureType });
+
+  // Whether to interrupt the user is a per-failure decision, not an inference
+  // from whether an error object happens to exist.
+  const copy = PUSH_FAILURE_COPY[failureType];
+  if (copy.notify) {
+    toast.error(copy.title, { description: copy.description });
   }
+  return { ok: false, type: failureType };
 }
 
 export async function setupNotificationChannels() {
@@ -188,42 +235,81 @@ export async function setupNotificationChannels() {
 }
 
 export async function registerForPushNotificationsAsync() {
+  resetPushFailureReporting();
+
   if (!Device.isDevice) {
-    console.log("Push solo funciona en dispositivo físico");
+    pushBreadcrumb('skipped — push requires a physical device');
     return null;
   }
 
-  await setupNotificationChannels();
+  // A failed channel must not cost us the token. This used to be a bare `await`:
+  // any throw rejected the whole function, so permissions were never requested
+  // and no token was ever fetched — with nothing but a console line to show it.
+  try {
+    await setupNotificationChannels();
+  } catch (err) {
+    reportPushFailure(
+      { type: 'channel-setup-failed', message: toMessage(err), phase: 'channels' },
+      { hasUid: _hasUid() },
+    );
+  }
 
   // 1) Permisos
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  const finalStatus =
-    existingStatus === "granted"
-      ? existingStatus
-      : (await Notifications.requestPermissionsAsync()).status;
+  let finalStatus: string;
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    finalStatus =
+      existingStatus === "granted"
+        ? existingStatus
+        : (await Notifications.requestPermissionsAsync()).status;
+  } catch (err) {
+    reportPushFailure(
+      { type: 'unknown', message: toMessage(err), phase: 'permissions' },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
 
   track("push_permission", {
     status: finalStatus === "granted" ? "granted" : "denied",
   });
 
   if (finalStatus !== "granted") {
-    Alert.alert(
-      "Permiso denegado",
-      "Sin permiso no se pueden recibir alertas de huracán",
-    );
+    // A declined permission is a user choice, not a defect — it belongs in the
+    // Mixpanel funnel above, not in Sentry's "something is broken" dashboard.
+    const copy = PUSH_FAILURE_COPY['permission-denied'];
+    pushBreadcrumb('permission denied by user', { status: finalStatus });
+    Alert.alert(copy.title, copy.description);
     return null;
   }
 
   // 2) Token nativo FCM (HTTP v1)
-  const { data: fcmToken } = await Notifications.getDevicePushTokenAsync();
-  console.log("FCM token →", fcmToken);
+  let fcmToken: string;
+  try {
+    const { data } = await Notifications.getDevicePushTokenAsync();
+    fcmToken = data;
+  } catch (err) {
+    reportPushFailure(
+      { type: 'token-unavailable', message: toMessage(err), phase: 'token' },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
+  // Prefix only — a push token is a credential, and Sentry runs sendDefaultPii.
+  pushBreadcrumb('FCM token acquired', { tokenPrefix: redactToken(fcmToken) });
 
   await sendTokenToBackend(fcmToken);
 
   // 3) Battery optimization exemption — solo aparece una vez
-  requestBatteryOptimizationExemption();
+  void requestBatteryOptimizationExemption().catch((err) =>
+    pushBreadcrumb('battery-opt dialog failed', { error: toMessage(err) }),
+  );
   // 4) Heads-up / floating notifications — mostramos 2 s después para no superponer dialogs
-  setTimeout(() => requestHeadsUpPermission(), 2000);
+  setTimeout(() => {
+    void requestHeadsUpPermission().catch((err) =>
+      pushBreadcrumb('heads-up dialog failed', { error: toMessage(err) }),
+    );
+  }, 2000);
 
   return fcmToken;
 }

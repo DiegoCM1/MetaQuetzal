@@ -26,13 +26,13 @@ Quedan **5 días hábiles** (lunes 10 a viernes 14). **La semana de Val es la m�
 
 Tres casos donde **hacer algo antes que otra cosa** nos ahorra un problema.
 
-### 1. 🔴 Las alertas nacionales se rompen si pasamos de 500 dispositivos — y la campaña es el 13
+### 1. 🔴 Las alertas nacionales se rompen si pasamos de 500 dispositivos — y la campaña es el lunes 17
 
 Hoy, cuando sale una alerta nacional, el sistema junta los dispositivos de todos los usuarios y los manda **en un solo envío**. Firebase solo acepta **500 por envío**. Si tenemos más de 500 dispositivos registrados, ese envío falla completo y **la alerta no le llega absolutamente a nadie** — y solo queda un error en el log, sin aviso a nadie.
 
-Ahorita no hay problema porque somos pocos. **El problema es que la primera tanda de posteos en redes y la campaña de medios están agendadas para el 13 de agosto.** Si esa campaña nos mete registros y cruzamos los 500, el sistema de alertas deja de funcionar justo cuando empieza a importar.
+Ahorita no hay problema porque somos pocos. **El problema es que la primera tanda de posteos en redes y la campaña de medios están agendadas para el lunes 17 de agosto.** Si esa campaña nos mete registros y cruzamos los 500, el sistema de alertas deja de funcionar justo cuando empieza a importar.
 
-→ **Diego lo arregla antes del miércoles 12.** Es partir el envío en grupos de 500. Media hora.
+→ **Diego lo arregla antes del cierre del viernes 14.** Es partir el envío en grupos de 500. Media hora.
 
 ### 2. 🔴 Antes de los planes de pago hay que cerrar un hueco de datos
 
@@ -149,7 +149,7 @@ Anotados para que no se olviden.
 
 ## Revisión — miércoles 12, sí o no
 
-- ¿**Envío de alertas partido en grupos de 500?** ← el importante, la campaña es el 13
+- ¿**Envío de alertas partido en grupos de 500?** ← el importante, la campaña es el lunes 17
 - ¿Cerrado el hueco de datos antes de que Val toque planes?
 - ¿Cobros web avanzando de verdad, o atorado?
 - ¿Build de iOS en camino a manos externas?
@@ -162,7 +162,7 @@ Anotados para que no se olviden.
 | Situación | Qué hacer |
 |---|---|
 | iOS pelea más de 2 días | Cortar herramientas de IA y banners. **iOS gana**, tiene compromiso externo. |
-| El envío por grupos de 500 no está el miércoles | **Parar todo y hacerlo.** Es media hora y la campaña es al día siguiente. |
+| El envío por grupos de 500 no está el viernes 14 | **Parar todo y hacerlo.** Es media hora y la campaña arranca el lunes 17. |
 | Val no llega con todo | Prioridad: **cobros web → planes en la app → GPS familiar**. El hueco de datos se cierra igual, es medio día. |
 | Edgar no termina el semáforo | Que salga la definición única en servidor y lista de alertas; el mapa se difiere. Lo importante es que **exista una sola fuente de verdad**. |
 | Edgar no alcanza el Bluetooth mesh | Es lo último de su lista a propósito: **las alertas van primero**. Que quede la parte que sí funciona y una nota de qué faltó. **Nunca a costa de romper el chat uno-a-uno que hoy sirve.** |
