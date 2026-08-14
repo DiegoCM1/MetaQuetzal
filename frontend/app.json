@@ -23,13 +23,13 @@
       "backgroundColor": "#030810"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.bluai.app",
+      "buildNumber": "15",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -73,10 +73,17 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "BluEye necesita acceso a tus contactos para que puedas agregar contactos SOS fácilmente."
+          "contactsPermission": "Bluai necesita acceso a tus contactos para que puedas agregar contactos SOS fácilmente."
         }
       ],
-      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bluai usa tu ubicación para enviarte alertas de huracán de tu zona y mostrarte los riesgos cerca de ti.",
+          "locationAlwaysPermission": false,
+          "locationAlwaysAndWhenInUsePermission": false
+        }
+      ],
       "./plugins/with-nearby-connections",
       "@react-native-firebase/app",
       [

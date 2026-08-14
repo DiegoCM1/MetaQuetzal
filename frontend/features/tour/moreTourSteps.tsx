@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import type { TourStep } from "react-native-spotlight-tour";
 
 import { TourBox } from "./TourBox";
@@ -24,7 +25,16 @@ export const moreTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Chat sin internet"
-        body="Se conecta directo con teléfonos cercanos que tengan Bluai, sin red ni datos. Úsalo cuando se caiga la señal y necesites coordinarte con quien esté alrededor."
+        // Android-only for now: the iOS transport reports unavailable
+        // (NearbyTransport.ios.ts). The entry stays visible on iPhone so the
+        // tour keeps its anchor and the step indices don't shift, but promising
+        // a working radio there would be a lie the user only discovers in an
+        // emergency. Drop this branch when MultipeerConnectivity lands.
+        body={
+          Platform.OS === "ios"
+            ? "Se conecta directo con teléfonos cercanos que tengan Bluai, sin red ni datos. Por ahora funciona solo en Android — estamos trabajando en la versión para iPhone."
+            : "Se conecta directo con teléfonos cercanos que tengan Bluai, sin red ni datos. Úsalo cuando se caiga la señal y necesites coordinarte con quien esté alrededor."
+        }
       />
     ),
   },
