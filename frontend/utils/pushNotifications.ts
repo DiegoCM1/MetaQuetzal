@@ -33,7 +33,7 @@ export async function requestBatteryOptimizationExemption(): Promise<void> {
 
   Alert.alert(
     'Alertas de emergencia',
-    'Para que BluEye pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
+    'Para que Bluai pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
     [
       { text: 'Ahora no', style: 'cancel' },
       {

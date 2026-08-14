@@ -165,7 +165,7 @@ export default function SOSContactsScreen() {
         console.log('[QA_SOS] permission permanently denied → showing Settings alert');
         Alert.alert(
           "Acceso a contactos",
-          "BluEye necesita acceso a tus contactos para agregar contactos SOS fácilmente. Habilítalo en Configuración.",
+          "Bluai necesita acceso a tus contactos para agregar contactos SOS fácilmente. Habilítalo en Configuración.",
           [
             { text: "Cancelar", style: "cancel" },
             { text: "Abrir Configuración", onPress: () => { console.log('[QA_SOS] user tapped Abrir Configuración'); Linking.openSettings(); } },
@@ -306,7 +306,7 @@ export default function SOSContactsScreen() {
         });
       } else {
         await Share.share({
-          message: `Te invito a ser mi contacto SOS de emergencia en BluEye.\nToca aquí para aceptar: ${share_url}`,
+          message: `Te invito a ser mi contacto SOS de emergencia en Bluai.\nToca aquí para aceptar: ${share_url}`,
         });
       }
     } catch {

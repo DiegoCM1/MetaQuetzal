@@ -73,10 +73,17 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "BluEye necesita acceso a tus contactos para que puedas agregar contactos SOS fácilmente."
+          "contactsPermission": "Bluai necesita acceso a tus contactos para que puedas agregar contactos SOS fácilmente."
         }
       ],
-      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bluai usa tu ubicación para enviarte alertas de huracán de tu zona y mostrarte los riesgos cerca de ti.",
+          "locationAlwaysPermission": false,
+          "locationAlwaysAndWhenInUsePermission": false
+        }
+      ],
       "./plugins/with-nearby-connections",
       "@react-native-firebase/app",
       [
