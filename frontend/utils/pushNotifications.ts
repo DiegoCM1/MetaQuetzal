@@ -142,10 +142,13 @@ function _hasUid(): boolean {
  * token — getToken() called too early simply rejects. So we poll rather than trust
  * the await.
  */
+const APNS_POLL_ATTEMPTS = 10;
+const APNS_POLL_DELAY_MS = 300;
+
 async function waitForApnsToken(
   messaging: Messaging,
-  attempts = 10,
-  delayMs = 300,
+  attempts = APNS_POLL_ATTEMPTS,
+  delayMs = APNS_POLL_DELAY_MS,
 ): Promise<string | null> {
   for (let i = 0; i < attempts; i += 1) {
     const apnsToken = await getAPNSToken(messaging);
@@ -212,9 +215,8 @@ async function acquireFcmToken(): Promise<string | null> {
     // for the wrong APNs environment.
     reportPushFailure(
       {
-        type: "apns-register-failed",
-        message:
-          "APNs no entregó un device token tras registrar el dispositivo",
+        type: "apns-token-timeout",
+        message: `APNs no entregó un device token tras ${APNS_POLL_ATTEMPTS} intentos (${APNS_POLL_ATTEMPTS * APNS_POLL_DELAY_MS}ms)`,
         phase: "apns-register",
       },
       { hasUid: _hasUid() },

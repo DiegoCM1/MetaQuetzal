@@ -27,7 +27,7 @@ from app.features.siat.classification import classify_wind_kmh, classification_l
 from app.features.siat.direction import parse_movement_direction
 from app.features.siat.evaluator import evaluate_user, haversine_km
 from app.features.siat.providers.nhc import fetch_active_cyclones
-from app.features.notifications.service import get_tokens_for_users
+from app.features.notifications.service import get_tokens_for_users, build_apns_config, summarize_push_failures
 from app.features.notification_preferences.service import get_preferences, is_within_quiet_hours
 
 logger = logging.getLogger(__name__)
@@ -320,7 +320,10 @@ async def _push_per_user(
             notification=messaging.Notification(title=title, body=body),
             data=data,
             android=messaging.AndroidConfig(priority="high"),
-            apns=messaging.APNSConfig(headers={"apns-priority": "10"}),
+            # Alerta de ciclón: tiene que sonar y tiene que poder atravesar Focus /
+            # No Molestar. Antes solo mandaba el header de prioridad, o sea que
+            # llegaba muda y la retenía el modo Sueño.
+            apns=build_apns_config(interruption_level="time-sensitive"),
             tokens=tokens,
         )
 
@@ -332,8 +335,10 @@ async def _push_per_user(
                 response.success_count, response.failure_count,
             )
             if response.failure_count:
-                failed = [tokens[i] for i, r in enumerate(response.responses) if not r.success]
-                logger.warning("Push failures for user_id=%d: %s", user_id, failed[:5])
+                logger.warning(
+                    "Push failures for user_id=%d: %s",
+                    user_id, summarize_push_failures(response),
+                )
             total_sent += response.success_count
         except Exception as exc:
             logger.error("Firebase push failed for user_id=%d: %s", user_id, exc, exc_info=True)
@@ -404,7 +409,8 @@ async def _push_smn_for_alert(
             "alertMessage": smn_body,
         },
         android=messaging.AndroidConfig(priority="high"),
-        apns=messaging.APNSConfig(headers={"apns-priority": "10"}),
+        # Mismo razonamiento que el push por usuario de arriba.
+        apns=build_apns_config(interruption_level="time-sensitive"),
         tokens=all_tokens,
     )
 
@@ -418,8 +424,10 @@ async def _push_smn_for_alert(
             response.success_count, response.failure_count,
         )
         if response.failure_count:
-            failed = [all_tokens[i] for i, r in enumerate(response.responses) if not r.success]
-            logger.warning("SMN push failures alert_id=%s: %s", alert["id"], failed[:5])
+            logger.warning(
+                "SMN push failures alert_id=%s: %s",
+                alert["id"], summarize_push_failures(response),
+            )
     except Exception as exc:
         logger.error("SMN push failed for alert_id=%s: %s", alert["id"], exc, exc_info=True)
 
