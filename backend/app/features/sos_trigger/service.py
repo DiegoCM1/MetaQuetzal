@@ -6,7 +6,7 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry
+from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry, build_apns_config, summarize_push_failures
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +99,9 @@ async def trigger_sos(
                         vibrate_timings_millis=[0, 250, 250, 250],
                     ),
                 ),
-                apns=messaging.APNSConfig(
-                    headers={"apns-priority": "10"},
-                    payload=messaging.APNSPayload(
-                        aps=messaging.Aps(sound="default"),
-                    ),
-                ),
+                # Ya traía sonido; le faltaba poder atravesar Focus / No Molestar,
+                # que es justo cuando un SOS importa más.
+                apns=build_apns_config(interruption_level="time-sensitive"),
                 tokens=all_tokens,
             )
             try:
@@ -116,8 +113,10 @@ async def trigger_sos(
                     response.success_count, response.failure_count,
                 )
                 if response.failure_count:
-                    failed = [all_tokens[i] for i, r in enumerate(response.responses) if not r.success]
-                    logger.warning("SOS push failures sender_id=%d: %s", sender_id, failed[:5])
+                    logger.warning(
+                        "SOS push failures sender_id=%d: %s",
+                        sender_id, summarize_push_failures(response),
+                    )
             except Exception as exc:
                 # Firebase failed after retries — notified_count stays 0.
                 # Rate limit is consumed by design (see comment at step 5).

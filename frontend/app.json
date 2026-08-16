@@ -62,7 +62,12 @@
     },
     "plugins": [
       "expo-router",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ],
       [
         "react-native-maps",
         {
@@ -101,7 +106,8 @@
             "useFrameworks": "static",
             "forceStaticLinking": [
               "RNFBApp",
-              "RNFBAuth"
+              "RNFBAuth",
+              "RNFBMessaging"
             ]
           }
         }
