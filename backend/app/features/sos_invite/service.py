@@ -6,7 +6,7 @@ from firebase_admin import messaging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry, send_contacts_refresh_push, send_targeted_notification
+from app.features.notifications.service import get_tokens_for_users, _send_multicast_with_retry, send_contacts_refresh_push, send_targeted_notification, build_apns_config
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +134,8 @@ async def _send_invite_push(
                 channel_id="sos_alerts",
             ),
         ),
+        # Sin interruption-level: una invitación no es una emergencia.
+        apns=build_apns_config(),
         tokens=tokens,
     )
     try:

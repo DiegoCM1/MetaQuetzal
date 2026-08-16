@@ -12,6 +12,9 @@ class NotificationResponse(BaseModel):
 
 class PushTokenCreate(BaseModel):
     token: str
+    # Opcional para no romper clientes viejos. NULL significa "build anterior a iOS",
+    # que por construcción es Android — ver el backfill en main.py.
+    platform: str | None = None
     user_id: int | None = None  # set server-side from Firebase UID lookup
 
 

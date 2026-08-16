@@ -1,6 +1,6 @@
 # iOS Release — estado y pendientes
 
-Estado al **14 de agosto de 2026**. Este doc es la fuente de verdad de qué falta para
+Estado al **15 de agosto de 2026**. Este doc es la fuente de verdad de qué falta para
 publicar Bluai en la App Store. Android ya está en Play Store; iOS nunca se ha publicado.
 
 **Alcance de este release:** Bluetooth (chat local) y la IA offline **NO salen en iOS**.
@@ -31,6 +31,11 @@ lo que verá un usuario real. Ver "Gotchas → `aps-environment`" abajo.
 | Permisos iOS | Se eliminaron `expo-camera`, `expo-image-picker`, `expo-audio` (0 imports) → se van 3 purpose strings falsos. Location con string en español |
 | Marca | Todo el copy visible dice **Bluai** (ya no "BluEye") |
 | APNs keys | Las dos auth keys verificadas (`Services: APNs`) y subidas a Firebase: dev `7MTNJ97RXH`, prod `2R524J3M7P`, team `M5CJDZ3897`. El `.p8` **no** vive en el repo |
+| **A — token FCM en iOS** (`1e704ea`) | `messaging@24.0.0` + los tres RNFB pineados exacto; `react-native.config.js` desliga Android; `acquireFcmToken()` con poll de APNs en `pushNotifications.ts`; `RNFBMessaging` en `forceStaticLinking` |
+| **D — `aps-environment`** (`32f011f`) | Una línea: `["expo-notifications", { "mode": "production" }]`. Probado en los dos caminos (ver Gotchas) |
+| **C — config APNs en backend** | Helper `build_apns_config()` en `notifications/service.py`; 6 de 7 sends migrados. Sonido + `interruption-level` en las alertas de ciclón y SOS. 225 tests pasan |
+| **Diagnóstico de fallos push** | `summarize_push_failures()` — se loguea el **tipo** de excepción de FCM en vez de los tokens completos, y **antes** de borrar. `ThirdPartyAuthError` = auth key de APNs inválida, el error clave del primer TestFlight |
+| **Columna `platform`** | `device_tokens.platform` + backfill que se apaga solo + `Platform.OS` desde el cliente. Ver G — la ventana del backfill se cierra con el primer build de iOS |
 
 Verificado en Pixel 7: el happy path de push, el path de fallo (Sentry + toast + 3
 reintentos), y la carrera del 404 (no se dispara — `upsertUserProfile` gana con holgura).
@@ -39,57 +44,62 @@ reintentos), y la carrera del 404 (no se dispara — `upsertUserProfile` gana co
 
 ## Falta — código, nada bloqueado
 
-### A. Fase 2 — token de push en iOS ← **el bloqueador real**
+### ~~A. Fase 2 — token de push en iOS~~ ✅ **HECHO** (`1e704ea`)
 
-`getDevicePushTokenAsync()` devuelve el token **crudo de APNs** en iOS (64 hex). El
-backend manda por FCM, que necesita un **registration token** de FCM (~140-180 chars).
+**`apns-token-timeout` ya está** (15/08). No era cosmético: separa "el registro tronó"
+de "el registro funcionó y Apple nunca mandó el token", y **esa segunda es la falla
+esperada hoy**, porque el App ID `com.bluai.app` todavía no tiene la capability de Push
+(bloqueador #2 de Ivan). Sin el tipo aparte, Sentry mezcla "mi código está mal" con
+"falta que Ivan habilite Push" en un solo bucket. El mensaje ahora cita el presupuesto
+real del poll (10 × 300ms).
 
-1. Instalar `messaging@24.0.0` con `--save-exact`, **y re-pinear `app` y `auth`** — hoy
-   están en `^24.0.0` (`package.json:16-17`), con caret, no pineados (ver Gotchas).
-2. **Antes de escribir código:** leer
-   `node_modules/@react-native-firebase/messaging/android/src/main/AndroidManifest.xml`.
-   Si declara `MESSAGING_EVENT` con prioridad ≥ 0 le gana a expo-notifications → crear
-   `frontend/react-native.config.js` deshabilitando autolinking de Android **en el mismo
-   commit que el install**. Si no le gana, no crear el archivo (ver Gotchas).
-3. Branch por plataforma: `registerDeviceForRemoteMessages()` → **poll de `getAPNSToken()`
-   hasta no-null, con timeout** → `getToken()`. El poll no es opcional (ver Gotchas).
-4. Nuevo `PushFailureType`: `apns-token-timeout`. La taxonomía ya tiene la fase
-   `apns-register` y el tipo `apns-register-failed`, pero nada nombra "registró bien y el
-   token nunca llegó" — sin ese miembro, el poll es un parche silencioso.
-5. Rotación en iOS con `onTokenRefresh` (Android se queda con `addPushTokenListener`).
-   No es cosmético: RNFB auto-registra al arrancar, así que `addPushTokenListener`
-   mandaría hex crudo de APNs en **cada** cold launch.
-6. Agregar `"RNFBMessaging"` a `forceStaticLinking` en `app.json`.
-7. Corregir el comentario de `pushNotifications.ts:286` ("Token nativo FCM") y el
-   breadcrumb de `:299` ("FCM token acquired") — hoy los dos mienten en iOS.
+Queda pendiente `onTokenRefresh` en iOS (rotación de token). Android sigue con
+`addPushTokenListener`, que en iOS mandaría hex crudo de APNs en cada cold launch.
+**Verificar en el primer build de device** antes de darlo por bueno.
 
-No hace falta `firebase.json`: `messaging_ios_auto_register_for_remote_messages` default
-a `true` (verificado en `firebase-schema.json`).
+### ~~B. Fase 3 — presentación en primer plano~~ ✅ **HECHO (15/08)**
 
-### B. Fase 3 — presentación en primer plano (iOS)
+> **Corrección:** este doc decía que "una alerta en primer plano no se ve" en iOS. **Era
+> falso.** El todo-en-false era deliberado: la app dibuja su propia UI (toast de
+> sonner-native, `AlarmScreen`) en vez del banner del sistema. Poner los flags en true
+> habría dado banner **encima** del toast — UI duplicada, no un arreglo.
 
-`pushNotifications.ts:321-325` — `setNotificationHandler` regresa **todo en false**.
-Android se salva por los canales en `IMPORTANCE_MAX`; **iOS lo respeta al pie de la
-letra**. Aunque el token se arregle, una alerta en primer plano no se ve.
+Lo que sí estaba roto era el **sonido**: en Android el canal (`IMPORTANCE_MAX`) suena
+aunque el handler diga que no, así que nunca se notó; iOS obedece el handler literal y una
+alerta nivel 4 llegaba muda con la app abierta. El `sound: "default"` de C no sirve de
+nada si el handler se niega a reproducirlo — **son dos switches en repos distintos y los
+dos tienen que estar prendidos**.
 
-### C. Fase 4 — config APNs en backend
+Ahora `handleNotification` recibe la notificación y devuelve `shouldPlaySound: isCritical`
+(`fullScreen`, `category=sos`, o nivel ≥ 4). Lo visual sigue siendo de la app.
 
-Cuatro sends sin bloque `apns=`:
+**Verificar en el Pixel:** que una alerta crítica no suene **dos veces** en Android (canal
++ handler). Es un fallo ruidoso, no silencioso — se nota al primer push.
 
-| Archivo | Qué es |
-|---|---|
-| `notifications/service.py:80` | targeted — **es el endpoint con el que vas a probar iOS** |
-| `notifications/service.py:109` | contacts refresh — necesita `content-available: 1` o el push silencioso **nunca despierta la app en iOS** |
-| `notifications/service.py:141` | broadcast |
-| `sos_invite/service.py:120` | invitación SOS |
+**sonner-native en iOS: investigado, es sólido.** `toaster.tsx:58` mete el Toaster en un
+`FullWindowOverlay` de react-native-screens (4.16.0) = un `UIWindow` aparte, por encima de
+native-stack y de modales; `pointerEvents: 'box-none'` deja pasar los toques a los botones
+de acción. El comentario del propio paquete dice que la plataforma frágil es **Android**
+(depende de `elevation: 9999` dentro de la misma ventana). `<Toaster />` está montado como
+hermano de `<Stack>`, fuera del navigator — que es lo correcto.
 
-`siat/service.py:408` y `sos_trigger/service.py:102` **ya tienen** `apns=`. Copiar ese
-patrón, no inventar uno nuevo.
+### ~~C. Fase 4 — config APNs en backend~~ ✅ **6 de 7 HECHO**
 
-### D. `aps-environment`
+Helper `build_apns_config()` en `notifications/service.py`. Migrados: `siat:326`, `siat:411`,
+`sos_trigger:104`, `sos_invite:138`, `notifications:122`, `notifications:186`.
 
-`app.json` tiene `"expo-notifications"` pelón, sin opciones → el plugin default a
-`mode: 'development'`. Ver Gotchas.
+**Lo importante no era el sonido, era `interruption-level`.** Los Focus modes de iOS 15+
+(Sueño, No Molestar) **suprimen** notificaciones normales. Sin `time-sensitive`, la alerta
+de huracán de las 3am se retiene hasta que el usuario desbloquee. Las dos alertas de ciclón
+y el SOS lo llevan; la invitación SOS y la campaña **no** (Apple penaliza usar el flag para
+marketing). `Aps` no tiene campo para esto — va en `custom_data`.
+
+El séptimo (`contacts_refresh`) se difirió: ver **G**.
+
+### ~~D. `aps-environment`~~ ✅ **HECHO** (`32f011f`)
+
+Una línea en `app.json`: `["expo-notifications", { "mode": "production" }]`. Ver Gotchas
+para por qué esto basta y por qué **no** hizo falta `app.config.js`.
 
 ---
 
@@ -127,6 +137,14 @@ antes de cualquier llamada de red**. No hay error de Firebase, ni status HTTP, n
 consola. En SIAT se lo traga el `except Exception` de `:414` y como nunca llama a
 `_mark_alert_notified`, reintenta el mismo fallo cada 30 min.
 
+**Ya se puede ver qué está pasando (15/08):** `summarize_push_failures()` agrupa los
+fallos por tipo de excepción y se loguea **antes** de borrar. Los cinco call sites hacían
+`if not r.success` y tiraban `r.exception`; los tres que sí logueaban escribían los
+**tokens completos** (una credencial) en vez de la causa. Ahora sale
+`{'UnregisteredError': 2, 'ThirdPartyAuthError': 1}` — y `ThirdPartyAuthError` es
+literalmente "la auth key de APNs es inválida o falta", o sea el error del primer
+TestFlight de iOS. Esto no arregla E, pero la vuelve diagnosticable.
+
 **Borrado:** `notifications/service.py:92` y `:153` borran ante **cualquier** fallo. Debe ser
 solo `isinstance(r.exception, messaging.UnregisteredError)`. Hoy un `QuotaExceededError`
 transitorio borra permanentemente un dispositivo bueno. SIAT está limpio en esto: `:420-422`
@@ -139,6 +157,59 @@ la base**. Se registran, fallan, se borran, se re-registran — en loop invisibl
 **Tamaño cuando se retome:** ~120 líneas con tests, en `notifications/service.py` +
 `siat/service.py` + `notifications/tests/test_router.py`. Backend puro, sin build nativo,
 cubierto por `pytest` en CI.
+
+### G. `contacts_refresh` en iOS — **columna `platform` ✅ HECHA (15/08), el split sigue diferido**
+
+**La columna se adelantó a propósito, porque su ventana se cierra.** Hoy el 100% de las
+filas de `device_tokens` son de Android por construcción (iOS nunca se publicó), así que
+el backfill es correcto y gratis. En cuanto el primer build de iOS registre un token deja
+de serlo **para siempre**: un registration token de FCM es opaco e idéntico entre
+plataformas, o sea que nada en la fila permite clasificarla después. Es la típica columna
+que hay que agregar *antes* de que los datos dejen de ser homogéneos, no después.
+
+El backfill en `main.py` **se apaga solo** (`AND NOT EXISTS (SELECT 1 ... WHERE platform
+IS NOT NULL)`): corre mientras ninguna fila tenga plataforma y nunca vuelve a correr
+después. Sin esa guarda correría en cada arranque y etiquetaría como "android" cualquier
+token de iOS que llegara sin plataforma. El cliente ya manda `Platform.OS`, y el
+`ON CONFLICT` usa `COALESCE` para que un cliente viejo no borre una clasificación buena.
+
+**Lo que sigue diferido** es partir el send — el único de C que **sí toca Android**.
+
+`notifications/service.py` manda `Notification(title=" ", body=" ")` + canal
+`contacts_refresh_silent`. En Android el **canal** lo hace invisible. En iOS no hay
+canales → hoy dibuja un **banner en blanco visible**. La forma correcta en iOS es push de
+background: sin bloque `notification`, `content_available=True`, `apns-push-type: background`.
+
+**Por qué no se puede arreglar en un solo mensaje:** con bloque `notification` iOS lo
+manda como alerta; sin él, en Android se vuelve data-only y cambia qué handler dispara.
+Hay que mandar iOS y Android por separado → hace falta saber la plataforma del token, y
+**`device_tokens` no tiene columna `platform`** (`main.py:67`).
+
+Alcance: `ALTER TABLE device_tokens ADD COLUMN IF NOT EXISTS platform TEXT` en
+`ensure_core_tables()`, que el cliente la mande al registrar, y partir el send en dos.
+Es un bug cosmético en un push no crítico — de ahí el diferimiento.
+
+### H. Unificar ambas plataformas en RNFB — **DIFERIDO (15/08)**
+
+Decisión del 15/08: se ship a iOS con el split (`react-native.config.js`) y la migración
+se hace como PR aparte. Un agente de research auditó la decisión; lo que encontró:
+
+- **Borrar `react-native.config.js` NO es toda la migración.** Al linkear messaging en
+  Android chocan `com.google.firebase.messaging.default_notification_color`, que declaran
+  tanto el plugin de expo-notifications como el manifest de RNFB, sin `tools:replace`
+  ([invertase/react-native-firebase#8165](https://github.com/invertase/react-native-firebase/issues/8165)).
+  El fix propio de RNFB se salta porque guarda con `!hasMetaData(...)`. **El build de
+  Android truena.**
+- **Sospecha sin verificar: el tap en Android ya está roto hoy.** Con payload
+  `notification`+`data` y la app en background, Firebase la despliega solo y su content
+  intent va al launcher — el `PendingIntent` de expo nunca se adjunta, así que
+  `getLastNotificationResponseAsync()` regresaría null y `_layout.tsx:360-380` sería
+  código muerto en Android. `getInitialNotification()` de RNFB lo arreglaría. **Verificar
+  con 5 min en el Pixel** (mandar push → background → tap → ¿navega a la pantalla correcta
+  o solo abre la app?) antes de dimensionar el PR.
+- **La raíz es la forma del payload.** Mandar data-only desde el backend le devolvería a
+  expo-notifications el control del display y del tap en Android (~10 líneas de backend).
+  Es una tercera opción que ninguna de las dos rutas consideró.
 
 ### F. Borrado de cuenta (Guideline 5.1.1(v))
 
@@ -239,12 +310,33 @@ El entitlement decide con qué gateway de Apple habla la app: `development` → 
 `production` → el gateway real. Son sistemas separados, con tokens separados. Un token
 de sandbox no significa nada para producción.
 
-El plugin de expo-notifications default a `'development'`. EAS *normalmente* lo reconcilia
-contra el provisioning profile al firmar — por eso casi nadie lo nota. Cuando no lo hace:
-funciona en dev client, funciona sideloaded, **y no entrega nada en TestFlight ni en la
-App Store**, sin error en ningún lado.
+**Resuelto con una línea, y por una razón que vale la pena entender** (`32f011f`):
 
-→ Por eso la prueba de entrega tiene que ser en **TestFlight**, no en dev client.
+```json
+["expo-notifications", { "mode": "production" }]
+```
+
+El plugin escribe el entitlement **solo si nadie más lo puso**
+(`withNotificationsIOS.ts`: `if (!config.modResults['aps-environment'])`). Y el base mod
+lee el archivo de entitlements que ya exista antes de correr los plugins
+(`withIosBaseMods.js:359-362`). O sea que el switch por entorno sale gratis:
+
+| Camino | Entitlements de entrada | Resultado |
+|---|---|---|
+| **EAS** (`ios/` está gitignored → no llega) | template `{}` | escribe `production` ✅ |
+| **Local `expo run:ios`** | lee `ios/Bluai/Bluai.entitlements` con `development` | **no lo pisa** ✅ |
+
+Los dos caminos se probaron corriendo prebuild, no se dedujeron. **No hizo falta
+`app.config.js`** — y eso importa: un `app.config.js` cambia cómo se resuelve la config de
+**las dos** plataformas, así que un spread mal hecho tira `android.permissions` o las keys
+de maps. La prop `mode` no aparece ni una vez en `withNotificationsAndroid.ts`.
+
+**Footgun:** `npx expo prebuild --clean` en local borra `ios/` → regeneras con
+`production` contra un perfil de desarrollo → falla el codesign. Ruidoso, no silencioso.
+Si el equipo empieza a usar `--clean` de rutina, ahí sí toca `app.config.js`.
+
+→ La prueba de entrega igual tiene que ser en **TestFlight**, no en dev client: el slot de
+Firebase es un switch independiente del entitlement.
 
 ### `registerDeviceForRemoteMessages()` no garantiza que haya token de APNs
 
@@ -259,6 +351,35 @@ Falla en el camino común (warm start), no en un caso raro.
 → Poll de `getAPNSToken()` hasta no-null con timeout, y el timeout reportado como
 `apns-token-timeout`. Si el SDK ya esperaba solo, el poll sale en la primera iteración y
 no cuesta nada.
+
+### expo-notifications **no** encadena el delegate de iOS — se rinde
+
+RNFB encadena (guarda `_originalDelegate`). expo-notifications **no**: si ya hay un
+delegate puesto, loguea y se sale sin instalarse
+(`NotificationCenterManager.swift:50-60`). O sea que el orden decide:
+
+- expo primero → RNFB lo captura → **los dos sirven**
+- RNFB primero → **toda la capa de notificaciones de expo en iOS queda muerta, en silencio**
+
+El orden *debería* favorecer a expo, pero no está verificado en device y **aplica igual
+con split o unificado**.
+
+→ En el primer build de iOS, buscar en consola:
+`[expo-notifications] NotificationCenterManager encountered already present delegate`.
+Si sale, el push de iOS está roto sin importar todo lo demás.
+
+### `ios/` se corrompe en silencio y solo te pasa a ti
+
+`ios/Bluai/SplashScreen.storyboard` estaba en **0 bytes** (15/08). Eso tronaba
+`expo prebuild` y `expo config --type introspect` con un error de splash que no dice nada
+del splash. Se arregla borrando el archivo y dejando que prebuild lo regenere.
+
+Por qué nadie más lo ve: `ios/` está gitignored, EAS lo genera desde template en cada
+build. O sea que es un directorio mutable, sin versionar y sin revisar, que **solo existe
+en la máquina que hace pruebas en device** — justo la que más lo necesita. Los builds en
+la nube siguen pasando.
+
+→ En directorios generados: borrar antes que debuggear. Regenerar es gratis.
 
 ### El oráculo de una línea para saber si Fase 2 funcionó
 
@@ -278,19 +399,6 @@ describe la config de *cuando corrió prebuild la última vez*, no la de hoy.
 
 - La pregunta es `app.json`; `ios/` es una respuesta cacheada.
 - Para ver qué produciría la config **sin generar nada**: `npx expo config --type introspect`.
-
-### El `.p8` NO bloquea el trabajo de cliente de Fase 2
-
-Son dos mecanismos distintos:
-
-- **Registro con APNs** (app ↔ Apple) solo necesita el entitlement y un provisioning
-  profile. Eso es lo que produce el device token que `getToken()` requiere.
-- **El `.p8`** es cómo *los servidores de Firebase* se autentican ante Apple **al enviar**.
-  Se valida al enviar, no al registrar.
-
-→ Se puede buildear, correr y leer la longitud del token **antes** de que llegue la key.
-
----
 
 ## Evidencia — lo que ya está probado (no volver a dudarlo)
 
@@ -319,18 +427,24 @@ falla, es culpa de Fase 2 — no de algo preexistente.
 ## Orden sugerido
 
 ```
-A1 (install + check de manifest) → A2 (token) → D → C → B → F → E
+~~A~~ → ~~D~~ → ~~C~~ → ~~B~~ → **build en device iOS** → F  |  después: E, G, H
 ```
 
-`A → D → C → B` es la cadena de "push funciona en iOS", en orden de dependencia. Solo el
-test final de entrega necesita a Ivan.
+**Toda la cadena de código de push está hecha. Nada de eso se ha corrido en un iPhone.**
+F (borrado de cuenta) es independiente del push y puede ir en paralelo.
 
-**E se difirió el 14/08**: iOS es lo urgente y E no bloquea nada de iOS. Ver la nota en la
-sección E — la decisión solo se sostiene si `COUNT(*) FROM device_tokens` está abajo de 500.
+**El siguiente paso no es código, es `npx expo run:ios`.** Tres cosas se validan de un
+solo build, y las tres pueden invalidar trabajo ya hecho:
 
-**A1 va primero** porque A2 depende de él y porque es la única incógnita abierta del plan:
-hasta leer el manifest de RNFB en disco no sabemos si instalar `messaging` rompe el push en
-primer plano de **Android**, que es la plataforma que hoy sí está en producción.
+1. La clase de caracteres del token (¿FCM o hex de APNs?) — ver el oráculo arriba
+2. El log del delegate de expo-notifications — ver Gotchas
+3. Que el poll de `getAPNSToken()` salga en la primera iteración en warm start
+
+B se hace después porque el handler de primer plano no se puede probar sin push que llegue.
+
+**Diferidos, en orden de valor:** E (corte de 500 — solo importa arriba de 500 tokens),
+H (unificar en RNFB — arregla el tap en Android), G (`contacts_refresh` + columna
+`platform`, cosmético).
 
 ### Los tres tipos de bloqueador (no confundirlos)
 

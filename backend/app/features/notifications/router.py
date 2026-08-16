@@ -76,7 +76,7 @@ async def save_token(
     db_user = await get_user_by_firebase_uid(db, firebase_uid)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User profile not found. Call POST /api/v1/users/me first.")
-    await push_token(db, body.token, db_user["id"])
+    await push_token(db, body.token, db_user["id"], body.platform)
     return {"message": "Token saved"}
 
 

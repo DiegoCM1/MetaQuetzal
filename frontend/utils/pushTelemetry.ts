@@ -42,6 +42,7 @@ export type PushFailureType =
   | "channel-setup-failed" // android — setNotificationChannelAsync threw
   | "permission-denied" // both — user declined the OS prompt
   | "apns-register-failed" // ios — registerDeviceForRemoteMessages threw
+  | "apns-token-timeout" // ios — registration succeeded, APNs never delivered a token
   | "token-unavailable" // both — getToken / getDevicePushTokenAsync threw
   | "backend-no-profile" // both — 404: user row doesn't exist yet (auth race)
   | "backend-unauthorized" // both — 401: Firebase token missing or rejected
@@ -96,6 +97,15 @@ export const PUSH_FAILURE_COPY: Record<
   "apns-register-failed": {
     title: "No se pudieron activar notificaciones",
     description: "Revisa tu conexión e intenta abrir la app de nuevo.",
+    notify: true,
+  },
+  // Distinto de `apns-register-failed` a propósito: aquí el registro SÍ funcionó y
+  // Apple nunca devolvió el token. Eso casi nunca es la red — es aprovisionamiento
+  // (falta el entitlement `aps-environment`, o Push no está habilitado en el App ID).
+  // Al usuario no le sirve "revisa tu conexión", así que el copy no lo dice.
+  "apns-token-timeout": {
+    title: "No se pudieron activar notificaciones",
+    description: "Vuelve a abrir la app más tarde para reintentarlo.",
     notify: true,
   },
   "token-unavailable": {
