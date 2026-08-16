@@ -101,7 +101,8 @@
             "useFrameworks": "static",
             "forceStaticLinking": [
               "RNFBApp",
-              "RNFBAuth"
+              "RNFBAuth",
+              "RNFBMessaging"
             ]
           }
         }

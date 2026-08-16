@@ -6,6 +6,19 @@ import { Alert, DeviceEventEmitter, Linking, Platform } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAuth } from '@react-native-firebase/auth';
+// iOS-only at runtime (see react-native.config.js — this package is unlinked on
+// Android). The *import* is safe on both platforms: messaging's module scope only
+// writes into RNFB's JS namespace registry (`createModuleNamespace`), it never
+// touches NativeModules. The native lookup happens on the first getMessaging()
+// call, which is why that call must stay behind a Platform.OS === 'ios' branch.
+import {
+  getAPNSToken,
+  getMessaging,
+  getToken as getFcmRegistrationToken,
+  isDeviceRegisteredForRemoteMessages,
+  registerDeviceForRemoteMessages,
+  type Messaging,
+} from '@react-native-firebase/messaging';
 import { track } from "./analytics";
 import { authFetch } from './api'
 import { API_BASE_URL } from './config'
@@ -115,6 +128,112 @@ function _hasUid(): boolean {
     return !!getAuth().currentUser?.uid;
   } catch {
     return false;
+  }
+}
+
+/**
+ * iOS only. Resolves once APNs has actually handed us a device token.
+ *
+ * `registerDeviceForRemoteMessages()` resolving means "the register call was
+ * accepted", NOT "a token has arrived". Worse, iOS persists
+ * `isRegisteredForRemoteNotifications` across launches, so on every warm start the
+ * call short-circuits and returns before APNs has delivered anything. Since
+ * firebase-ios-sdk 10.4 the APNs token is a hard prerequisite for minting an FCM
+ * token — getToken() called too early simply rejects. So we poll rather than trust
+ * the await.
+ */
+async function waitForApnsToken(
+  messaging: Messaging,
+  attempts = 10,
+  delayMs = 300,
+): Promise<string | null> {
+  for (let i = 0; i < attempts; i += 1) {
+    const apnsToken = await getAPNSToken(messaging);
+    if (apnsToken) return apnsToken;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return null;
+}
+
+/**
+ * Returns an **FCM registration token** on both platforms, or null after having
+ * already reported why it failed.
+ *
+ * The backend sends exclusively through `firebase_admin.messaging`, which can only
+ * address FCM tokens — so "whatever token the OS handed us" is not good enough:
+ *
+ *  - Android: expo-notifications owns FCM delivery here (see react-native.config.js)
+ *    and `getDevicePushTokenAsync()` already returns a real FCM token.
+ *  - iOS: that same call returns the raw 64-hex APNs device token, which
+ *    firebase_admin cannot route — pushes would be accepted by our own backend and
+ *    then silently never delivered. Only the Firebase iOS SDK can exchange the APNs
+ *    token for an FCM one, which is the entire reason
+ *    @react-native-firebase/messaging is a dependency of this app.
+ */
+async function acquireFcmToken(): Promise<string | null> {
+  if (Platform.OS !== "ios") {
+    try {
+      const { data } = await Notifications.getDevicePushTokenAsync();
+      return data;
+    } catch (err) {
+      reportPushFailure(
+        { type: "token-unavailable", message: toMessage(err), phase: "token" },
+        { hasUid: _hasUid() },
+      );
+      return null;
+    }
+  }
+
+  const messaging = getMessaging();
+
+  try {
+    // Idempotent, but checking first avoids a pointless bridge round-trip on
+    // every warm start.
+    if (!isDeviceRegisteredForRemoteMessages(messaging)) {
+      await registerDeviceForRemoteMessages(messaging);
+    }
+  } catch (err) {
+    reportPushFailure(
+      {
+        type: "apns-register-failed",
+        message: toMessage(err),
+        phase: "apns-register",
+      },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
+
+  const apnsToken = await waitForApnsToken(messaging);
+  if (!apnsToken) {
+    // Registration was accepted but APNs never delivered. In practice this means a
+    // provisioning problem, not a transient one: missing `aps-environment`
+    // entitlement, Push Notifications not enabled on the App ID, or a build signed
+    // for the wrong APNs environment.
+    reportPushFailure(
+      {
+        type: "apns-register-failed",
+        message:
+          "APNs no entregó un device token tras registrar el dispositivo",
+        phase: "apns-register",
+      },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
+  // Prefix only — an APNs token is a credential just like the FCM one.
+  pushBreadcrumb("APNs device token acquired", {
+    tokenPrefix: redactToken(apnsToken),
+  });
+
+  try {
+    return await getFcmRegistrationToken(messaging);
+  } catch (err) {
+    reportPushFailure(
+      { type: "token-unavailable", message: toMessage(err), phase: "token" },
+      { hasUid: _hasUid() },
+    );
+    return null;
   }
 }
 
@@ -283,18 +402,10 @@ export async function registerForPushNotificationsAsync() {
     return null;
   }
 
-  // 2) Token nativo FCM (HTTP v1)
-  let fcmToken: string;
-  try {
-    const { data } = await Notifications.getDevicePushTokenAsync();
-    fcmToken = data;
-  } catch (err) {
-    reportPushFailure(
-      { type: 'token-unavailable', message: toMessage(err), phase: 'token' },
-      { hasUid: _hasUid() },
-    );
-    return null;
-  }
+  // 2) Token de registro FCM (HTTP v1) — la ruta difiere por plataforma,
+  //    ver acquireFcmToken(). Siempre devuelve un token FCM, nunca uno de APNs.
+  const fcmToken = await acquireFcmToken();
+  if (!fcmToken) return null; // acquireFcmToken ya reportó la causa exacta
   // Prefix only — a push token is a credential, and Sentry runs sendDefaultPii.
   pushBreadcrumb('FCM token acquired', { tokenPrefix: redactToken(fcmToken) });
 
