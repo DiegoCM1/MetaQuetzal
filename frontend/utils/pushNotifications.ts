@@ -269,7 +269,11 @@ export async function sendTokenToBackend(fcmToken: string): Promise<PushRegistra
       try {
         const res = await authFetch(`${API_BASE_URL}/api/v1/push-token`, {
           method: 'POST',
-          body: JSON.stringify({ token: fcmToken }),
+          // `platform` decide la forma del payload que el backend puede mandar: un
+          // push silencioso es `content-available` en iOS y un canal en Android, y
+          // sin este campo no se pueden distinguir — un registration token de FCM es
+          // opaco e idéntico en las dos plataformas.
+          body: JSON.stringify({ token: fcmToken, platform: Platform.OS }),
         });
         if (res.ok) {
           try {

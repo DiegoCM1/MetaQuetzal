@@ -72,6 +72,24 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
             )
         """))
         await conn.execute(text(
+            "ALTER TABLE device_tokens ADD COLUMN IF NOT EXISTS platform TEXT"
+        ))
+        # Backfill de una sola vez: hasta el primer build de iOS, TODO token en la
+        # tabla es de Android por construcción (iOS nunca se ha publicado). Un token
+        # de registro de FCM es opaco e idéntico entre plataformas, así que esta
+        # clasificación es imposible de recuperar después — hay que hacerla mientras
+        # los datos siguen siendo homogéneos.
+        #
+        # El `NOT EXISTS` lo apaga solo: en cuanto UN cliente reporte su plataforma,
+        # los datos dejan de ser homogéneos y el backfill no vuelve a correr nunca.
+        # Sin eso, correría en cada arranque y etiquetaría como "android" cualquier
+        # token de iOS que llegara sin plataforma.
+        await conn.execute(text("""
+            UPDATE device_tokens SET platform = 'android'
+            WHERE platform IS NULL
+              AND NOT EXISTS (SELECT 1 FROM device_tokens WHERE platform IS NOT NULL)
+        """))
+        await conn.execute(text(
             "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS pdf_url TEXT"
         ))
         await conn.execute(text(

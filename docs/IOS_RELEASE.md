@@ -34,6 +34,8 @@ lo que verá un usuario real. Ver "Gotchas → `aps-environment`" abajo.
 | **A — token FCM en iOS** (`1e704ea`) | `messaging@24.0.0` + los tres RNFB pineados exacto; `react-native.config.js` desliga Android; `acquireFcmToken()` con poll de APNs en `pushNotifications.ts`; `RNFBMessaging` en `forceStaticLinking` |
 | **D — `aps-environment`** (`32f011f`) | Una línea: `["expo-notifications", { "mode": "production" }]`. Probado en los dos caminos (ver Gotchas) |
 | **C — config APNs en backend** | Helper `build_apns_config()` en `notifications/service.py`; 6 de 7 sends migrados. Sonido + `interruption-level` en las alertas de ciclón y SOS. 225 tests pasan |
+| **Diagnóstico de fallos push** | `summarize_push_failures()` — se loguea el **tipo** de excepción de FCM en vez de los tokens completos, y **antes** de borrar. `ThirdPartyAuthError` = auth key de APNs inválida, el error clave del primer TestFlight |
+| **Columna `platform`** | `device_tokens.platform` + backfill que se apaga solo + `Platform.OS` desde el cliente. Ver G — la ventana del backfill se cierra con el primer build de iOS |
 
 Verificado en Pixel 7: el happy path de push, el path de fallo (Sentry + toast + 3
 reintentos), y la carrera del 404 (no se dispara — `upsertUserProfile` gana con holgura).
@@ -136,9 +138,22 @@ la base**. Se registran, fallan, se borran, se re-registran — en loop invisibl
 `siat/service.py` + `notifications/tests/test_router.py`. Backend puro, sin build nativo,
 cubierto por `pytest` en CI.
 
-### G. `contacts_refresh` en iOS + columna `platform` — **DIFERIDO (15/08)**
+### G. `contacts_refresh` en iOS — **columna `platform` ✅ HECHA (15/08), el split sigue diferido**
 
-Es el único send de C que **sí toca Android**, por eso se sacó del lote.
+**La columna se adelantó a propósito, porque su ventana se cierra.** Hoy el 100% de las
+filas de `device_tokens` son de Android por construcción (iOS nunca se publicó), así que
+el backfill es correcto y gratis. En cuanto el primer build de iOS registre un token deja
+de serlo **para siempre**: un registration token de FCM es opaco e idéntico entre
+plataformas, o sea que nada en la fila permite clasificarla después. Es la típica columna
+que hay que agregar *antes* de que los datos dejen de ser homogéneos, no después.
+
+El backfill en `main.py` **se apaga solo** (`AND NOT EXISTS (SELECT 1 ... WHERE platform
+IS NOT NULL)`): corre mientras ninguna fila tenga plataforma y nunca vuelve a correr
+después. Sin esa guarda correría en cada arranque y etiquetaría como "android" cualquier
+token de iOS que llegara sin plataforma. El cliente ya manda `Platform.OS`, y el
+`ON CONFLICT` usa `COALESCE` para que un cliente viejo no borre una clasificación buena.
+
+**Lo que sigue diferido** es partir el send — el único de C que **sí toca Android**.
 
 `notifications/service.py` manda `Notification(title=" ", body=" ")` + canal
 `contacts_refresh_silent`. En Android el **canal** lo hace invisible. En iOS no hay

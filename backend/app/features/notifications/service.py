@@ -91,15 +91,22 @@ async def _send_multicast_with_retry(
     raise last_exc  # max_attempts >= 1 garantiza que last_exc está asignado
 
 
-async def push_token(db: AsyncSession, token: str, user_id: int) -> None:
+async def push_token(
+    db: AsyncSession, token: str, user_id: int, platform: str | None = None
+) -> None:
+    # COALESCE en el UPDATE: si un cliente viejo (sin plataforma) re-registra un token
+    # que ya estaba clasificado, no lo queremos volver a poner en NULL.
     await db.execute(
         text("""
-            INSERT INTO device_tokens (token, user_id)
-            VALUES (:token, :user_id)
+            INSERT INTO device_tokens (token, user_id, platform)
+            VALUES (:token, :user_id, :platform)
             ON CONFLICT (token)
-            DO UPDATE SET user_id = :user_id, updated_at = NOW()
+            DO UPDATE SET
+                user_id    = :user_id,
+                platform   = COALESCE(:platform, device_tokens.platform),
+                updated_at = NOW()
         """),
-        {"token": token, "user_id": user_id},
+        {"token": token, "user_id": user_id, "platform": platform},
     )
     await db.commit()
 
