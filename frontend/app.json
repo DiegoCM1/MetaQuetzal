@@ -62,7 +62,12 @@
     },
     "plugins": [
       "expo-router",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ],
       [
         "react-native-maps",
         {
