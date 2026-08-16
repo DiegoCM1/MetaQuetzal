@@ -433,14 +433,33 @@ export async function registerForPushNotificationsAsync() {
 
 // Muestra un banner sencillo cuando llega la notificación
 export function setForegroundNotificationHandler() {
+  // Política de primer plano, igual en las dos plataformas:
+  //   visual  → lo dibuja la app (toast de sonner-native / AlarmScreen), NO el sistema.
+  //             Poner shouldShowBanner en true daría banner del sistema *encima* del
+  //             toast: UI duplicada, no un arreglo.
+  //   sonido  → lo pide el sistema, y solo para alertas críticas.
+  //
+  // Por qué el sonido va aparte: en Android el canal (IMPORTANCE_MAX) suena aunque el
+  // handler diga que no — por eso nunca se notó. iOS obedece el handler al pie de la
+  // letra, así que con todo en false una alerta nivel 4 llegaba **muda** mientras la
+  // app estaba abierta. El `sound: "default"` que manda el backend (build_apns_config)
+  // no sirve de nada si el handler se niega a reproducirlo.
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: false,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-      shouldShowBanner: false,
-      shouldShowList: false,
-    }),
+    handleNotification: async (notification) => {
+      const data = notification.request.content.data;
+      const isCritical =
+        data?.fullScreen === "true" ||
+        data?.category === "sos" ||
+        Number(data?.level ?? data?.siat_level ?? 0) >= 4;
+
+      return {
+        shouldPlaySound: isCritical,
+        shouldShowAlert: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    },
   });
 
   Notifications.addNotificationReceivedListener((notif) => {

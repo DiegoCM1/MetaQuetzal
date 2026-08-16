@@ -57,11 +57,31 @@ Queda pendiente `onTokenRefresh` en iOS (rotación de token). Android sigue con
 `addPushTokenListener`, que en iOS mandaría hex crudo de APNs en cada cold launch.
 **Verificar en el primer build de device** antes de darlo por bueno.
 
-### B. Fase 3 — presentación en primer plano (iOS)
+### ~~B. Fase 3 — presentación en primer plano~~ ✅ **HECHO (15/08)**
 
-`pushNotifications.ts:321-325` — `setNotificationHandler` regresa **todo en false**.
-Android se salva por los canales en `IMPORTANCE_MAX`; **iOS lo respeta al pie de la
-letra**. Aunque el token se arregle, una alerta en primer plano no se ve.
+> **Corrección:** este doc decía que "una alerta en primer plano no se ve" en iOS. **Era
+> falso.** El todo-en-false era deliberado: la app dibuja su propia UI (toast de
+> sonner-native, `AlarmScreen`) en vez del banner del sistema. Poner los flags en true
+> habría dado banner **encima** del toast — UI duplicada, no un arreglo.
+
+Lo que sí estaba roto era el **sonido**: en Android el canal (`IMPORTANCE_MAX`) suena
+aunque el handler diga que no, así que nunca se notó; iOS obedece el handler literal y una
+alerta nivel 4 llegaba muda con la app abierta. El `sound: "default"` de C no sirve de
+nada si el handler se niega a reproducirlo — **son dos switches en repos distintos y los
+dos tienen que estar prendidos**.
+
+Ahora `handleNotification` recibe la notificación y devuelve `shouldPlaySound: isCritical`
+(`fullScreen`, `category=sos`, o nivel ≥ 4). Lo visual sigue siendo de la app.
+
+**Verificar en el Pixel:** que una alerta crítica no suene **dos veces** en Android (canal
++ handler). Es un fallo ruidoso, no silencioso — se nota al primer push.
+
+**sonner-native en iOS: investigado, es sólido.** `toaster.tsx:58` mete el Toaster en un
+`FullWindowOverlay` de react-native-screens (4.16.0) = un `UIWindow` aparte, por encima de
+native-stack y de modales; `pointerEvents: 'box-none'` deja pasar los toques a los botones
+de acción. El comentario del propio paquete dice que la plataforma frágil es **Android**
+(depende de `elevation: 9999` dentro de la misma ventana). `<Toaster />` está montado como
+hermano de `<Stack>`, fuera del navigator — que es lo correcto.
 
 ### ~~C. Fase 4 — config APNs en backend~~ ✅ **6 de 7 HECHO**
 
@@ -407,10 +427,11 @@ falla, es culpa de Fase 2 — no de algo preexistente.
 ## Orden sugerido
 
 ```
-~~A~~ → ~~D~~ → ~~C~~ → **build en device iOS** → B → F  |  después: E, G, H
+~~A~~ → ~~D~~ → ~~C~~ → ~~B~~ → **build en device iOS** → F  |  después: E, G, H
 ```
 
-`A → D → C` está hecho y commiteado. **Nada de eso se ha corrido en un iPhone.**
+**Toda la cadena de código de push está hecha. Nada de eso se ha corrido en un iPhone.**
+F (borrado de cuenta) es independiente del push y puede ir en paralelo.
 
 **El siguiente paso no es código, es `npx expo run:ios`.** Tres cosas se validan de un
 solo build, y las tres pueden invalidar trabajo ya hecho:
