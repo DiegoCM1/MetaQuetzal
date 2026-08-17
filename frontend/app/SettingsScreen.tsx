@@ -40,6 +40,13 @@ export default function SettingsScreen() {
                 "Error",
                 "No se pudo eliminar la cuenta. Intenta de nuevo.",
               );
+              return;
+            }
+            try {
+              await clearOnboardingData();
+              await resetAllTours();
+            } catch (e) {
+              console.warn("[Bluai] Local cleanup after delete failed", e);
             }
           },
         },

@@ -187,6 +187,27 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS sos_events_sender_idx ON sos_events (sender_id, created_at DESC)"
         ))
+        # `sos_events.sender_id` se creó sin ON DELETE, o sea NO ACTION: borrar un
+        # usuario que alguna vez mandó un SOS fallaba con violación de FK. Eso rompe
+        # el borrado de cuenta (Guideline 5.1.1(v)) **solo para algunos usuarios**, que
+        # es la peor variante: pasa la prueba manual con una cuenta recién creada.
+        #
+        # CASCADE es lo correcto: un sos_event guarda lat/lon del usuario, o sea que es
+        # dato personal suyo y se va con la cuenta. El `confdeltype <> 'c'` hace que
+        # esto solo corra mientras la constraint aún no sea CASCADE.
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM pg_constraint
+                    WHERE conname = 'sos_events_sender_id_fkey' AND confdeltype <> 'c'
+                ) THEN
+                    ALTER TABLE sos_events DROP CONSTRAINT sos_events_sender_id_fkey;
+                    ALTER TABLE sos_events ADD CONSTRAINT sos_events_sender_id_fkey
+                        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE;
+                END IF;
+            END $$;
+        """))
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS sos_contacts_linked_uid_idx "
             "ON sos_contacts (linked_user_id) WHERE linked_user_id IS NOT NULL"
