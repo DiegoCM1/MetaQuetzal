@@ -59,3 +59,20 @@ async def update_user_location(db: AsyncSession, firebase_uid: str, lat: float, 
     )
     await db.commit()
     return result.mappings().first()
+
+
+async def delete_user_by_firebase_uid(db: AsyncSession, firebase_uid: str) -> bool:
+    """Borra la fila de `users`. Devuelve True si existía.
+
+    Todo lo demás cuelga de esto por FK: `device_tokens`, `notification_preferences`,
+    `sos_contacts`, `sos_invitations` y `sos_events` van en cascada. Los push tokens
+    son los que importan para la Guideline 5.1.1(v) — mientras esa fila viva, una
+    cuenta "borrada" **sigue recibiendo alertas de huracán**.
+    """
+    result = await db.execute(
+        text("DELETE FROM users WHERE firebase_uid = :uid RETURNING id"),
+        {"uid": firebase_uid},
+    )
+    deleted = result.first() is not None
+    await db.commit()
+    return deleted

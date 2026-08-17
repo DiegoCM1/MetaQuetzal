@@ -14,6 +14,7 @@ import * as AppleAuthentication from 'expo-apple-authentication'
 import * as Crypto from 'expo-crypto'
 import * as Sentry from '@sentry/react-native'
 import { authFetch } from '../../utils/api'
+import { API_BASE_URL } from '../../utils/config'
 import type { AuthContextValue } from './types'
 
 GoogleSignin.configure({
@@ -188,10 +189,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentUser = getAuth().currentUser
     if (!currentUser) throw new Error('No user logged in')
     try {
-      const token = await currentUser.getIdToken()
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/account`, {
+      // `/api/v1/users/me` es el endpoint vigente; `/users/account` es un alias
+      // `deprecated=True` que existe solo para builds viejos de tester. Si alguien lo
+      // quita, borrar cuenta devuelve 404 → rechazo seguro por Guideline 5.1.1(v).
+      // authFetch adjunta el ID token de Firebase (convención de utils/api.ts).
+      const response = await authFetch(`${API_BASE_URL}/api/v1/users/me`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       })
       if (!response.ok) {
         const body = await response.text().catch(() => '')
