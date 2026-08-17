@@ -14,7 +14,6 @@ Notification strategy (v1.1):
     ETA using the official SIAT-CT 5-step scale (Azul → Rojo).
 """
 
-import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -27,7 +26,12 @@ from app.features.siat.classification import classify_wind_kmh, classification_l
 from app.features.siat.direction import parse_movement_direction
 from app.features.siat.evaluator import evaluate_user, haversine_km
 from app.features.siat.providers.nhc import fetch_active_cyclones
-from app.features.notifications.service import get_tokens_for_users, build_apns_config, summarize_push_failures
+from app.features.notifications.service import (
+    get_tokens_for_users,
+    build_apns_config,
+    summarize_push_failures,
+    _send_multicast_with_retry,
+)
 from app.features.notification_preferences.service import get_preferences, is_within_quiet_hours
 
 logger = logging.getLogger(__name__)
@@ -328,7 +332,12 @@ async def _push_per_user(
         )
 
         try:
-            response = await asyncio.to_thread(messaging.send_each_for_multicast, msg)
+            # Vía el helper compartido, no `send_each_for_multicast` directo: es lo único
+            # que acota el envío a 500 por llamada. Este send es por usuario, así que hoy
+            # no se acerca al límite — pero nada en la firma lo impide, y llamar al SDK
+            # directo es justo como este sitio quedó sin cota mientras el helper "ya lo
+            # resolvía". De paso hereda los reintentos con backoff.
+            response = await _send_multicast_with_retry(msg)
             logger.info(
                 "Push → user_id=%d level=%s color=%s success=%d failure=%d",
                 user_id, assessment["siat_level"], assessment["siat_color"],
@@ -416,7 +425,12 @@ async def _push_smn_for_alert(
 
     total_sent = 0
     try:
-        response = await asyncio.to_thread(messaging.send_each_for_multicast, msg)
+        # **Este es el send que de verdad necesitaba la cota.** `all_tokens` son los
+        # tokens de TODOS los usuarios afectados por una alerta del SMN, aplanados: crece
+        # con la base de usuarios y no tiene nada que lo limite. Arriba de 500 tokens el
+        # SDK tiraba un ValueError del lado del cliente que se comía el `except` de abajo
+        # — sin push, sin error de Firebase, y reintentando igual cada 30 minutos.
+        response = await _send_multicast_with_retry(msg)
         total_sent = response.success_count
         logger.info(
             "SMN push alert_id=%s level=%d users=%d success=%d failure=%d",
