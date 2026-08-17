@@ -11,6 +11,7 @@ from app.features.users.service import (
     update_user_location,
     update_user_phone,
     get_user_by_firebase_uid,
+    delete_user_by_firebase_uid,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,24 +69,50 @@ async def set_my_location(
 
 
 @router.delete("/api/v1/users/me")
-async def delete_account(user=Depends(get_current_user)):
-    # TODO: also delete the row from the `users` DB table to avoid orphans
-    # on re-signup (a new Firebase UID creates a fresh row, leaving the old
-    # one stranded). Defer until column lifecycle is decided.
+async def delete_account(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Borra la cuenta: fila de `users` (con cascada) y luego el usuario de Firebase.
+
+    **El orden no es arbitrario.** Los dos borrados pueden fallar por separado, así que
+    hay que elegir cuál huérfano es menos malo:
+
+    - DB primero: si Firebase falla, el usuario todavía puede entrar y se le crea un
+      perfil nuevo. Recuperable, y **ya no quedan push tokens**.
+    - Firebase primero: si la DB falla, el usuario no puede entrar *pero sus tokens
+      siguen vivos* — o sea que una cuenta borrada sigue recibiendo alertas de huracán
+      y ya no hay forma de entrar a apagarlas. Eso es exactamente lo que prohíbe la
+      Guideline 5.1.1(v).
+
+    El fallo de la DB primero es reversible; el de Firebase primero no.
+    """
     uid = user["uid"]
+
+    try:
+        await delete_user_by_firebase_uid(db, uid)
+    except Exception as e:
+        logger.error(f"Failed to delete DB row for user {uid}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete account")
+
     try:
         auth.delete_user(uid)
-        return {"message": "Account deleted"}
     except auth.UserNotFoundError:
-        logger.warning(f"Delete attempted for non-existent Firebase user: {uid}")
-        raise HTTPException(status_code=404, detail="User not found")
+        # La fila de la DB ya se fue, que es lo que importaba. Un reintento del cliente
+        # no debe ver un 404 por algo que ya está resuelto.
+        logger.warning(f"Firebase user already absent, DB row deleted: {uid}")
     except Exception as e:
-        logger.error(f"Failed to delete Firebase user {uid}: {e}")
+        logger.error(f"DB row deleted but Firebase delete failed for {uid}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete account")
+
+    return {"message": "Account deleted"}
 
 
 # Legacy alias for cached tester app builds shipped before the /api/v1 migration.
 # Remove after Play Store testers have updated past the migration build.
 @router.delete("/users/account", deprecated=True)
-async def delete_account_legacy(user=Depends(get_current_user)):
-    return await delete_account(user)
+async def delete_account_legacy(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    return await delete_account(db=db, user=user)
