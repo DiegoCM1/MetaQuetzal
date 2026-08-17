@@ -295,29 +295,118 @@ async def send_targeted_notification(
     return {"success_count": response.success_count, "failure_count": response.failure_count}
 
 
-async def send_contacts_refresh_push(db: AsyncSession, user_ids: list[int]) -> None:
-    """Send a silent push so the recipients' contacts screen refreshes instantly."""
-    token_map = await get_tokens_for_users(db, user_ids)
-    tokens = [t for uid in user_ids for t in token_map.get(uid, [])]
-    if not tokens:
-        return
-    msg = messaging.MulticastMessage(
-        notification=messaging.Notification(title=" ", body=" "),
-        data={"type": "contacts_refresh"},
-        android=messaging.AndroidConfig(
-            priority="high",
-            notification=messaging.AndroidNotification(channel_id="contacts_refresh_silent"),
-        ),
-        tokens=tokens,
+async def get_tokens_by_platform(
+    db: AsyncSession, user_ids: list[int]
+) -> dict[str, list[str]]:
+    """Agrupa los tokens de esos usuarios en `{"ios": [...], "android": [...]}`.
+
+    **`platform IS NULL` cuenta como android, y eso no caduca cuando salga iOS.** El
+    razonamiento no es "android es el default" sino: un token queda en NULL solo si lo
+    registró un build del cliente anterior a que empezara a mandar `Platform.OS`, y
+    **iOS nunca se ha publicado** — o sea que no existen builds viejos de iOS. Todo
+    cliente de iOS que llegue a existir ya manda su plataforma.
+
+    Lo único que rompería esto es que alguien regrese el cliente y deje de mandarla; por
+    eso los NULL se loguean en vez de contarse en silencio.
+
+    Cualquier valor que no sea exactamente "ios" cae en android a propósito: un valor
+    inesperado no debe crear un bucket que nadie envía y perder el push sin ruido.
+    """
+    if not user_ids:
+        return {}
+    result = await db.execute(
+        text("SELECT token, platform FROM device_tokens WHERE user_id = ANY(:ids)"),
+        {"ids": user_ids},
     )
+    grouped: dict[str, list[str]] = {"ios": [], "android": []}
+    untagged = 0
+    for row in result.mappings():
+        raw = row["platform"]
+        if raw is None:
+            untagged += 1
+        grouped["ios" if (raw or "").lower() == "ios" else "android"].append(row["token"])
+    if untagged:
+        logger.info(
+            "%d token(s) sin plataforma → tratados como android (builds previos a la columna)",
+            untagged,
+        )
+    return grouped
+
+
+async def send_contacts_refresh_push(db: AsyncSession, user_ids: list[int]) -> None:
+    """Push silencioso para que la pantalla de contactos del destinatario se refresque.
+
+    **Van dos mensajes, uno por plataforma, y no se pueden unificar.** Android decide que
+    algo es silencioso en el *cliente*, con el canal: el payload sí lleva bloque
+    `notification` y el canal lo esconde. iOS no tiene canales — ahí un bloque
+    `notification` **es** una alerta, y la única forma de que sea silencioso es no
+    mandarlo y usar `content_available` con `apns-push-type: background`.
+
+    O sea que los payloads correctos son incompatibles entre sí: uno exige el bloque y el
+    otro exige su ausencia. Mandar uno solo (lo que se hacía) le dibujaba a iOS un
+    **banner en blanco** cada vez que se refrescaban contactos.
+    """
+    grouped = await get_tokens_by_platform(db, user_ids)
+    android_tokens = grouped.get("android", [])
+    ios_tokens = grouped.get("ios", [])
+
+    if not android_tokens and not ios_tokens:
+        return
+
+    # Android: payload idéntico al de siempre. El canal `contacts_refresh_silent` es lo
+    # que lo hace invisible, así que el bloque `notification` tiene que seguir ahí.
+    if android_tokens:
+        await _send_refresh_chunk(
+            messaging.MulticastMessage(
+                notification=messaging.Notification(title=" ", body=" "),
+                data={"type": "contacts_refresh"},
+                android=messaging.AndroidConfig(
+                    priority="high",
+                    notification=messaging.AndroidNotification(
+                        channel_id="contacts_refresh_silent"
+                    ),
+                ),
+                tokens=android_tokens,
+            ),
+            platform="android",
+            user_ids=user_ids,
+        )
+
+    # iOS: push de background. Sin bloque `notification` (si no, es alerta visible) y con
+    # `apns-priority: 5` — Apple **rechaza** los background push con prioridad 10.
+    if ios_tokens:
+        await _send_refresh_chunk(
+            messaging.MulticastMessage(
+                data={"type": "contacts_refresh"},
+                apns=messaging.APNSConfig(
+                    headers={"apns-push-type": "background", "apns-priority": "5"},
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(content_available=True)
+                    ),
+                ),
+                tokens=ios_tokens,
+            ),
+            platform="ios",
+            user_ids=user_ids,
+        )
+
+
+async def _send_refresh_chunk(
+    msg: messaging.MulticastMessage, *, platform: str, user_ids: list[int]
+) -> None:
+    """Manda un lado del contacts_refresh. Un fallo aquí no debe tumbar al otro lado.
+
+    El refresh es una comodidad, no una alerta: si iOS falla, los usuarios de Android no
+    tienen por qué perder el suyo.
+    """
     try:
         response = await _send_multicast_with_retry(msg)
         logger.info(
-            "contacts_refresh push → user_ids=%s tokens=%d success=%d",
-            user_ids, len(tokens), response.success_count,
+            "contacts_refresh push (%s) → user_ids=%s tokens=%d success=%d",
+            platform, user_ids, len(msg.tokens), response.success_count,
         )
     except Exception as exc:
-        logger.error("contacts_refresh push failed: %s", exc)
+        logger.error("contacts_refresh push (%s) failed: %s", platform, exc)
 
 
 async def send_all_notifications(db: AsyncSession, title:str, body:str, data:dict[str, str]):
