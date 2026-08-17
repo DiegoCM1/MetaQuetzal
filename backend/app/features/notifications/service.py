@@ -71,14 +71,78 @@ def summarize_push_failures(response) -> dict[str, int]:
     return counts
 
 
-async def _send_multicast_with_retry(
+_PERMANENT_FAILURE_TYPES = frozenset({"UnregisteredError"})
+
+
+def dead_tokens(tokens: list[str], response) -> list[str]:
+    """Los tokens que hay que borrar: SOLO los que fallaron de forma permanente.
+
+    Antes esto era `if not r.success`, o sea que **cualquier** fallo borraba el token.
+    Los fallos por token son de dos clases opuestas:
+
+    - Permanente (`UnregisteredError`): la app se desinstaló, el token está muerto para
+      siempre. Borrarlo es correcto y necesario.
+    - Transitorio (`QuotaExceededError`, fallos de red) o de configuración
+      (`ThirdPartyAuthError`): **el aparato está perfectamente bien**, lo que falló fue
+      el envío. Borrarlo destruye un registro bueno.
+
+    Por qué importa justo ahora: `ThirdPartyAuthError` significa literalmente "la auth key
+    de APNs es inválida o falta", y llega **por token**. O sea que en cuanto entren tokens
+    de iOS con cualquier problema de aprovisionamiento, el predicado viejo respondía
+    borrando justo los aparatos que uno está tratando de depurar: se registran, fallan, se
+    borran, se re-registran, en bucle y sin dejar rastro (el borrado destruye la evidencia).
+
+    `SenderIdMismatchError` tampoco borra a propósito: es permanente para nosotros, pero
+    señala que el cliente está apuntando a otro proyecto de Firebase — un problema de
+    configuración que hay que ver, no un aparato que se fue.
+
+    **Por qué se compara por nombre de clase y no con `isinstance`:** `conftest.py`
+    sustituye `firebase_admin` por un `MagicMock` (para importar `app.main` sin
+    credenciales reales, y CLAUDE.md dice explícitamente que no se quite). Bajo pytest,
+    `messaging.UnregisteredError` no es una clase sino un atributo del mock, así que
+    `isinstance` revienta con `TypeError: isinstance() arg 2 must be a type`. Sería código
+    imposible de probar. `summarize_push_failures`, aquí arriba, ya identifica los fallos
+    con `type(r.exception).__name__` — o sea que el módulo ya había elegido este camino.
+    """
+    return [
+        tokens[i]
+        for i, r in enumerate(response.responses)
+        if not r.success and type(r.exception).__name__ in _PERMANENT_FAILURE_TYPES
+    ]
+
+
+# Límite duro del SDK, no nuestro: firebase_admin/messaging.py:435 hace
+# `if len(messages) > 500: raise ValueError(...)` **antes de cualquier llamada de red**.
+# Por eso pasarse no da error de Firebase ni status HTTP: es un ValueError del lado del
+# cliente que se traga cualquier `except Exception` y deja el envío en silencio total.
+FCM_MULTICAST_LIMIT = 500
+
+
+def _rebuild_with_tokens(
+    message: messaging.MulticastMessage, tokens: list[str]
+) -> messaging.MulticastMessage:
+    """Clona un MulticastMessage cambiándole solo los tokens.
+
+    Se copian todos los campos a mano porque `MulticastMessage` no tiene copy(): si
+    alguien le agrega un campo nuevo al SDK y no se agrega aquí, se pierde en silencio
+    **solo cuando hay chunking** — o sea, solo con mucha carga y nunca en pruebas.
+    """
+    return messaging.MulticastMessage(
+        data=message.data,
+        notification=message.notification,
+        android=message.android,
+        webpush=message.webpush,
+        apns=message.apns,
+        fcm_options=message.fcm_options,
+        tokens=tokens,
+    )
+
+
+async def _send_chunk_with_retry(
     message: messaging.MulticastMessage,
     max_attempts: int = 3,
 ):
-    """
-    Intenta un Firebase multicast hasta max_attempts veces con backoff exponencial (1s, 2s).
-    Re-lanza la última excepción si todas las tentativas fallan.
-    """
+    """Un solo chunk (≤500), con backoff exponencial. Re-lanza si todo falla."""
     last_exc: Exception | None = None
     for attempt in range(max_attempts):
         try:
@@ -89,6 +153,56 @@ async def _send_multicast_with_retry(
             if attempt < max_attempts - 1:
                 await asyncio.sleep(2 ** attempt)  # 1s → 2s between retries
     raise last_exc  # max_attempts >= 1 garantiza que last_exc está asignado
+
+
+async def _send_multicast_with_retry(
+    message: messaging.MulticastMessage,
+    max_attempts: int = 3,
+):
+    """Manda un multicast partiéndolo en chunks de 500 y devuelve UNA sola respuesta.
+
+    **Todo send tiene que pasar por aquí.** Llamar a `messaging.send_each_for_multicast`
+    directo se salta esta cota — que es exactamente cómo los dos sends de SIAT quedaron
+    sin acotar mientras el helper "ya lo resolvía".
+
+    El orden de `responses` corresponde índice por índice con `message.tokens`, igual que
+    en una llamada sin partir. **Eso es carga estructural, no un detalle:** los call sites
+    hacen `tokens[i]` para saber qué token falló, así que reordenar aquí haría que se
+    borrara el token equivocado.
+
+    Si un chunk falla después de sus reintentos, se propaga la excepción y se pierden los
+    resultados de los chunks previos. Es a propósito: sin respuesta completa no se puede
+    decidir qué borrar, y fallar hacia "no borrar nada" es el lado seguro.
+    """
+    tokens = list(message.tokens or [])
+
+    if len(tokens) <= FCM_MULTICAST_LIMIT:
+        return await _send_chunk_with_retry(message, max_attempts)
+
+    chunks = range(0, len(tokens), FCM_MULTICAST_LIMIT)
+    total_chunks = len(chunks)
+    logger.info(
+        "Multicast de %d tokens → %d chunks de hasta %d",
+        len(tokens), total_chunks, FCM_MULTICAST_LIMIT,
+    )
+
+    responses = []
+    for n, start in enumerate(chunks, start=1):
+        chunk = tokens[start:start + FCM_MULTICAST_LIMIT]
+        try:
+            chunk_response = await _send_chunk_with_retry(
+                _rebuild_with_tokens(message, chunk), max_attempts
+            )
+        except Exception:
+            logger.error(
+                "Multicast falló en el chunk %d/%d (tokens %d-%d); "
+                "se descartan los %d resultados previos",
+                n, total_chunks, start, start + len(chunk) - 1, len(responses),
+            )
+            raise
+        responses.extend(chunk_response.responses)
+
+    return messaging.BatchResponse(responses)
 
 
 async def push_token(
@@ -160,14 +274,17 @@ async def send_targeted_notification(
         logger.error("send_targeted_notification Firebase failed after retries: %s", exc, exc_info=True)
         raise
 
-    invalid_tokens = [tokens[i] for i, r in enumerate(response.responses) if not r.success]
-    if invalid_tokens:
-        # Se loguea ANTES de borrar: el borrado destruye la evidencia. Si aquí sale
-        # ThirdPartyAuthError o QuotaExceededError, el token estaba bien y lo estamos
-        # tirando por un problema nuestro (ver E).
+    # Se loguean TODOS los fallos, pero solo se borran los permanentes. El resumen va
+    # antes del borrado a propósito: el borrado destruye la evidencia.
+    if response.failure_count:
         logger.warning(
-            "send_targeted_notification borrando %d token(s) — causas: %s",
-            len(invalid_tokens), summarize_push_failures(response),
+            "send_targeted_notification fallos: %s", summarize_push_failures(response),
+        )
+    invalid_tokens = dead_tokens(tokens, response)
+    if invalid_tokens:
+        logger.warning(
+            "send_targeted_notification borrando %d token(s) muertos de %d fallo(s)",
+            len(invalid_tokens), response.failure_count,
         )
         await db.execute(
             text("DELETE FROM device_tokens WHERE token = ANY(:tokens)"),
@@ -231,17 +348,17 @@ async def send_all_notifications(db: AsyncSession, title:str, body:str, data:dic
         logger.error("send_all_notifications Firebase failed after retries: %s", exc, exc_info=True)
         raise
 
-    # Cleaning up missing/bad tokens
-    invalid_tokens = []
-    for i, r in enumerate(response.responses):
-        if not r.success:
-            invalid_tokens.append(tokens[i])
-    
-    if invalid_tokens:
-        # Mismo razonamiento que en send_targeted_notification: loguear antes de borrar.
+    # Cleaning up missing/bad tokens — solo los permanentes (ver dead_tokens).
+    if response.failure_count:
         logger.warning(
-            "send_all_notifications borrando %d token(s) — causas: %s",
-            len(invalid_tokens), summarize_push_failures(response),
+            "send_all_notifications fallos: %s", summarize_push_failures(response),
+        )
+    invalid_tokens = dead_tokens(tokens, response)
+
+    if invalid_tokens:
+        logger.warning(
+            "send_all_notifications borrando %d token(s) muertos de %d fallo(s)",
+            len(invalid_tokens), response.failure_count,
         )
         await db.execute(
             text("DELETE FROM device_tokens WHERE token = ANY(:tokens)"),
