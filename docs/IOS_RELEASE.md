@@ -106,58 +106,34 @@ para por qué esto basta y por qué **no** hizo falta `app.config.js`.
 
 ## Falta — no es de iOS, pero iOS lo empeora
 
-### E. Corte de 500 + predicado de borrado — **DIFERIDO (decisión 14/08)**
+### ~~E. Corte de 500 + predicado de borrado~~ ✅ **HECHO (17/08)** — rama `fix/500-cap-firebase`
 
-> **Se pospone hasta después de mandar iOS.** iOS es lo urgente; E se retoma al terminar
-> la cadena de push. **Antes de dar por buena la decisión, correr en prod:**
-> ```sql
-> SELECT COUNT(*) FROM device_tokens;
-> ```
-> Abajo de 500 → diferir no cuesta nada. Arriba de 500 → ya está roto hoy y la campaña
-> del lunes 17 no le llega a nadie. Es la única cifra que cambia la decisión.
+Eran dos bugs distintos en el mismo código de envío, los dos silenciosos:
 
-**Son dos sends sin cota, no uno** (el doc antes solo listaba SIAT):
+**1. Sin cota de 500.** `send_each_for_multicast` lanza un `ValueError` **del lado del
+cliente, antes de cualquier llamada de red** (`firebase_admin/messaging.py:435`) si le
+pasan más de 500 tokens. No hay error de Firebase ni status HTTP: el push no sale y el
+`except Exception` se lo traga. Sin cota estaban `send_all_notifications` (campaña: toda
+la tabla) y `_push_smn_for_alert` (SIAT: todos los usuarios afectados, aplanados).
 
-| Sitio | De dónde salen los tokens | Cota |
-|---|---|---|
-| `notifications/service.py:141` `send_all_notifications` | `SELECT token FROM device_tokens` | **toda la tabla** |
-| `siat/service.py:396` `_push_smn_for_alert` | todos los usuarios afectados, aplanados | **sin cota** |
+**2. Borraba tokens buenos.** El predicado era `if not r.success`: **cualquier** fallo
+borraba el token, incluidos los transitorios. `ThirdPartyAuthError` significa "la auth key
+de APNs es inválida" y llega **por token** — o sea que en cuanto entraran tokens de iOS
+con cualquier problema de aprovisionamiento, el backend habría borrado justo los aparatos
+que uno está tratando de depurar: se registran, fallan, se borran, se re-registran, en
+bucle y sin dejar rastro (el borrado destruye la evidencia). Esta mitad era la urgente
+para iOS; por eso se adelantó E en vez de esperar al release.
 
-`send_all_notifications` es **el camino de la campaña** (`POST /api/v1/notifications/send-all`,
-`router.py:85`, y un segundo endpoint en `:123`). SIAT es el loop automático de ciclones.
-El doc antes señalaba solo SIAT — es el equivocado para una campaña de marketing.
+**Arreglo:**
 
-Los otros cinco multicast están acotados **por uso actual, no por construcción**
-(`siat:319`, `notifications:80`, `notifications:109`, `sos_trigger:82`, `sos_invite:120`).
-Ninguno puede pasar de 500 hoy, pero nada en la firma lo impide — `send_contacts_refresh_push`
-recibe una *lista*. → Poner el chunking en el helper compartido, no en los dos call sites
-calientes; así los siete quedan acotados por construcción.
+- `_send_multicast_with_retry` parte en chunks de 500 y devuelve **una sola** respuesta
+  agregada, en el mismo orden que los tokens de entrada — ningún call site cambió.
+- **Los dos sends de SIAT se migraron al helper.** Llamaban al SDK directo, así que
+  ponerlo solo en el helper no los habría acotado. Ahora los siete multicast pasan por ahí.
+- Borrado por lista blanca: `_PERMANENT_FAILURE_TYPES = {"UnregisteredError"}`. Un tipo de
+  error desconocido ya no borra nada.
 
-**Falla en silencio:** `send_each_for_multicast` lanza `ValueError` **del lado del cliente,
-antes de cualquier llamada de red**. No hay error de Firebase, ni status HTTP, ni nada en la
-consola. En SIAT se lo traga el `except Exception` de `:414` y como nunca llama a
-`_mark_alert_notified`, reintenta el mismo fallo cada 30 min.
-
-**Ya se puede ver qué está pasando (15/08):** `summarize_push_failures()` agrupa los
-fallos por tipo de excepción y se loguea **antes** de borrar. Los cinco call sites hacían
-`if not r.success` y tiraban `r.exception`; los tres que sí logueaban escribían los
-**tokens completos** (una credencial) en vez de la causa. Ahora sale
-`{'UnregisteredError': 2, 'ThirdPartyAuthError': 1}` — y `ThirdPartyAuthError` es
-literalmente "la auth key de APNs es inválida o falta", o sea el error del primer
-TestFlight de iOS. Esto no arregla E, pero la vuelve diagnosticable.
-
-**Borrado:** `notifications/service.py:92` y `:153` borran ante **cualquier** fallo. Debe ser
-solo `isinstance(r.exception, messaging.UnregisteredError)`. Hoy un `QuotaExceededError`
-transitorio borra permanentemente un dispositivo bueno. SIAT está limpio en esto: `:420-422`
-loguea y no borra.
-
-**Por qué importa para iOS:** en cuanto entren tokens de iOS, cualquier problema de
-APNs regresa fallos por-token, y este código responde **borrando esos dispositivos de
-la base**. Se registran, fallan, se borran, se re-registran — en loop invisible.
-
-**Tamaño cuando se retome:** ~120 líneas con tests, en `notifications/service.py` +
-`siat/service.py` + `notifications/tests/test_router.py`. Backend puro, sin build nativo,
-cubierto por `pytest` en CI.
+9 pruebas nuevas en `notifications/tests/test_multicast.py`; 235 pasan.
 
 ### G. `contacts_refresh` en iOS — **columna `platform` ✅ HECHA (15/08), el split sigue diferido**
 
@@ -554,3 +530,8 @@ arriba de 500 tokens), H (unificar en RNFB — arregla el tap en Android), G
 
 Solo F lo obliga alguien externo. Por eso A–D necesitan la SACRED RULE: la App Store
 aprueba sin problema una app cuya función principal no hace nada en silencio.
+
+
+## Lista de cosas para appstore connect
+
+Aviso de privacidad: https://www.bluai.com.mx/aviso-de-privacidad
