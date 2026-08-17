@@ -1,6 +1,6 @@
 # iOS Release — estado y pendientes
 
-Estado al **15 de agosto de 2026**. Este doc es la fuente de verdad de qué falta para
+Estado al **17 de agosto de 2026**. Este doc es la fuente de verdad de qué falta para
 publicar Bluai en la App Store. Android ya está en Play Store; iOS nunca se ha publicado.
 
 **Alcance de este release:** Bluetooth (chat local) y la IA offline **NO salen en iOS**.
@@ -36,6 +36,7 @@ lo que verá un usuario real. Ver "Gotchas → `aps-environment`" abajo.
 | **C — config APNs en backend** | Helper `build_apns_config()` en `notifications/service.py`; 6 de 7 sends migrados. Sonido + `interruption-level` en las alertas de ciclón y SOS. 225 tests pasan |
 | **Diagnóstico de fallos push** | `summarize_push_failures()` — se loguea el **tipo** de excepción de FCM en vez de los tokens completos, y **antes** de borrar. `ThirdPartyAuthError` = auth key de APNs inválida, el error clave del primer TestFlight |
 | **Columna `platform`** | `device_tokens.platform` + backfill que se apaga solo + `Platform.OS` desde el cliente. Ver G — la ventana del backfill se cierra con el primer build de iOS |
+| **F — borrado de cuenta** (`2b98048`, `aa30973`) | DB primero y Firebase después; `sos_events.sender_id` → `ON DELETE CASCADE`; limpieza de AsyncStorage al borrar; `test_delete_cascade.py` en CI. **Validado en iPhone el 17/08** |
 
 Verificado en Pixel 7: el happy path de push, el path de fallo (Sentry + toast + 3
 reintentos), y la carrera del 404 (no se dispara — `upsertUserProfile` gana con holgura).
@@ -211,22 +212,97 @@ se hace como PR aparte. Un agente de research auditó la decisión; lo que encon
   expo-notifications el control del display y del tap en Android (~10 líneas de backend).
   Es una tercera opción que ninguna de las dos rutas consideró.
 
-### F. Borrado de cuenta (Guideline 5.1.1(v))
+### ~~F. Borrado de cuenta (Guideline 5.1.1(v))~~ ✅ **HECHO (17/08)** — `2b98048` + `aa30973`
 
-`users/router.py:70-84` borra solo el usuario de Firebase; deja viva la fila en `users`
-y por lo tanto sus `device_tokens` → **un usuario borrado sigue recibiendo alertas**.
-Hay un `TODO` en el código reconociéndolo.
+Backend: la fila de `users` se borra **primero** y Firebase después. El orden importa —
+si Firebase falla, el usuario vuelve a entrar y se le crea perfil nuevo (recuperable, y
+**ya no quedan push tokens**). Al revés, un fallo de DB deja una cuenta que no puede
+entrar pero **sigue recibiendo alertas de huracán**: justo lo que prohíbe 5.1.1(v).
 
-Y el cliente tiene tres problemas en la misma función (`AuthContext.tsx:186-200`):
+Cliente: los tres problemas de `AuthContext.tsx` resueltos (`authFetch`, `API_BASE_URL`,
+`/api/v1/users/me`). Y `SettingsScreen.handleDeleteAccount` ahora limpia AsyncStorage
+(`clearOnboardingData` + `resetAllTours`): `@blueye_onboarding` guardaba **nombre,
+teléfono, dirección, CP, rango de edad y nivel de ansiedad** y sobrevivía a un borrado
+que la UI anuncia como "permanente". El backend no puede tocar AsyncStorage.
 
-1. Pega a `/users/account` — que en el backend es `@router.delete("/users/account", deprecated=True)`
-   (`users/router.py:89`). El vigente es `/api/v1/users/me` (`:70`). Si el alias se
-   quita antes de que salga el build de iOS, **borrar cuenta regresa 404 → rechazo
-   garantizado** por Guideline 5.1.1(v).
-2. Usa `fetch` a pelo armando el header `Authorization` a mano, en vez de `authFetch`
-   (`utils/api.ts`) — contra la convención de `frontend/CLAUDE.md`.
-3. Lee `process.env.EXPO_PUBLIC_API_URL` directo en vez de importar `API_BASE_URL`
-   (`utils/config.ts`) — misma convención, explícitamente prohibido ahí.
+**Mina encontrada de paso:** `sos_events.sender_id` estaba declarado sin regla de
+borrado → el default de Postgres es `NO ACTION`, así que borrar a cualquier usuario que
+alguna vez mandó un SOS fallaba con violación de FK. Pasaba la prueba manual porque una
+cuenta recién creada no tiene historial. Convertido a `ON DELETE CASCADE` con un bloque
+`DO $$` autodesactivable (`confdeltype <> 'c'`) en `ensure_core_tables`.
+
+Probado de verdad, no inferido:
+- `app/features/users/tests/test_delete_cascade.py` — borra un usuario **con historial en
+  todas las tablas que lo referencian** y verifica además que los datos de OTRO usuario
+  sobreviven intactos (un CASCADE de más es tan grave como uno de menos). Corre en CI.
+- En dispositivo (17/08, backend local): `DELETE 200` → fila vieja destruida, fila nueva
+  `id 1215` con 0 `device_tokens` / 0 `sos_contacts` / 0 `sos_events`.
+
+---
+
+## Post-release — encontrado durante el release, NO bloquea el envío
+
+> Ninguno de estos impide subir a App Store. Se documentan aquí para no perderlos.
+
+### P1. El gate de onboarding usa un proxy roto (`display_name`)
+
+`app/_layout.tsx:178-195`: si AsyncStorage está vacío, el gate le pregunta al backend
+"¿este usuario tiene `display_name`?" y si sí, marca el onboarding como completado.
+
+Pero `users/router.py:28` llena `display_name` con el claim `name` del token de Firebase
+en el **primer** `POST /api/v1/users/me` — la llamada que *crea* la cuenta. Con Google
+sign-in ese claim siempre viene, así que el campo existe segundos después del registro,
+antes de que el usuario vea una sola pantalla de onboarding.
+
+**Efecto: cualquier usuario de Google se salta el onboarding en una instalación limpia.**
+Medido en la DB de staging (17/08): 14 usuarios con `display_name`, solo **4 con `phone`**.
+
+Una bandera de "completado" tiene que escribirla el paso que dice medir. Hoy nada del
+lado servidor registra que el onboarding pasó: `submitOnboarding`
+(`app/onboarding/_context/OnboardingContext.tsx:36`) solo escribe AsyncStorage, y el
+único rastro remoto es `phone` — que es **opcional** (`phone?: string` en `_types.ts`) y
+se manda fire-and-forget con `.catch(() => {})`, o sea que un fallo se traga en silencio.
+
+Arreglo correcto: columna `onboarding_completed BOOLEAN` vía `ALTER TABLE ... ADD COLUMN
+IF NOT EXISTS` en `ensure_core_tables` (no hay Alembic), escrita por `submitOnboarding`.
+~30 líneas. Preexistente a esta rama.
+
+### P2. No se revoca el token de Apple al borrar la cuenta
+
+Desde el 30/06/2022 Apple exige que una app con Sign in with Apple **revoque el token**
+del usuario al borrar la cuenta, no solo que borre la cuenta local. `auth.delete_user()`
+de `firebase_admin` borra el usuario de Firebase pero **no toca el lado de Apple**: el
+Apple ID sigue listando la app en "Apps que usan tu Apple ID".
+
+No hay nada de revocación en el repo (verificado 17/08: los únicos `revoke` son de
+`sos_invitations`). `app.json` tiene `usesAppleSignIn: true`, así que aplica.
+
+Trampa: la revocación necesita el `authorizationCode` que devuelve
+`AppleAuthentication.signInAsync()`, y `AuthContext.tsx` hoy lo **descarta**. Hay que
+guardarlo al iniciar sesión — después no se puede recuperar.
+
+**Falta verificar** qué ofrece Firebase hoy del lado servidor antes de implementar a mano.
+Es causal de rechazo documentada bajo la misma 5.1.1(v), así que conviene cerrarlo pronto
+aunque no bloquee el primer envío.
+
+---
+
+## Falta en App Store Connect (Diego) — **bloquea el envío**
+
+No es código, pero sin esto la review se rechaza:
+
+1. **Cuenta demo para App Review.** La app entra por `AuthGate`: sin credenciales el
+   revisor **no pasa del login** y eso es rechazo automático. Crear una cuenta de prueba
+   —con onboarding ya completado y algún contacto SOS, para que la app no se vea vacía— y
+   ponerla en *App Review Information*. Google/Apple sign-in complica al revisor: si no
+   puede entrar con user+password, hay que dejar instrucciones explícitas ahí mismo.
+2. **URL de la política de privacidad.** No está en el código (verificado 17/08: no hay
+   link ni constante en el repo). Vive en **Google Play Console → Ficha de Store**; hay
+   que copiarla a App Store Connect.
+
+> **Agreements/Tax/Banking NO se heredan de Play Store.** Son contratos aparte con Apple;
+> nada se transfiere. Como no hay librerías de IAP en `package.json`, basta con el
+> *free-app agreement* aceptado por el Account Holder — sin datos bancarios.
 
 ---
 
@@ -427,24 +503,27 @@ falla, es culpa de Fase 2 — no de algo preexistente.
 ## Orden sugerido
 
 ```
-~~A~~ → ~~D~~ → ~~C~~ → ~~B~~ → **build en device iOS** → F  |  después: E, G, H
+~~A~~ → ~~D~~ → ~~C~~ → ~~B~~ → ~~F~~ → **entrega de push en device iOS**
+   |  después del release: P1, P2, E, G, H
 ```
 
 **Toda la cadena de código de push está hecha. Nada de eso se ha corrido en un iPhone.**
-F (borrado de cuenta) es independiente del push y puede ir en paralelo.
+F (borrado de cuenta) ya se validó en device el 17/08 y no depende del push.
 
-**El siguiente paso no es código, es `npx expo run:ios`.** Tres cosas se validan de un
-solo build, y las tres pueden invalidar trabajo ya hecho:
+**El siguiente paso no es código, es recibir un push en el iPhone.** Tres cosas se validan
+de un solo build, y las tres pueden invalidar trabajo ya hecho:
 
 1. La clase de caracteres del token (¿FCM o hex de APNs?) — ver el oráculo arriba
 2. El log del delegate de expo-notifications — ver Gotchas
 3. Que el poll de `getAPNSToken()` salga en la primera iteración en warm start
 
-B se hace después porque el handler de primer plano no se puede probar sin push que llegue.
+B ya está escrito, pero el handler de primer plano **sigue sin probarse**: no se puede
+sin un push que llegue de verdad.
 
-**Diferidos, en orden de valor:** E (corte de 500 — solo importa arriba de 500 tokens),
-H (unificar en RNFB — arregla el tap en Android), G (`contacts_refresh` + columna
-`platform`, cosmético).
+**Diferidos, en orden de valor:** P2 (revocar token de Apple — misma guideline que F),
+P1 (gate de onboarding — afecta a todo usuario de Google), E (corte de 500 — solo importa
+arriba de 500 tokens), H (unificar en RNFB — arregla el tap en Android), G
+(`contacts_refresh`, cosmético).
 
 ### Los tres tipos de bloqueador (no confundirlos)
 
