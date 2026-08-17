@@ -36,7 +36,7 @@ lo que verá un usuario real. Ver "Gotchas → `aps-environment`" abajo.
 | **C — config APNs en backend** | Helper `build_apns_config()` en `notifications/service.py`; 6 de 7 sends migrados. Sonido + `interruption-level` en las alertas de ciclón y SOS. 225 tests pasan |
 | **Diagnóstico de fallos push** | `summarize_push_failures()` — se loguea el **tipo** de excepción de FCM en vez de los tokens completos, y **antes** de borrar. `ThirdPartyAuthError` = auth key de APNs inválida, el error clave del primer TestFlight |
 | **Columna `platform`** | `device_tokens.platform` + backfill que se apaga solo + `Platform.OS` desde el cliente. Ver G — la ventana del backfill se cierra con el primer build de iOS |
-| **F — borrado de cuenta** (`2b98048`, `aa30973`) | DB primero y Firebase después; `sos_events.sender_id` → `ON DELETE CASCADE`; limpieza de AsyncStorage al borrar; `test_delete_cascade.py` en CI. **Validado en iPhone el 17/08** |
+| **F — borrado de cuenta** (`2b98048`, `aa30973`) | DB primero y Firebase después; `sos_events.sender_id` → `ON DELETE CASCADE`; limpieza de AsyncStorage al borrar; `test_delete_cascade.py` en CI. **Validado el 17/08 en el Simulator** (no en iPhone físico — ver abajo), con cuenta de Google |
 
 Verificado en Pixel 7: el happy path de push, el path de fallo (Sentry + toast + 3
 reintentos), y la carrera del 404 (no se dispara — `upsertUserProfile` gana con holgura).
@@ -235,8 +235,10 @@ Probado de verdad, no inferido:
 - `app/features/users/tests/test_delete_cascade.py` — borra un usuario **con historial en
   todas las tablas que lo referencian** y verifica además que los datos de OTRO usuario
   sobreviven intactos (un CASCADE de más es tan grave como uno de menos). Corre en CI.
-- En dispositivo (17/08, backend local): `DELETE 200` → fila vieja destruida, fila nueva
-  `id 1215` con 0 `device_tokens` / 0 `sos_contacts` / 0 `sos_events`.
+- En el **Simulator** (17/08, backend local, cuenta de Google): `DELETE 200` → fila vieja
+  destruida, fila nueva `id 1215` con 0 `device_tokens` / 0 `sos_contacts` / 0 `sos_events`.
+  El Simulator es válido para esto: el borrado no toca APNs ni entitlements. **Falta
+  repetirlo con Sign in with Apple**, que es donde aparece P2.
 
 ---
 
@@ -467,6 +469,23 @@ la nube siguen pasando.
 
 La longitud sola es una prueba negativa ("no es 64"); la clase de caracteres es positiva.
 No hace falta mandar ningún push para saberlo.
+
+### El Simulator no firma nada — y por eso engaña
+
+`npx expo run:ios` (Simulator) **no requiere certificado**: las builds de Simulator van sin
+firmar. `npx expo run:ios --device` sí, y ahí sale `CommandError: No code signing
+certificates are available to use`.
+
+O sea que se puede llevar semanas "probando en iOS" sin haber firmado nunca nada, y sin
+poder probar **push, entitlements ni `aps-environment`** — que es justo lo que falta.
+
+**Cómo saber en cuál estás corriendo, desde los logs del backend:** el Simulator comparte
+la pila de red del Mac, así que sus requests salen con la IP **del Mac**. Un iPhone físico
+tiene su propia IP por DHCP. Si `ipconfig getifaddr en0` es igual a la IP del cliente en
+los logs de uvicorn, estás en el Simulator.
+
+Diagnóstico rápido del keychain: `security find-identity -v -p codesigning`.
+`0 valid identities found` = no hay con qué firmar (estado al 17/08).
 
 ### `frontend/ios/` es artefacto, no fuente
 
