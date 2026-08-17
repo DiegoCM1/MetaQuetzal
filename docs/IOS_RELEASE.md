@@ -135,36 +135,33 @@ para iOS; por eso se adelantó E en vez de esperar al release.
 
 9 pruebas nuevas en `notifications/tests/test_multicast.py`; 235 pasan.
 
-### G. `contacts_refresh` en iOS — **columna `platform` ✅ HECHA (15/08), el split sigue diferido**
+### ~~G. `contacts_refresh` en iOS~~ ✅ **HECHO (17/08)** — columna `platform` (15/08) + split del send
 
-**La columna se adelantó a propósito, porque su ventana se cierra.** Hoy el 100% de las
-filas de `device_tokens` son de Android por construcción (iOS nunca se publicó), así que
-el backfill es correcto y gratis. En cuanto el primer build de iOS registre un token deja
-de serlo **para siempre**: un registration token de FCM es opaco e idéntico entre
-plataformas, o sea que nada en la fila permite clasificarla después. Es la típica columna
-que hay que agregar *antes* de que los datos dejen de ser homogéneos, no después.
+`send_contacts_refresh_push` mandaba **un solo** mensaje con bloque `notification`. En
+Android el canal `contacts_refresh_silent` lo esconde; **iOS no tiene canales**, así que
+ahí un bloque `notification` *es* una alerta: el usuario habría visto un **banner en
+blanco** cada vez que se refrescaban sus contactos.
 
-El backfill en `main.py` **se apaga solo** (`AND NOT EXISTS (SELECT 1 ... WHERE platform
-IS NOT NULL)`): corre mientras ninguna fila tenga plataforma y nunca vuelve a correr
-después. Sin esa guarda correría en cada arranque y etiquetaría como "android" cualquier
-token de iOS que llegara sin plataforma. El cliente ya manda `Platform.OS`, y el
-`ON CONFLICT` usa `COALESCE` para que un cliente viejo no borre una clasificación buena.
+No se podía arreglar en un mensaje porque los payloads correctos son incompatibles:
+Android **exige** el bloque `notification` (el canal es lo que lo silencia) y iOS exige su
+**ausencia**, con `content-available` y `apns-push-type: background`. Por eso el
+prerrequisito era la columna `platform`, que se adelantó el 15/08 — su ventana se cerraba
+con el primer build de iOS, porque un registration token de FCM es opaco e idéntico entre
+plataformas y después ya no hay cómo clasificar las filas viejas.
 
-**Lo que sigue diferido** es partir el send — el único de C que **sí toca Android**.
+**Arreglo:** `get_tokens_by_platform()` agrupa y se mandan dos mensajes. Verificado
+serializando el payload real del SDK (`encode_message`, fuera de pytest):
 
-`notifications/service.py` manda `Notification(title=" ", body=" ")` + canal
-`contacts_refresh_silent`. En Android el **canal** lo hace invisible. En iOS no hay
-canales → hoy dibuja un **banner en blanco visible**. La forma correcta en iOS es push de
-background: sin bloque `notification`, `content_available=True`, `apns-push-type: background`.
+- **Android queda idéntico** a como estaba — mismo bloque `notification`, mismo canal.
+- **iOS** recibe `{"aps":{"content-available":1}}`, sin `alert` ni `notification`, con
+  `apns-priority: 5` (Apple **rechaza** los background push con prioridad 10).
+- Un fallo de un lado no cancela el otro: el refresh es comodidad, no alerta.
 
-**Por qué no se puede arreglar en un solo mensaje:** con bloque `notification` iOS lo
-manda como alerta; sin él, en Android se vuelve data-only y cambia qué handler dispara.
-Hay que mandar iOS y Android por separado → hace falta saber la plataforma del token, y
-**`device_tokens` no tiene columna `platform`** (`main.py:67`).
+`platform IS NULL` cuenta como android y **eso no caduca cuando salga iOS**: un NULL solo
+lo deja un build anterior a la columna, y como iOS nunca se publicó, no existen builds
+viejos de iOS. Se loguean para que la suposición sea observable y no silenciosa.
 
-Alcance: `ALTER TABLE device_tokens ADD COLUMN IF NOT EXISTS platform TEXT` en
-`ensure_core_tables()`, que el cliente la mande al registrar, y partir el send en dos.
-Es un bug cosmético en un push no crítico — de ahí el diferimiento.
+9 pruebas en `notifications/tests/test_contacts_refresh.py`; 244 pasan.
 
 ### H. Unificar ambas plataformas en RNFB — **DIFERIDO (15/08)**
 
@@ -498,8 +495,9 @@ falla, es culpa de Fase 2 — no de algo preexistente.
 ## Orden sugerido
 
 ```
-~~A~~ → ~~D~~ → ~~C~~ → ~~B~~ → ~~F~~ → **entrega de push en device iOS**
-   |  después del release: P1, P2, E, G, H
+~~A~~ → ~~D~~ → ~~C~~ → ~~B~~ → ~~F~~ → ~~E~~ → ~~G~~ → **entrega de push en device iOS**
+   |  bloqueado en Ivan: certificados (ningún build a device sin eso)
+   |  después del release: P2, P1, H
 ```
 
 **Toda la cadena de código de push está hecha. Nada de eso se ha corrido en un iPhone.**
@@ -515,10 +513,9 @@ de un solo build, y las tres pueden invalidar trabajo ya hecho:
 B ya está escrito, pero el handler de primer plano **sigue sin probarse**: no se puede
 sin un push que llegue de verdad.
 
-**Diferidos, en orden de valor:** P2 (revocar token de Apple — misma guideline que F),
-P1 (gate de onboarding — afecta a todo usuario de Google), E (corte de 500 — solo importa
-arriba de 500 tokens), H (unificar en RNFB — arregla el tap en Android), G
-(`contacts_refresh`, cosmético).
+**Diferidos, en orden de valor:** P2 (revocar token de Apple — misma guideline que F, y
+es el único que queda sin bloqueo de Ivan), P1 (gate de onboarding — afecta a todo usuario
+de Google), H (unificar en RNFB — arregla el tap en Android).
 
 ### Los tres tipos de bloqueador (no confundirlos)
 

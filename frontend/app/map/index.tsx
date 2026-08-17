@@ -17,7 +17,12 @@ import {
   Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import MapView, { UrlTile, PROVIDER_GOOGLE, Marker } from "react-native-maps";
+import MapView, {
+  UrlTile,
+  PROVIDER_GOOGLE,
+  Marker,
+  Callout,
+} from "react-native-maps";
 import * as Location from "expo-location";
 import { syncLocationToBackend } from "../../utils/locationSync";
 import { toast } from "sonner-native";
@@ -94,27 +99,54 @@ interface MapProps {
 
 // SIAT level (this user's risk) — used only for the focusLat/focusLon marker
 // that comes from a push notification.
+// Tokens de marca, no hex sueltos. Antes eran los colores POR DEFECTO de Material
+// (#F44336 = Red 500, #FF9800 = Orange 500, #FFC107 = Amber 500, #4CAF50 = Green 500):
+// la paleta de Google encima de un mapa navy hecho a medida. Por eso los marcadores se
+// sentían pegados de otra app — los tonos se parecen lo suficiente para verse
+// intencionales y difieren lo suficiente para chocar.
+// El mapeo severidad → color es el canónico de docs/BRAND.md.
 const LEVEL_COLORS: Record<number, string> = {
-  1: "#4CAF50",
-  2: "#4CAF50",
-  3: "#FFC107",
-  4: "#FF9800",
-  5: "#F44336",
+  1: colors.brandGreen, // Safe
+  2: colors.brandGreen, // Safe
+  3: colors.brandYellow, // Watch
+  4: colors.brandOrange, // Warning
+  5: colors.brandRed, // Emergency
 };
 
 // Storm intensity classification — deliberately separate from LEVEL_COLORS.
 // A weak depression heading straight at someone can carry a high SIAT level,
 // so mixing the two palettes would misrepresent one or the other.
+// La separación es de SIGNIFICADO; la paleta sí se comparte, para que el mapa no
+// invente una segunda escala de colores.
 const CATEGORY_COLORS: Record<string, string> = {
-  HU: "#F44336",
-  TS: "#FF9800",
-  TD: "#FFC107",
+  HU: colors.brandRed,
+  TS: colors.brandOrange,
+  TD: colors.brandYellow,
 };
+
+// Caja transparente del marcador de ciclón. Mide más que el círculo (48) para dejarle
+// sitio al chevron de rumbo por fuera del anillo. La cuenta importa y hay que rehacerla
+// si cambia cualquiera de los dos tamaños: el chevron se dibuja arriba al centro, así que
+// su centro queda a `MARKER_BOX/2 − CHEVRON/2` del centro del marcador, y eso tiene que
+// ser MAYOR que el radio del círculo (24) o el chevron se le encima.
+//   80/2 − 26/2 = 27 > 24 ✓
+// Con la caja anterior (72) y este chevron más grande daría 23 < 24: se montaría encima.
+// El círculo sigue midiendo 48; solo crece el área invisible alrededor.
+const MARKER_BOX = 80;
+const CHEVRON_SIZE = 26;
+
+// Ancho FIJO del callout, no `maxWidth`. Dentro de un `<Callout>` los hijos no reciben
+// ninguna restricción de ancho del padre, así que `maxWidth` no define nada: solo pone un
+// techo. Sin piso, el motor de layout encoge la caja a min-content y, como puede partir
+// palabras, min-content acaba siendo una columna de 3 letras ("Hern / an").
+// Un ancho fijo es lo único determinista aquí, y de paso todos los callouts miden igual.
+const CALLOUT_WIDTH = 200;
 
 const HurricaneMarker = React.memo(function HurricaneMarker({
   lat,
   lon,
   title,
+  subtitle,
   level,
   categoryCode,
   directionDeg,
@@ -122,6 +154,8 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
   lat: number;
   lon: number;
   title?: string;
+  /** Segunda línea, en el color de severidad (p. ej. "Depresión Tropical"). */
+  subtitle?: string;
   level?: number;
   categoryCode?: string;
   directionDeg?: number | null;
@@ -136,8 +170,14 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
       coordinate={{ latitude: lat, longitude: lon }}
       anchor={{ x: 0.5, y: 0.5 }}
       tracksViewChanges={tracksViewChanges}
-      title={title}
     >
+      {/* Identidad y rumbo son DOS canales distintos, no uno.
+          Antes se elegía entre ellos: con `directionDeg` el ciclón se dibujaba como
+          flecha `navigation` y solo sin rumbo salía la espiral. O sea que entre mejores
+          los datos, peor el icono — y un triángulo blanco dentro de un círculo lleno se
+          lee como botón de "play", no como huracán.
+          Ahora la FORMA siempre dice qué es (espiral, la misma del FAB) y el rumbo va en
+          un chevron aparte sobre el anillo. Así se ven los dos datos a la vez. */}
       <View
         onLayout={() => {
           console.log(
@@ -146,30 +186,147 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
           setTimeout(() => setTracksViewChanges(false), 300);
         }}
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: 24,
-          backgroundColor: color,
-          borderWidth: 2,
-          borderColor: "white",
+          width: MARKER_BOX,
+          height: MARKER_BOX,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
+        {/* El chevron se coloca arriba al centro de una caja que ocupa todo el marcador;
+            rotar ESA caja lo pasea por el anillo. Rotar el chevron sobre sí mismo solo lo
+            haría girar en su sitio, sin moverlo alrededor del ciclón.
+            0° = norte, igual que el rumbo que manda el backend. */}
+        {directionDeg != null && (
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                alignItems: "center",
+                transform: [{ rotate: `${directionDeg}deg` }],
+              },
+            ]}
+          >
+            {/* Mismo color que la espiral, no cyan. Con el anillo y el glifo ya teñidos
+                de severidad, un cyan suelto entraba como TERCER color y el chevron se
+                leía como un elemento ajeno en vez de parte del ciclón. La separación de
+                canales sigue existiendo, pero por posición y forma: la espiral (centro)
+                dice qué es, el chevron (fuera del anillo) dice hacia dónde va.
+                Misma sombra que la espiral: sin ella se pierde sobre una costa. */}
+            <MaterialCommunityIcons
+              name="menu-up"
+              size={CHEVRON_SIZE}
+              color={color}
+              style={{
+                textShadowColor: "rgba(0,0,0,0.85)",
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 4,
+              }}
+            />
+          </View>
+        )}
+
+        {/* Estilo de contorno: relleno transparente, y el color de severidad vive en el
+            anillo y en la espiral. Sobre mar abierto contrasta MÁS que el disco sólido
+            (p. ej. rojo 4.64:1 vs 4.16:1), y deja ver el mapa debajo del ciclón.
+
+            Sin sombra en la View a propósito: `elevation` de Android no dibuja nada sin
+            backgroundColor, y en iOS la sombra de una vista transparente sigue la caja
+            del borde y sale como un halo raro. La separación se resuelve en el glifo. */}
         <View
-          style={
-            directionDeg != null
-              ? { transform: [{ rotate: `${directionDeg}deg` }] }
-              : undefined
-          }
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: "transparent",
+            borderWidth: 3,
+            borderColor: color,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
+          {/* La sombra de texto es lo que salva el único caso malo del contorno: sobre
+              una costa (#1f3a5f) el rojo cae a 2.78:1 — y eso pasa justo cuando un
+              huracán toca tierra. Un halo oscuro le devuelve un fondo propio al glifo
+              sin rellenar el círculo. Se puede porque los iconos son Text, no Image. */}
           <MaterialCommunityIcons
-            name={directionDeg != null ? "navigation" : "weather-hurricane"}
+            name="weather-hurricane"
             size={28}
-            color="white"
+            color={color}
+            style={{
+              textShadowColor: "rgba(0,0,0,0.85)",
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 4,
+            }}
           />
         </View>
       </View>
+
+      {/* `title=` en el Marker dibuja el callout NATIVO de Google Maps: caja blanca,
+          tipografía del sistema, cero control. Es lo que se veía pegado de otra app.
+          `<Callout tooltip>` quita ese marco por completo y deja que lo pintemos
+          nosotros — sin `tooltip` seguiría envolviendo esto en la burbuja blanca. */}
+      {title != null && (
+        <Callout tooltip style={{ width: CALLOUT_WIDTH }}>
+          <View style={{ width: CALLOUT_WIDTH, alignItems: "center" }}>
+            <View
+              style={{
+                width: "100%",
+                backgroundColor: colors.brandSurface,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: color,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                numberOfLines={2}
+                style={{
+                  fontFamily: fonts.poppinsSemiBold,
+                  fontSize: 15,
+                  color: "#ffffff",
+                  textAlign: "center",
+                }}
+              >
+                {title}
+              </Text>
+              {subtitle != null && (
+                // La categoría va en el color de severidad: repite el dato del relleno
+                // del marcador, así que se puede leer la gravedad sin recordar la escala.
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontFamily: fonts.poppins,
+                    fontSize: 13,
+                    color,
+                    marginTop: 2,
+                    textAlign: "center",
+                  }}
+                >
+                  {subtitle}
+                </Text>
+              )}
+            </View>
+            {/* La cola: un cuadrado girado 45°, con margen negativo para que se meta
+                bajo la caja y solo asome el pico. Un borde en dos lados imita el
+                contorno de la burbuja; los otros dos quedan tapados por la caja. */}
+            <View
+              style={{
+                width: 12,
+                height: 12,
+                marginTop: -6,
+                backgroundColor: colors.brandSurface,
+                borderRightWidth: 1,
+                borderBottomWidth: 1,
+                borderColor: color,
+                transform: [{ rotate: "45deg" }],
+              }}
+            />
+          </View>
+        </Callout>
+      )}
     </Marker>
   );
 });
@@ -958,7 +1115,11 @@ export default function WeatherMapNativewind({
             key={cyclone.id}
             lat={cyclone.latitude}
             lon={cyclone.longitude}
-            title={`${cyclone.name} — ${cyclone.categoryLabel}`}
+            // Nombre y categoría van por separado, no unidos con "—": el callout los
+            // dibuja en dos renglones con distinta jerarquía, y la categoría toma el
+            // color de severidad.
+            title={cyclone.name}
+            subtitle={cyclone.categoryLabel}
             categoryCode={cyclone.categoryCode}
             directionDeg={cyclone.movementDirectionDeg}
           />
