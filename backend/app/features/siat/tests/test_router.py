@@ -475,13 +475,18 @@ async def test_smn_recent_alert_user_in_range_sends_and_marks():
          patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=prefs), \
          patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
          patch(f"{_SVC}._mark_alert_notified", new_callable=AsyncMock) as mock_mark, \
+         patch(f"{_SVC}._send_multicast_with_retry", new_callable=AsyncMock) as mock_send, \
          patch(f"{_SVC}.messaging") as mock_messaging:
 
+        # Se dobla el helper de envío, NO `messaging.send_each_for_multicast`: el SDK ya
+        # no se llama desde este módulo sino desde notifications.service, y un patch sobre
+        # `{_SVC}.messaging` solo reemplaza el nombre en ESTE namespace — no lo alcanzaría.
+        # El chunking se prueba aparte, en notifications/tests/test_multicast.py.
         fake_response = MagicMock()
         fake_response.success_count = 1
         fake_response.failure_count = 0
         fake_response.responses = [MagicMock(success=True)]
-        mock_messaging.send_each_for_multicast.return_value = fake_response
+        mock_send.return_value = fake_response
         mock_messaging.MulticastMessage = MagicMock()
         mock_messaging.Notification = MagicMock()
         mock_messaging.AndroidConfig = MagicMock()
@@ -925,13 +930,18 @@ async def test_smn_national_alert_no_coords_notifies_all_eligible_users():
          patch(f"{_SVC}.get_preferences", new_callable=AsyncMock, return_value=prefs), \
          patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
          patch(f"{_SVC}._mark_alert_notified", new_callable=AsyncMock) as mock_mark, \
+         patch(f"{_SVC}._send_multicast_with_retry", new_callable=AsyncMock) as mock_send, \
          patch(f"{_SVC}.messaging") as mock_messaging:
 
+        # Se dobla el helper de envío, NO `messaging.send_each_for_multicast`: el SDK ya
+        # no se llama desde este módulo sino desde notifications.service, y un patch sobre
+        # `{_SVC}.messaging` solo reemplaza el nombre en ESTE namespace — no lo alcanzaría.
+        # El chunking se prueba aparte, en notifications/tests/test_multicast.py.
         fake_response = MagicMock()
         fake_response.success_count = 1
         fake_response.failure_count = 0
         fake_response.responses = [MagicMock(success=True)]
-        mock_messaging.send_each_for_multicast.return_value = fake_response
+        mock_send.return_value = fake_response
         mock_messaging.MulticastMessage = MagicMock()
         mock_messaging.Notification = MagicMock()
         mock_messaging.AndroidConfig = MagicMock()
@@ -957,13 +967,18 @@ async def test_smn_level5_overrides_quiet_hours():
          patch(f"{_SVC}.is_within_quiet_hours", return_value=True), \
          patch(f"{_SVC}.get_tokens_for_users", new_callable=AsyncMock, return_value={1: ["token-abc"]}), \
          patch(f"{_SVC}._mark_alert_notified", new_callable=AsyncMock) as mock_mark, \
+         patch(f"{_SVC}._send_multicast_with_retry", new_callable=AsyncMock) as mock_send, \
          patch(f"{_SVC}.messaging") as mock_messaging:
 
+        # Se dobla el helper de envío, NO `messaging.send_each_for_multicast`: el SDK ya
+        # no se llama desde este módulo sino desde notifications.service, y un patch sobre
+        # `{_SVC}.messaging` solo reemplaza el nombre en ESTE namespace — no lo alcanzaría.
+        # El chunking se prueba aparte, en notifications/tests/test_multicast.py.
         fake_response = MagicMock()
         fake_response.success_count = 1
         fake_response.failure_count = 0
         fake_response.responses = [MagicMock(success=True)]
-        mock_messaging.send_each_for_multicast.return_value = fake_response
+        mock_send.return_value = fake_response
         mock_messaging.MulticastMessage = MagicMock()
         mock_messaging.Notification = MagicMock()
         mock_messaging.AndroidConfig = MagicMock()
