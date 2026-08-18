@@ -18,6 +18,30 @@ interface UserProfile {
   email: string | null;
   phone: string | null;
   created_at: string;
+  first_name: string | null;
+  last_name: string | null;
+  address_1: string | null;
+  address_2: string | null;
+  zip_code: string | null;
+  state: string | null;
+  age_range: string | null;
+  nervousness_level: number | null;
+  weather_info_level: number | null;
+}
+
+/**
+ * El nombre del wizard manda; `display_name` (que viene del token de Firebase) es el
+ * respaldo para quien nunca pasó por el onboarding — p. ej. quien entró con Google.
+ */
+function fullName(p: UserProfile | null): string {
+  const typed = [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim();
+  return typed || p?.display_name || "—";
+}
+
+function addressLines(p: UserProfile | null): string {
+  const street = [p?.address_1, p?.address_2].filter(Boolean).join(", ");
+  const region = [p?.zip_code, p?.state].filter(Boolean).join(" · ");
+  return [street, region].filter(Boolean).join("\n") || "—";
 }
 
 function formatDate(iso: string): string {
@@ -95,12 +119,46 @@ export default function ProfileScreen() {
                 <MaterialCommunityIcons name="account-circle" size={64} color={colors.brandCyan} />
               </View>
 
-              <Field icon="account-outline" label="Nombre" value={profile?.display_name ?? "—"} />
+              <Field icon="account-outline" label="Nombre" value={fullName(profile)} />
               <Field icon="email-outline" label="Correo" value={profile?.email ?? "—"} />
               <Field
                 icon="calendar-outline"
                 label="Miembro desde"
                 value={profile?.created_at ? formatDate(profile.created_at) : "—"}
+              />
+            </View>
+
+            {/* Solo lectura por ahora: se editan volviendo a correr el onboarding.
+                El único campo editable en esta pantalla sigue siendo el teléfono. */}
+            <View style={s.card}>
+              <View style={s.sectionHeader}>
+                <MaterialCommunityIcons name="map-marker-outline" size={20} color={colors.brandCyan} />
+                <Text style={s.sectionTitle}>Domicilio</Text>
+              </View>
+              <Text style={s.sectionSub}>
+                Nos ayuda a ubicar las alertas que te tocan.
+              </Text>
+              <Field icon="home-outline" label="Dirección" value={addressLines(profile)} />
+            </View>
+
+            <View style={s.card}>
+              <View style={s.sectionHeader}>
+                <MaterialCommunityIcons name="tune" size={20} color={colors.brandCyan} />
+                <Text style={s.sectionTitle}>Tus preferencias</Text>
+              </View>
+              <Text style={s.sectionSub}>
+                Ajustan el tono y el detalle de las alertas que te llegan.
+              </Text>
+              <Field icon="account-clock-outline" label="Rango de edad" value={profile?.age_range ?? "—"} />
+              <Field
+                icon="emoticon-neutral-outline"
+                label="Nivel de ansiedad"
+                value={profile?.nervousness_level != null ? `${profile.nervousness_level} / 10` : "—"}
+              />
+              <Field
+                icon="text-box-outline"
+                label="Detalle de información"
+                value={profile?.weather_info_level != null ? `${profile.weather_info_level} / 10` : "—"}
               />
             </View>
 

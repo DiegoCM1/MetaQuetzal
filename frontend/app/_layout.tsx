@@ -33,6 +33,7 @@ import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue"
 import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
 export const PENDING_SOS_CONTACT_ADDED_KEY = "@BluEye:pending_sos_contact_added";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
+import { syncProfileIfPending } from "../utils/profileSync"
 import { authFetch } from "../utils/api"
 import { API_BASE_URL } from "../utils/config"
 import { usePathname } from "expo-router";
@@ -137,6 +138,8 @@ function AuthGate({ children }) {
 
   useEffect(() => {
     if (!authEnabled || !user) return
+    // Reconciliación del perfil del onboarding. Corre una vez por arranque autenticado
+    syncProfileIfPending()
     registerForPushNotificationsAsync()
       .then((token) => pushBreadcrumb("registration finished", { tokenPrefix: redactToken(token) }))
       // Backstop: every stage inside is individually guarded, so anything

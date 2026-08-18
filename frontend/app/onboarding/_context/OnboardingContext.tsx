@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import type { OnboardingData, OnboardingContextValue } from '../_types';
-import { saveOnboardingData } from '../_services/onboardingService';
+import { getAuth } from '@react-native-firebase/auth';
+import { saveOnboardingData, markProfileSynced } from '../_services/onboardingService';
 import { track } from '../../../utils/analytics';
-import { authFetch } from '../../../utils/api';
-import { API_BASE_URL } from '../../../utils/config';
+import { pushProfile } from '../../../utils/profileSync';
 
 const initialData: OnboardingData = {
   firstName: '',
@@ -33,22 +33,45 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     setData(prev => ({ ...prev, ...updates }));
   };
 
+  /**
+   * Cierra el onboarding: guarda local, manda el perfil completo, navega.
+   *
+   * El envío se ESPERA y se revisa. Antes era una promesa desprendida con un
+   * `.catch(() => {})` que, además, no veía los errores HTTP: `authFetch` devuelve el
+   * Response tal cual, así que un 404 o un 500 se resolvían como éxito.
+   *
+   * Pero un fallo NO bloquea al usuario. Se le deja pasar y la marca de sincronizado se
+   * queda sin poner, que es lo que hace que `syncProfileIfPending` lo reintente en el
+   * próximo arranque. Bloquear aquí sería castigar con mala señal justo en el registro.
+   */
   const submitOnboarding = async () => {
     try {
-      await saveOnboardingData(data);
-      if (data.phone?.trim()) {
-        authFetch(`${API_BASE_URL}/api/v1/users/me/phone`, {
-          method: 'PATCH',
-          body: JSON.stringify({ phone: data.phone.trim() }),
-        }).catch(() => {});
+      const uid = getAuth().currentUser?.uid ?? null;
+      await saveOnboardingData(data, uid);
+
+      const { ok: saved } = await pushProfile(data);
+      if (saved) {
+        await markProfileSynced();
+        console.log('[Onboarding] ✅ perfil guardado en el servidor');
+      } else {
+        // Ya quedó reportado con nombre en Sentry desde pushProfile; aquí solo se
+        // deja constancia de que el usuario siguió adelante con un envío pendiente.
+        console.warn(
+          '[Onboarding] ⚠️  perfil NO confirmado por el servidor — quedó en cola. ' +
+            'Se reintenta solo en el próximo arranque con sesión activa.',
+        );
       }
+
       track('onboarding_completed', {
         nervousness_level: data.nervousnessLevel,
         age_range: data.age,
         weather_info_level: data.weatherInfoLevel,
+        profile_synced: saved,
       });
       router.replace('/(tabs)/MapScreen');
     } catch (error) {
+      // Solo llega aquí si falló la escritura LOCAL: sin eso no hay nada que
+      // reintentar después, así que este sí es un error que el usuario debe ver.
       console.error('Error submitting onboarding:', error);
       throw error;
     }

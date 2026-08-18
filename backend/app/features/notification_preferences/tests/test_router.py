@@ -24,6 +24,8 @@ DEFAULT_PREFS = {
     "quiet_hours_enabled": False,
     "quiet_start": None,
     "quiet_end": None,
+    "nervousness_level": 5,
+    "weather_info_level": 5,
 }
 
 CUSTOM_PREFS = {
@@ -33,6 +35,8 @@ CUSTOM_PREFS = {
     "quiet_hours_enabled": False,
     "quiet_start": None,
     "quiet_end": None,
+    "nervousness_level": 5,
+    "weather_info_level": 5,
 }
 
 
