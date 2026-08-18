@@ -14,6 +14,9 @@ _DEFAULTS: dict = {
     "quiet_hours_enabled": False,
     "quiet_start": None,
     "quiet_end": None,
+    # Capturados en el onboarding. 5 es el valor inicial que muestra el wizard.
+    "nervousness_level": 5,
+    "weather_info_level": 5,
 }
 
 
@@ -48,7 +51,8 @@ async def get_preferences(db: AsyncSession, user_id: int) -> dict:
     result = await db.execute(
         text("""
             SELECT siat_enabled, min_siat_level, map_events_enabled,
-                   quiet_hours_enabled, quiet_start, quiet_end
+                   quiet_hours_enabled, quiet_start, quiet_end,
+                   nervousness_level, weather_info_level
             FROM notification_preferences
             WHERE user_id = :user_id
         """),
@@ -65,7 +69,18 @@ async def get_preferences(db: AsyncSession, user_id: int) -> dict:
     return d
 
 
-async def upsert_preferences(db: AsyncSession, user_id: int, updates: dict) -> dict:
+async def upsert_preferences(
+    db: AsyncSession,
+    user_id: int,
+    updates: dict,
+    commit: bool = True,
+) -> dict:
+    """Escribe preferencias, mezclando sobre lo que ya hay.
+
+    `commit=False` existe para que el PUT de perfil pueda escribir `users` y esta tabla
+    dentro de UNA sola transacción. Con el commit adentro serían dos commits, o sea dos
+    formas de quedar a medias — justo el estado que el perfil no puede permitirse.
+    """
     current = await get_preferences(db, user_id)
     merged = {**current, **updates}
     if merged.get("quiet_hours_enabled") and (not merged.get("quiet_start") or not merged.get("quiet_end")):
@@ -76,10 +91,12 @@ async def upsert_preferences(db: AsyncSession, user_id: int, updates: dict) -> d
         text("""
             INSERT INTO notification_preferences
                 (user_id, siat_enabled, min_siat_level, map_events_enabled,
-                 quiet_hours_enabled, quiet_start, quiet_end, updated_at)
+                 quiet_hours_enabled, quiet_start, quiet_end,
+                 nervousness_level, weather_info_level, updated_at)
             VALUES
                 (:user_id, :siat_enabled, :min_siat_level, :map_events_enabled,
-                 :quiet_hours_enabled, :quiet_start, :quiet_end, NOW())
+                 :quiet_hours_enabled, :quiet_start, :quiet_end,
+                 :nervousness_level, :weather_info_level, NOW())
             ON CONFLICT (user_id) DO UPDATE SET
                 siat_enabled        = EXCLUDED.siat_enabled,
                 min_siat_level      = EXCLUDED.min_siat_level,
@@ -87,9 +104,12 @@ async def upsert_preferences(db: AsyncSession, user_id: int, updates: dict) -> d
                 quiet_hours_enabled = EXCLUDED.quiet_hours_enabled,
                 quiet_start         = EXCLUDED.quiet_start,
                 quiet_end           = EXCLUDED.quiet_end,
+                nervousness_level   = EXCLUDED.nervousness_level,
+                weather_info_level  = EXCLUDED.weather_info_level,
                 updated_at          = NOW()
         """),
         {"user_id": user_id, **merged},
     )
-    await db.commit()
+    if commit:
+        await db.commit()
     return merged

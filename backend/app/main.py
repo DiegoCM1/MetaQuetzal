@@ -104,6 +104,24 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)"
         ))
+        # Perfil del onboarding. El wizard captura diez campos y hasta ahora solo el
+        # teléfono llegaba al servidor (y ese, sin confirmar) — los otros nueve morían
+        # en el AsyncStorage del dispositivo. Todos van en `users` y no en una tabla
+        # aparte porque son 1:1 con la cuenta y se leen siempre junto con ella.
+        #
+        # `first_name`/`last_name` son la fuente de verdad del nombre; `display_name`
+        # (que viene del token de Firebase) queda como respaldo cuando el usuario nunca
+        # pasó por el wizard.
+        await conn.execute(text("""
+            ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
+                ADD COLUMN IF NOT EXISTS last_name  VARCHAR(100),
+                ADD COLUMN IF NOT EXISTS address_1  VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS address_2  VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS zip_code   VARCHAR(10),
+                ADD COLUMN IF NOT EXISTS state      VARCHAR(60),
+                ADD COLUMN IF NOT EXISTS age_range  VARCHAR(10)
+        """))
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS notification_preferences (
@@ -122,6 +140,18 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         ))
         await conn.execute(text(
             "ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS quiet_end TIME"
+        ))
+        # Los dos sliders del onboarding viven aquí y no en `users`: son personalización
+        # de alertas, que es justo lo que esta tabla ya gobierna. Partirlos entre dos
+        # tablas es como una feature termina construida contra la mitad equivocada.
+        # DEFAULT 5 = el mismo valor inicial que el wizard muestra (`_types.ts`).
+        await conn.execute(text(
+            "ALTER TABLE notification_preferences "
+            "ADD COLUMN IF NOT EXISTS nervousness_level SMALLINT NOT NULL DEFAULT 5"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE notification_preferences "
+            "ADD COLUMN IF NOT EXISTS weather_info_level SMALLINT NOT NULL DEFAULT 5"
         ))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS map_events (

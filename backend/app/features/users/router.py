@@ -5,14 +5,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.features.users.schemas import UserProfile, UserLocationUpdate, PhoneUpdate
+from app.features.users.schemas import (
+    UserProfile,
+    UserLocationUpdate,
+    PhoneUpdate,
+    ProfileUpdate,
+)
 from app.features.users.service import (
     upsert_user,
     update_user_location,
     update_user_phone,
+    update_user_profile,
     get_user_by_firebase_uid,
     delete_user_by_firebase_uid,
 )
+from app.features.notification_preferences.service import upsert_preferences
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -52,6 +59,78 @@ async def set_my_phone(
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found. Call POST /api/v1/users/me first.")
     return profile
+
+
+# Los dos sliders del onboarding no viven en `users` sino en `notification_preferences`.
+# El endpoint escribe ambas tablas, así que este es el reparto de claves.
+_PREFERENCE_FIELDS = ("nervousness_level", "weather_info_level")
+
+
+@router.put("/api/v1/users/me/profile", response_model=UserProfile)
+async def put_my_profile(
+    body: ProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Guarda el perfil completo del onboarding en una sola transacción.
+
+    Es PUT y no PATCH porque el cliente reintenta este envío cuando falla (mala señal
+    durante el onboarding) y cuando rellena instalaciones viejas. Reenviar el mismo
+    perfil tiene que ser inofensivo; esa es toda la razón por la que el reintento del
+    cliente puede correr en cada arranque sin pensarlo.
+
+    `exclude_unset=True` es lo que distingue "no mandé este campo" de "mándalo a NULL":
+    sin eso, un payload parcial borraría las columnas ausentes.
+    """
+    firebase_uid = user.get("uid")
+    updates = body.model_dump(exclude_unset=True)
+
+    profile = await get_user_by_firebase_uid(db, firebase_uid)
+    if profile is None:
+        # Mismo contrato que el resto de los endpoints de este router: la fila la crea
+        # POST /api/v1/users/me. Es además la carrera de arranque ya documentada en
+        # `frontend/utils/pushTelemetry.ts`, así que se loguea como aviso, no como error.
+        logger.warning("Profile PUT before user row exists uid=%s", firebase_uid)
+        raise HTTPException(status_code=404, detail="Profile not found. Call POST /api/v1/users/me first.")
+
+    pref_updates = {k: v for k, v in updates.items() if k in _PREFERENCE_FIELDS}
+    user_updates = {k: v for k, v in updates.items() if k not in _PREFERENCE_FIELDS}
+
+    if not updates:
+        logger.info("Profile PUT with empty payload user_id=%s — no-op", profile["id"])
+        return profile
+
+    try:
+        # Ambas escrituras con commit=False y UN solo commit al final: o entra el perfil
+        # completo o no entra nada. Un perfil a medias es indistinguible de uno completo
+        # para el cliente, que ya marcó el envío como exitoso — por eso no puede pasar.
+        updated = await update_user_profile(db, firebase_uid, user_updates, commit=False)
+        if updated is None:
+            await db.rollback()
+            raise HTTPException(status_code=404, detail="Profile not found. Call POST /api/v1/users/me first.")
+
+        if pref_updates:
+            await upsert_preferences(db, profile["id"], pref_updates, commit=False)
+
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        await db.rollback()
+        # Los NOMBRES de los campos, nunca los valores: este payload trae nombre,
+        # teléfono y domicilio. Un log de producción no es lugar para eso, y con los
+        # nombres basta para reproducir el fallo.
+        logger.error(
+            "Profile PUT failed user_id=%s fields=%s",
+            profile["id"], sorted(updates), exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to save profile")
+
+    logger.info(
+        "Profile saved user_id=%s fields=%s prefs=%s",
+        profile["id"], sorted(user_updates), sorted(pref_updates),
+    )
+    return await get_user_by_firebase_uid(db, firebase_uid)
 
 
 @router.patch("/api/v1/users/me/location", response_model=UserProfile)
