@@ -1,5 +1,5 @@
 import re
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 _TIME_RE = re.compile(r"^\d{2}:\d{2}$")
 
@@ -11,6 +11,9 @@ class NotificationPreferences(BaseModel):
     quiet_hours_enabled: bool
     quiet_start: str | None
     quiet_end: str | None
+    # Capturados en el onboarding; ajustan tono y detalle de las alertas.
+    nervousness_level: int = 5
+    weather_info_level: int = 5
 
 
 class NotificationPreferencesPatch(BaseModel):
@@ -20,6 +23,8 @@ class NotificationPreferencesPatch(BaseModel):
     quiet_hours_enabled: bool | None = None
     quiet_start: str | None = None
     quiet_end: str | None = None
+    nervousness_level: int | None = Field(default=None, ge=1, le=10)
+    weather_info_level: int | None = Field(default=None, ge=1, le=10)
 
     @field_validator("quiet_start", "quiet_end")
     @classmethod
