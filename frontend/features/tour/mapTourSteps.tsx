@@ -15,11 +15,23 @@ import { TourBox, TourStrong } from "./TourBox";
  * That's why the intro is a plain modal (`TourIntroCard`) rather than a step.
  */
 
-const TOTAL = 4;
+const TOTAL = 5;
 
 export const mapTourSteps: TourStep[] = [
   {
-    // Circle, and deliberately first: it's the most safety-critical content,
+    shape: { type: "circle", padding: 0 },
+    placement: "top",
+    render: (props) => (
+      <TourBox
+        {...props}
+        total={TOTAL}
+        title="Tu zona en tiempo real"
+        body="Aquí aparecen los huracanes activos y los reportes de la comunidad. Es la pantalla a la que vuelves para saber qué está pasando cerca de ti."
+      />
+    ),
+  },
+  {
+    // Circle, and deliberately early: it's the most safety-critical content,
     // it costs the user nothing, and it hands off to Tutorial 2.
     shape: { type: "circle", padding: 12 },
     // Explicit "top": this FAB sits at the bottom-left of the screen, so the
@@ -90,7 +102,7 @@ export const mapTourSteps: TourStep[] = [
         {...props}
         total={TOTAL}
         title="Alertas oficiales"
-        body="Avisos de huracánes del SMN y el historial de tu zona. Entra cuando quieras confirmar una alerta o ver el detalle completo."
+        body="Avisos de huracanes del SMN y el historial de tu zona. Entra cuando quieras confirmar una alerta o ver el detalle completo."
       />
     ),
   },

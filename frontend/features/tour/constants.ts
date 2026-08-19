@@ -34,10 +34,11 @@ export const TOUR_STORAGE_KEYS: Record<TourId, string> = {
 
 /** Tutorial 1 — MapScreen. Order matches `mapTourSteps`. */
 export const MAP_TOUR = {
-  SOS: 0,
-  AI_TAB: 1,
-  ALERTS_TAB: 2,
-  REPORT: 3,
+  MAP: 0,
+  SOS: 1,
+  AI_TAB: 2,
+  ALERTS_TAB: 3,
+  REPORT: 4,
 } as const;
 
 /** Tutorial 2 — MoreScreen. Order matches `moreTourSteps`. */
