@@ -133,6 +133,36 @@ en **2** y obligan a revocar antes de rotar.
 Key ID e Issuer ID son **identificadores, no secretos** (van en `eas.json` si algún día se
 automatiza). El secreto es el `.p8`, y ese nunca entra al repo.
 
+### Build + submit — cómo autentica cada uno (18/08)
+
+**Build `d21a4437` — FINISHED.** `1.9.0 (15)`, perfil `production`, commit `a04f672`
+(incluye el guard de `subscribeToTokenRefresh`). ~54 min. Subido a App Store Connect el
+18/08.
+
+La lección que costó tiempo hoy: **`eas build` y `eas submit` autentican distinto**, y por
+eso uno pidió login de Apple con 2FA y el otro no pidió nada.
+
+| Comando | Qué sistema toca | Cómo autenticó |
+|---|---|---|
+| `eas build` | **Developer Portal** (certificados + provisioning profiles) | Apple ID `hi.resendiz@gmail.com` + 2FA. En cuenta Individual **solo el Account Holder** puede |
+| `eas submit` | **App Store Connect** (subir el binario) | **ASC API Key ya guardada en servidores de EAS** (`N3M5RJLBGQ`, `Key Source: EAS servers`). **Cero prompts, 19 segundos** |
+
+O sea que la restricción de cuenta Individual afecta **solo** al portal. Todo lo de ASC
+—subir builds, TestFlight, metadata, Submit for Review— lo puede hacer el rol **Admin**
+(`blueyehurricanealerts@gmail.com`), que en su lista de permisos trae *Upload builds*,
+*Manage TestFlight builds* y *Create apps and submit versions*.
+
+**Consecuencias prácticas:**
+
+- **Los submits siguientes no piden nada.** La API key vive en EAS, no en esta Mac.
+- **No hace falta `appleId` en el bloque `submit` de `eas.json`** — ese camino nunca
+  pregunta por un Apple ID. Sería config muerta.
+- **Ivan solo se necesita para builds nuevos** (y para agreements). Nada más en el camino
+  al App Store.
+- Una app-specific password (`EXPO_APPLE_APP_SPECIFIC_PASSWORD`) sigue siendo la salida
+  **para CI / `--non-interactive`**, donde no hay humano que lea un código de 6 dígitos.
+  Con humano presente y teléfono en mano, el login normal es más simple.
+
 ### TestFlight — historial real de builds
 
 Un solo build subido en la vida de la app:
@@ -758,7 +788,9 @@ resolvía solo por el filesystem case-insensitive de macOS); `.env`, `dist`, `.e
 `.tamagui`, `.wrangler` agregados a `.easignore` (existiendo `.easignore`, EAS deja de
 respetar `.gitignore` y subía el `.env` local al contexto de build).
 
-**Deliberadamente NO se tocó:** `autoIncrement` y `appVersionSource` (→ **P3**), el
-`channel` de EAS Update (cambia el comportamiento de OTA el día del release), y `appleId`
-en el bloque de submit — no se pone una credencial adivinada en un archivo commiteado;
-`eas submit` la pide de forma interactiva.
+**Deliberadamente NO se tocó:** `autoIncrement` y `appVersionSource` (→ **P3**) y el
+`channel` de EAS Update (cambia el comportamiento de OTA el día del release).
+
+Sobre `appleId` en el bloque de submit: **no se agrega, y ya se sabe por qué.** El submit
+autentica con la ASC API Key guardada en EAS y **nunca pregunta por un Apple ID** — ver
+"Build + submit — cómo autentica cada uno".
