@@ -2,3 +2,12 @@ node_modules
 .git
 android
 ios
+
+# .easignore replaces .gitignore for EAS uploads — without these the build
+# context ships local dev config and stale build output.
+.env
+.env.*
+dist
+.expo
+.tamagui
+.wrangler
