@@ -19,6 +19,7 @@ import {
   sendTokenToBackend,
   setForegroundNotificationHandler,
   addNotificationResponseListener,
+  subscribeToTokenRefresh,
 } from "../utils/pushNotifications";
 import {
   pushBreadcrumb,
@@ -149,13 +150,15 @@ function AuthGate({ children }) {
         { type: "unknown", message: toMessage(err), phase: "unknown" },
         { hasUid: !!user?.uid },
       ))
-    const tokenSub = Notifications.addPushTokenListener(({ data }) => {
-      sendTokenToBackend(data).catch((err) => reportPushFailure(
+    // Rotación de token. La API correcta depende de la plataforma porque el valor
+    // que emite cada una es distinto — ver subscribeToTokenRefresh().
+    const unsubscribeTokenRefresh = subscribeToTokenRefresh((token) => {
+      sendTokenToBackend(token).catch((err) => reportPushFailure(
         { type: "unknown", message: toMessage(err), phase: "token" },
-        { hasUid: !!user?.uid, tokenPrefix: redactToken(data) },
+        { hasUid: !!user?.uid, tokenPrefix: redactToken(token) },
       ))
     })
-    return () => tokenSub.remove()
+    return () => unsubscribeTokenRefresh()
   }, [authEnabled, user?.uid])
 
   useEffect(() => {

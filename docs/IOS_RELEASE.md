@@ -1,6 +1,6 @@
 # iOS Release — estado y pendientes
 
-Estado al **17 de agosto de 2026**. Este doc es la fuente de verdad de qué falta para
+Estado al **18 de agosto de 2026**. Este doc es la fuente de verdad de qué falta para
 publicar Bluai en la App Store. Android ya está en Play Store; iOS nunca se ha publicado.
 
 **Alcance de este release:** Bluetooth (chat local) y la IA offline **NO salen en iOS**.
@@ -16,6 +16,167 @@ TestFlight — no a un dev client.**
 El dev client y TestFlight hablan con *gateways distintos* de Apple (sandbox vs
 producción). Un push que funciona en tu iPhone conectado a Metro no prueba nada sobre
 lo que verá un usuario real. Ver "Gotchas → `aps-environment`" abajo.
+
+---
+
+## Estado App Store Connect — 18/08
+
+Sesión del Account Holder (Héctor Iván Resendiz — cuenta **individual**, no organización):
+
+| Ítem | Estado |
+|---|---|
+| Apple Developer Program License Agreement (versión nueva) | ✅ **Aceptado.** Era el bloqueador real: el banner decía textual *"the Account Holder must review and accept the updated agreement"* para poder *submit new apps* |
+| Free Apps Agreement | ✅ **Active**, 18/08/2026 – 08/05/2027, ya sin "(New Agreement Available)" |
+| Paid Apps Agreement | `New`, sin firmar — **no se necesita** (no hay IAP). Firmarlo pediría legal entity |
+| Declaración DSA (trader) | ⏭️ **No aplica** — se resolvió restringiendo disponibilidad, no declarando |
+| Disponibilidad de la app | ✅ **Solo México** (1 país, "Available on App Release") |
+| Capabilities en `com.bluai.app` | ✅ **Ya estaban** — Push Notifications y Sign in with Apple aparecieron **ya palomeadas** (18/08). *Broadcast Capability* sin marcar, que es lo correcto |
+| App Store Connect API Team Key | ✅ **Ya existía** — "EAS Build Key", acceso **Admin**, Key ID `N3M5RJLBGQ`, Issuer ID `f2ad728e-2be8-4260-867f-32ca16b2b6e8`, **last used 06/06/2026** |
+| Acceso a Certificates, Identifiers & Profiles para `blueyehurricanealerts@gmail.com` | ❌ **IMPOSIBLE en esta cuenta** — límite estructural de las cuentas Individual, ver abajo |
+
+**El banner rojo de DSA se queda ahí.** Es de *cuenta*, no de app: refleja que la cuenta
+nunca declaró trader status. Con la app solo en México el EU queda fuera de alcance y deja
+de importar. No leerlo como "sigue bloqueado".
+
+Ojo con las dos cosas que dicen "All Countries or Regions" y no son la misma: la del
+renglón de **Agreements** es el alcance del contrato con Apple (se queda amplio, es
+normal); la que decide si el DSA aplica es la **disponibilidad por app**, en *Pricing and
+Availability*. La disponibilidad es metadata, no binario — se pueden agregar países después
+sin build ni review nuevos.
+
+### El bloqueador #3 no era permisos — es el tipo de cuenta (resuelto 18/08)
+
+`blueyehurricanealerts@gmail.com` **es Admin con All Apps** y aun así
+`developer.apple.com/account` le muestra "Join the Apple Developer Program → Enroll today"
+(verificado 18/08 en sesión limpia, con la cuenta correcta firmada). No hay checkbox que
+falte: en *Additional Resources* solo hay *Create Apps* y *Generate Individual API Keys*.
+
+La causa es que **la cuenta es Individual, no Organization**.
+
+**Fuente** (verificada 18/08 leyendo la página, no de memoria) — *Apple Developer Account
+Help → Access → "Apple Developer Program Roles"*:
+<https://developer.apple.com/help/account/access/roles/>
+
+Tres frases de **esa misma página**, en tres lugares distintos, que juntas explican todo:
+
+> Al pie del renglón *"Manage access to Certificates, Identifiers & Profiles"*:
+> *"Certificates, Identifiers & Profiles is only available to Account Holders and members of
+> an **organization's** team."*
+
+> Nota bajo *"Permissions in App Store Connect"*, sección Users and Access:
+> *"If you're enrolled as an individual and add users in App Store Connect, users receive
+> access **only to your content in App Store Connect** and are **not considered part of your
+> team in the Apple Developer Program**."*
+
+> En la tabla de roles, para **Admin**:
+> *"Requires access to Certificates, Identifiers & Profiles, **granted in Users and Access
+> in App Store Connect**."*
+
+La tercera es la que cierra el círculo y explica por qué *Additional Resources* se veía
+vacío: el rol de Admin **sí** necesita ese permiso, y el permiso **solo existe** en cuentas
+Organization. En una Individual el permiso está en el modelo pero no hay forma de
+otorgarlo. No es un bug ni un paso que se nos olvidó.
+
+**Consecuencias, y no son cosméticas:**
+
+1. **Solo `hi.resendiz@gmail.com` (Account Holder) puede tocar el App ID `com.bluai.app`.**
+   Las capabilities (Push Notifications, Sign in with Apple) salen de esa sesión, no de la
+   de Admin. No es cuestión de otorgar un permiso — no existe el permiso que otorgar.
+2. **EAS Build también necesita el portal**, porque ahí crea el certificado de distribución
+   y el provisioning profile. O sea que EAS necesita credenciales de Account Holder, no las
+   de Admin. Esto estaba invisible hasta hoy.
+3. **Salida:** generar una **App Store Connect API Key** desde la sesión del Account
+   Holder — *Users and Access → Integrations → App Store Connect API → **Team Keys***, con
+   acceso **Admin**. Autentica a EAS contra el portal y contra ASC **sin prompt de 2FA**,
+   que si no llega a los dispositivos de Ivan en cada build y cada submit.
+   ⚠️ **Tiene que ser Team Key, no Individual Key.** Una *Individual API Key* lleva los
+   permisos del usuario que la generó; la de `blueyehurricanealerts@gmail.com` no tendría
+   portal, por lo mismo de arriba. El `.p8` **se descarga una sola vez** — igual que la key
+   de APNs. Fuera del repo.
+4. **Post-release:** convertir la membresía a **Organization** quita este impuesto de raíz
+   (y de paso la ficha dejaría de decir "Hector Ivan Resendiz"). Pide D-U-N-S y tarda días
+   — no es de hoy.
+
+**Roles reales (18/08):** `hi.resendiz@gmail.com` = Account Holder + Admin ·
+`blueyehurricanealerts@gmail.com` = **Admin** ← la cuenta del release ·
+`luiscolin764@gmail.com` (Diego) = **Developer**, que **no puede** subir versiones ni
+editar metadata. Todo el trabajo de release va con la cuenta de Admin.
+
+
+### Lo de Apple ya estaba casi todo hecho — nadie lo había revisado
+
+Al revisar el portal el 18/08, dos de los tres "bloqueadores de Ivan" resultaron no serlo:
+
+| # | Decía el doc | Realidad al 18/08 |
+|---|---|---|
+| 1 | Agreements pendientes | ✅ **Era real y sí bloqueaba.** Resuelto hoy |
+| 2 | Falta habilitar capabilities | ⚠️ **Ya estaban palomeadas.** Sin verificar desde ≥05/2026 |
+| 3 | Falta el checkbox de Certificates | ❌ **Mal diagnóstico** — imposible en cuenta Individual |
+
+→ La lección operativa: **un bloqueador anotado y no revalidado envejece hacia el falso
+positivo.** Dos de tres costaron espera que no hacía falta. Antes de escalar algo a otra
+persona, volver a mirarlo.
+
+**Sobre "Configure" en Push Notifications:** ese botón crea **certificados SSL de APNs**
+(el mecanismo viejo, por App ID), y `Certificates (0)` los cuenta a ellos. Bluai usa **auth
+key `.p8`**, que vive a nivel *team* y por eso no aparece en esa pantalla. `(0)` es la
+lectura esperada, no un hueco — configurar un certificado agregaría una segunda ruta de
+credencial, redundante.
+
+**Sobre la API Key:** el `.p8` se descarga una sola vez, pero **EAS guarda las credenciales
+en su servidor**, y `last used 06/06/2026` es el registro de Apple de esa key
+autenticándose. Lo más probable es que EAS ya la tenga y no haga falta el archivo. Si
+`eas build` la pidiera: generar **otra** Team Key sale gratis — las ASC API keys topan en
+**50 activas y no expiran**. Ese instinto **no** aplica a las auth keys de APNs, que topan
+en **2** y obligan a revocar antes de rotar.
+
+Key ID e Issuer ID son **identificadores, no secretos** (van en `eas.json` si algún día se
+automatiza). El secreto es el `.p8`, y ese nunca entra al repo.
+
+### Build + submit — cómo autentica cada uno (18/08)
+
+**Build `d21a4437` — FINISHED.** `1.9.0 (15)`, perfil `production`, commit `a04f672`
+(incluye el guard de `subscribeToTokenRefresh`). ~54 min. Subido a App Store Connect el
+18/08.
+
+La lección que costó tiempo hoy: **`eas build` y `eas submit` autentican distinto**, y por
+eso uno pidió login de Apple con 2FA y el otro no pidió nada.
+
+| Comando | Qué sistema toca | Cómo autenticó |
+|---|---|---|
+| `eas build` | **Developer Portal** (certificados + provisioning profiles) | Apple ID `hi.resendiz@gmail.com` + 2FA. En cuenta Individual **solo el Account Holder** puede |
+| `eas submit` | **App Store Connect** (subir el binario) | **ASC API Key ya guardada en servidores de EAS** (`N3M5RJLBGQ`, `Key Source: EAS servers`). **Cero prompts, 19 segundos** |
+
+O sea que la restricción de cuenta Individual afecta **solo** al portal. Todo lo de ASC
+—subir builds, TestFlight, metadata, Submit for Review— lo puede hacer el rol **Admin**
+(`blueyehurricanealerts@gmail.com`), que en su lista de permisos trae *Upload builds*,
+*Manage TestFlight builds* y *Create apps and submit versions*.
+
+**Consecuencias prácticas:**
+
+- **Los submits siguientes no piden nada.** La API key vive en EAS, no en esta Mac.
+- **No hace falta `appleId` en el bloque `submit` de `eas.json`** — ese camino nunca
+  pregunta por un Apple ID. Sería config muerta.
+- **Ivan solo se necesita para builds nuevos** (y para agreements). Nada más en el camino
+  al App Store.
+- Una app-specific password (`EXPO_APPLE_APP_SPECIFIC_PASSWORD`) sigue siendo la salida
+  **para CI / `--non-interactive`**, donde no hay humano que lea un código de 6 dígitos.
+  Con humano presente y teléfono en mano, el login normal es más simple.
+
+### TestFlight — historial real de builds
+
+Un solo build subido en la vida de la app:
+
+| Versión | Build | Estado | Fecha |
+|---|---|---|---|
+| 1.8.0 | 1 | Ready to Submit (expira en ~23h) | 21/05/2026 |
+
+**Esto cierra el paso 1 de P3.** `app.json` va en `version: "1.9.0"` + `buildNumber: "15"`,
+y **1.9.0 no tiene ni un upload** → el 15 está libre y no hay que tocarlo. De los tres
+builds de EAS del 21/05 solo uno llegó a Apple, y tomó el número 1.
+
+→ TestFlight, no `eas build:list`, es la fuente autoritativa: un build solo quema un número
+cuando se **sube** a Apple, no cuando EAS lo compila.
 
 ---
 
@@ -54,9 +215,28 @@ esperada hoy**, porque el App ID `com.bluai.app` todavía no tiene la capability
 "falta que Ivan habilite Push" en un solo bucket. El mensaje ahora cita el presupuesto
 real del poll (10 × 300ms).
 
-Queda pendiente `onTokenRefresh` en iOS (rotación de token). Android sigue con
-`addPushTokenListener`, que en iOS mandaría hex crudo de APNs en cada cold launch.
-**Verificar en el primer build de device** antes de darlo por bueno.
+~~Queda pendiente `onTokenRefresh` en iOS~~ ✅ **HECHO 18/08.** `subscribeToTokenRefresh()`
+en `pushNotifications.ts`: iOS usa `onTokenRefresh` de RNFB (emite token de FCM), Android
+se queda con `addPushTokenListener` de expo — **comportamiento idéntico en Android**. El
+`getMessaging()` vive detrás del branch de `Platform.OS`, igual que en `acquireFcmToken()`.
+Firma verificada contra `messaging/dist/typescript/lib/modular.d.ts:48`. tsc limpio; eslint
+en el baseline exacto (350) — cero errores nuevos.
+
+**Guard obligatorio (encontrado corriendo la app, 18/08).** La primera versión llamaba
+`getMessaging()` sin proteger y **tiró la app entera** en un dev client anterior a
+`1e704ea`: *"You attempted to use a Firebase module that's not installed natively"*, y
+detrás el cascade *"Attempted to navigate before mounting the Root Layout"*.
+`acquireFcmToken()` nunca lo pegó porque `registerForPushNotificationsAsync()` corta antes
+con `if (!Device.isDevice) return null` — pero `subscribeToTokenRefresh()` se llama
+**incondicionalmente** desde el `useEffect` de `AuthGate`. Ahora lleva el mismo guard de
+`Device.isDevice` (breadcrumb, no error — en Simulator es lo esperado) **y** un try/catch
+que reporta `token-unavailable` y devuelve un unsubscribe no-op. Un throw síncrono en esa
+posición no degrada "no hay rotación de token": se lleva el render del árbol completo.
+
+Por qué no era cosmético: `sendTokenToBackend` **pisa** el token guardado, así que en iOS
+una rotación habría reemplazado el token bueno del arranque por hex crudo de APNs. Y el
+backend no lo habría limpiado — ese fallo no es `UnregisteredError`, así que la lista
+blanca de `_PERMANENT_FAILURE_TYPES` (correctamente) lo conserva. Cuenta muda, sin rastro.
 
 ### ~~B. Fase 3 — presentación en primer plano~~ ✅ **HECHO (15/08)**
 
@@ -260,6 +440,49 @@ guardarlo al iniciar sesión — después no se puede recuperar.
 Es causal de rechazo documentada bajo la misma 5.1.1(v), así que conviene cerrarlo pronto
 aunque no bloquee el primer envío.
 
+### P3. El build number se maneja a mano (`appVersionSource: "local"`)
+
+`eas.json` declara `cli.appVersionSource: "local"` y **ningún perfil trae
+`autoIncrement`**. O sea que `ios.buildNumber` (`app.json:30`, hoy `"15"`) es un número
+que una persona escribe a mano antes de cada build.
+
+Cómo falla: si ese número ya se subió a App Store Connect para la misma `version`, el
+upload muere con `ITMS-4238: Redundant Binary Upload` (en Android es lo mismo con
+`versionCode`). Falla en el **upload, no en el build**, y es **ruidoso** — no es rechazo
+de review y no toca el expediente de la submission. Cuesta un ciclo de build (~30-45 min).
+
+Por qué duele justo ahora: `buildNumber` **no existía en `app.json`** antes de `d2a3524`
+(14/08), así que los tres builds de iOS del 21/05/2026 tomaron algún número que el repo
+nunca registró. El punto de partida no se puede reconstruir desde aquí — sale de
+`eas build:list --platform ios` o de ASC.
+
+**Dos pasos, y el orden importa:**
+
+1. ~~**Antes del primer build.**~~ ✅ **RESUELTO 18/08** por TestFlight: el único upload
+   de la app es `1.8.0 (1)`. Como `1.9.0` no tiene ninguno, `buildNumber: "15"` está libre
+   y **no se toca**. (`autoIncrement` no habría resuelto esto de todos modos: incrementa
+   15 → 16, y si 16 también estuviera usado, vuelve a chocar.)
+2. **Después del release.** Migrar a `cli.appVersionSource: "remote"` + `autoIncrement:
+   true` en el perfil de producción.
+
+**Por qué `remote` y no `local` + `autoIncrement`.** Los dos incrementan solos, pero en
+`local` el CLI **reescribe `app.json` en disco** antes de cada build
+(`syncProjectConfigurationAsync` → `bumpVersionAsync`), así que el número solo sobrevive
+si alguien commitea ese cambio. Si no se commitea, el siguiente build relee el valor viejo
+y el bug regresa — o sea que `local` cambia "acordarse del número" por "acordarse de
+commitear", que falla igual. En `remote` el número vive en el servidor de EAS, `app.json`
+no se toca y no hay nada que commitear.
+
+Notas del mecanismo (verificadas contra el fuente del CLI, no de memoria):
+
+- **Un solo flag cubre las dos plataformas** — `ios.buildNumber` y `android.versionCode`.
+- **La versión de marketing nunca se auto-incrementa.** `version: "1.9.0"` se sigue
+  editando a mano; el CLI siempre pasa `storeVersion` desde local.
+
+**Por qué se difiere:** cambiar `appVersionSource` obliga a inicializar la versión remota,
+y el día del release es mal día para descubrir los casos borde de esa inicialización
+(`eas build:version:set` existe justo para eso). El paso 1 no depende del paso 2.
+
 ---
 
 ## Falta en App Store Connect (Diego) — **bloquea el envío**
@@ -271,9 +494,6 @@ No es código, pero sin esto la review se rechaza:
    —con onboarding ya completado y algún contacto SOS, para que la app no se vea vacía— y
    ponerla en *App Review Information*. Google/Apple sign-in complica al revisor: si no
    puede entrar con user+password, hay que dejar instrucciones explícitas ahí mismo.
-2. **URL de la política de privacidad.** No está en el código (verificado 17/08: no hay
-   link ni constante en el repo). Vive en **Google Play Console → Ficha de Store**; hay
-   que copiarla a App Store Connect.
 
 > **Agreements/Tax/Banking NO se heredan de Play Store.** Son contratos aparte con Apple;
 > nada se transfiere. Como no hay librerías de IAP en `package.json`, basta con el
@@ -287,16 +507,22 @@ No es código, pero sin esto la review se rechaza:
 
 Mandar **todo junto**, no de uno en uno:
 
-1. **Estado de Agreements, Tax and Banking.** Solo el Account Holder los acepta, y un
-   agreement pendiente **bloquea cualquier submission** con un error que no lo dice.
-2. **Capabilities** en el App ID `com.bluai.app`: Push Notifications y Sign in with Apple.
-3. **"Access to Certificates, Identifiers & Profiles"** para `blueyehurricanealerts@gmail.com`
-   — es un checkbox *aparte* del rol de Admin; por eso developer.apple.com muestra
-   "Enroll today".
+1. ~~**Estado de Agreements, Tax and Banking.**~~ ✅ **RESUELTO 18/08** — ver "Estado App
+   Store Connect". El agreement pendiente sí existía y sí bloqueaba el submission.
+2. ~~**Capabilities** en el App ID `com.bluai.app`~~ ✅ **YA ESTABAN (verificado 18/08).**
+   Push Notifications y Sign in with Apple aparecieron palomeadas. Nunca fue un bloqueador
+   real; solo nadie había vuelto a mirar.
+3. **"Access to Certificates, Identifiers & Profiles"** — ❗ **Reclasificado 18/08: no se
+   puede otorgar.** La cuenta es *Individual*, y ahí los usuarios de ASC no son miembros del
+   Developer Program. Nunca va a haber portal para `blueyehurricanealerts@gmail.com`. Todo
+   lo del App ID y las credenciales de EAS sale de la sesión del Account Holder, o de una
+   App Store Connect API Key generada desde ella. Ver "Estado App Store Connect".
+   https://developer.apple.com/help/account/access/roles/
 
-Los puntos 2 y 3 son los que bloquean la prueba de entrega en dev client (sandbox), que
-ya es posible ahora que las keys están en Firebase — y es mucho más rápida que TestFlight.
-Ninguno de los tres bloquea código de cliente.
+  Search that page for organization's team — the footnote is on the "Manage access to Certificates, Identifiers & Profiles" row. The individual-enrollment note is further down under "Permissions in App Store Connect."
+
+> **Sección cerrada el 18/08.** Los tres puntos resueltos: 1 era real, 2 ya estaba hecho,
+> 3 era un mal diagnóstico. **Ya no queda nada bloqueado en el Account Holder.**
 
 ---
 
@@ -515,7 +741,8 @@ sin un push que llegue de verdad.
 
 **Diferidos, en orden de valor:** P2 (revocar token de Apple — misma guideline que F, y
 es el único que queda sin bloqueo de Ivan), P1 (gate de onboarding — afecta a todo usuario
-de Google), H (unificar en RNFB — arregla el tap en Android).
+de Google), P3 (`appVersionSource: "remote"` — quita el build number de las manos de una
+persona), H (unificar en RNFB — arregla el tap en Android).
 
 ### Los tres tipos de bloqueador (no confundirlos)
 
@@ -532,3 +759,38 @@ aprueba sin problema una app cuya función principal no hace nada en silencio.
 ## Lista de cosas para appstore connect
 
 Aviso de privacidad: https://www.bluai.com.mx/aviso-de-privacidad
+
+
+## Suggested order for deployment
+
+1. ~~**Apple consoles**~~ ✅ **CERRADO 18/08.** Agreements aceptados, capabilities ya
+   estaban, Team Key existe, disponibilidad solo-México. Queda **una** verificación de 30s:
+   que los dos slots de APNs en Firebase (dev `7MTNJ97RXH` / prod `2R524J3M7P`) sigan
+   poblados — un slot de Production vacío falla **idéntico** a un `aps-environment` malo y
+   solo se nota en TestFlight (ver Gotchas).
+2. ~~**Build number**~~ ✅ **Verificado 18/08.** TestFlight solo tiene `1.8.0 (1)`; como
+   `1.9.0` no tiene uploads, `buildNumber: "15"` está libre. Nada que cambiar.
+3. ~~**`onTokenRefresh`**~~ ✅ **HECHO 18/08.** `subscribeToTokenRefresh()` en
+   `pushNotifications.ts:339`, consumido en `_layout.tsx:155`. Android sin cambio de
+   comportamiento. Ver **A**.
+4. `eas build --platform ios --profile production`
+   EAS va a ofrecer configurar un `channel` de EAS Update (hay `updates.url` en `app.json`
+   y ningún perfil declara channel). **Declinar** — es un prompt, no un fallo.
+5. **Mientras buildea** (lo único paralelizable): cuenta demo para App Review, screenshots,
+   App Privacy, URL de privacidad, age rating, categoría, descripción, keywords, support URL.
+6. **TestFlight** → mandar un push real → verificar la clase de caracteres del token según
+   el oráculo de los Gotchas. **SACRED RULE**: hasta aquí no está probado nada.
+7. Submit.
+
+**Ya hecho (18/08):** `submit.production.ios.appleTeamId` (`M5CJDZ3897`) en `eas.json`;
+`app.json` icon → `./assets/Icon.png` (el único archivo trackeado es con mayúscula, y
+resolvía solo por el filesystem case-insensitive de macOS); `.env`, `dist`, `.expo`,
+`.tamagui`, `.wrangler` agregados a `.easignore` (existiendo `.easignore`, EAS deja de
+respetar `.gitignore` y subía el `.env` local al contexto de build).
+
+**Deliberadamente NO se tocó:** `autoIncrement` y `appVersionSource` (→ **P3**) y el
+`channel` de EAS Update (cambia el comportamiento de OTA el día del release).
+
+Sobre `appleId` en el bloque de submit: **no se agrega, y ya se sabe por qué.** El submit
+autentica con la ASC API Key guardada en EAS y **nunca pregunta por un Apple ID** — ver
+"Build + submit — cómo autentica cada uno".
