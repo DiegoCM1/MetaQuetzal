@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import type { ViewStyle } from "react-native";
 import { AttachStep } from "react-native-spotlight-tour";
 
 import { tourWarn } from "./tourLog";
@@ -14,6 +15,33 @@ interface BoxProps {
   left?: number;
   right?: number;
   fill?: never;
+  center?: never;
+  size?: never;
+}
+
+interface CenterProps {
+  index: number;
+  /**
+   * A fixed-size box centred in the parent — for framing an area rather than a
+   * control, e.g. "your zone" on the map.
+   *
+   * Centred with `top/left: "50%"` plus a translate, deliberately: the parent
+   * here is a `flex:1` View, so its height is the screen minus the tab bar and
+   * insets, and nothing on this side knows that number. Symmetric insets
+   * computed from `useWindowDimensions` would overshoot and can resolve to a
+   * negative height — which is the 0x0 anchor this file warns about below.
+   * Percentages are resolved against the real parent, so no one has to know it.
+   */
+  center: true;
+  /** Diameter of the framed area, in points. */
+  size: number;
+  fill?: never;
+  inset?: never;
+  width?: never;
+  height?: never;
+  bottom?: never;
+  left?: never;
+  right?: never;
 }
 
 interface FillProps {
@@ -30,6 +58,8 @@ interface FillProps {
   bottom?: never;
   left?: never;
   right?: never;
+  center?: never;
+  size?: never;
 }
 
 /**
@@ -50,29 +80,52 @@ interface FillProps {
  * hierarchy, and a flattened anchor measures 0x0 — which renders as a dimmed
  * screen with no spotlight and no tooltip, silently.
  */
-export function TourAnchor(props: BoxProps | FillProps) {
+export function TourAnchor(props: BoxProps | FillProps | CenterProps) {
   const offsetY = useMeasureOffset();
 
   // Positive offsetY pushes the anchor DOWN, so the under-reported measurement
   // lands back on the real target.
-  const style = props.fill
-    ? {
-        position: "absolute" as const,
-        top: offsetY + (props.inset?.top ?? 0),
-        left: props.inset?.left ?? 0,
-        right: props.inset?.right ?? 0,
-        bottom: -offsetY + (props.inset?.bottom ?? 0),
-        pointerEvents: "none" as const,
-      }
-    : {
-        position: "absolute" as const,
-        bottom: props.bottom - offsetY,
-        left: props.left,
-        right: props.right,
-        width: props.width,
-        height: props.height,
-        pointerEvents: "none" as const,
-      };
+  // if/else rather than a ternary chain: nested ternaries over a three-way
+  // union stop narrowing the discriminant, and the branches then read as
+  // `never`. This also lets the result be one declared ViewStyle instead of a
+  // union of three object literals.
+  let style: ViewStyle;
+  if ("center" in props && props.center) {
+    style = {
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      width: props.size,
+      height: props.size,
+      // Half the box back on each axis to land its centre on the parent's,
+      // plus the same measurement correction the other variants apply.
+      transform: [
+        { translateX: -props.size / 2 },
+        { translateY: -props.size / 2 + offsetY },
+      ],
+      pointerEvents: "none",
+    };
+  } else if ("fill" in props && props.fill) {
+    style = {
+      position: "absolute",
+      top: offsetY + (props.inset?.top ?? 0),
+      left: props.inset?.left ?? 0,
+      right: props.inset?.right ?? 0,
+      bottom: -offsetY + (props.inset?.bottom ?? 0),
+      pointerEvents: "none",
+    };
+  } else {
+    const box = props as BoxProps;
+    style = {
+      position: "absolute",
+      bottom: box.bottom - offsetY,
+      left: box.left,
+      right: box.right,
+      width: box.width,
+      height: box.height,
+      pointerEvents: "none",
+    };
+  }
 
   return (
     <AttachStep index={props.index} style={style}>
