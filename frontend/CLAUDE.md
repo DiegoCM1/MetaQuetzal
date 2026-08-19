@@ -39,6 +39,12 @@ This file supplements the root `CLAUDE.md` with frontend-specific guidance. Read
 
 - Two providers behind `app/ai/_services/`: **on-device** (`react-native-executorch`, LLaMA) and **online** (`OnlineProvider`). The `useChat` hook (`app/ai/_hooks/`) orchestrates them. `ModelContext` has a `.web.tsx` variant — legacy, do not extend.
 
+## Maps
+
+- **Google Maps on both platforms** — every `<MapView>` passes `provider={PROVIDER_GOOGLE}`.
+- **API keys go in the `react-native-maps` plugin entry in `app.json`** — not `ios.config` / `android.config`, not `eas.json`. **Both keys are required**; omitting the Android one makes the plugin delete the manifest key and break Android.
+- The keys are **public by design** (compiled into the binaries). GitHub secret scanning flags them on every change — expected, don't rotate.
+
 ## Analytics & monitoring
 
 - **Sentry** (`@sentry/react-native`) and **Mixpanel** (`mixpanel-react-native`) are wired. Config via `EXPO_PUBLIC_SENTRY_DSN` / `EXPO_PUBLIC_MIXPANEL_PROJECT_TOKEN` (public client config in `eas.json`).

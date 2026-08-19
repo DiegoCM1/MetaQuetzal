@@ -5,9 +5,34 @@ import * as IntentLauncher from "expo-intent-launcher";
 import { Alert, DeviceEventEmitter, Linking, Platform } from "react-native";
 import { toast } from "sonner-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from '@react-native-firebase/auth';
+// iOS-only at runtime (see react-native.config.js — this package is unlinked on
+// Android). The *import* is safe on both platforms: messaging's module scope only
+// writes into RNFB's JS namespace registry (`createModuleNamespace`), it never
+// touches NativeModules. The native lookup happens on the first getMessaging()
+// call, which is why that call must stay behind a Platform.OS === 'ios' branch.
+import {
+  getAPNSToken,
+  getMessaging,
+  getToken as getFcmRegistrationToken,
+  isDeviceRegisteredForRemoteMessages,
+  onTokenRefresh,
+  registerDeviceForRemoteMessages,
+  type Messaging,
+} from '@react-native-firebase/messaging';
 import { track } from "./analytics";
 import { authFetch } from './api'
 import { API_BASE_URL } from './config'
+import {
+  PUSH_FAILURE_COPY,
+  classifyBackendStatus,
+  pushBreadcrumb,
+  redactToken,
+  reportPushFailure,
+  resetPushFailureReporting,
+  toMessage,
+  type PushFailureType,
+} from './pushTelemetry'
 
 const BATTERY_OPT_ASKED_KEY  = '@blueeye:battery_opt_asked';
 const HEADS_UP_ASKED_KEY     = '@blueeye:heads_up_asked_v2'; // v2 = sos_emergency channel
@@ -22,7 +47,7 @@ export async function requestBatteryOptimizationExemption(): Promise<void> {
 
   Alert.alert(
     'Alertas de emergencia',
-    'Para que BluEye pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
+    'Para que Bluai pueda avisarte aunque el teléfono esté inactivo, necesita permiso para funcionar en segundo plano sin restricciones.',
     [
       { text: 'Ahora no', style: 'cancel' },
       {
@@ -92,41 +117,184 @@ const _LAST_TOKEN_KEY = 'push_last_registered_token';
 // In-memory guard prevents concurrent calls with the same token from both POSTing
 let _registrationInFlight: string | null = null;
 
-export async function sendTokenToBackend(fcmToken: string): Promise<void> {
-  if (_registrationInFlight === fcmToken) return;
+/** Outcome of a registration attempt, so callers can react instead of guessing. */
+export type PushRegistrationResult =
+  | { ok: true }
+  | { ok: false; type: PushFailureType };
+
+// Telemetry must never be the thing that crashes the app: if Firebase isn't
+// initialised yet, "no uid" is the honest answer, not an exception.
+function _hasUid(): boolean {
+  try {
+    return !!getAuth().currentUser?.uid;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * iOS only. Resolves once APNs has actually handed us a device token.
+ *
+ * `registerDeviceForRemoteMessages()` resolving means "the register call was
+ * accepted", NOT "a token has arrived". Worse, iOS persists
+ * `isRegisteredForRemoteNotifications` across launches, so on every warm start the
+ * call short-circuits and returns before APNs has delivered anything. Since
+ * firebase-ios-sdk 10.4 the APNs token is a hard prerequisite for minting an FCM
+ * token — getToken() called too early simply rejects. So we poll rather than trust
+ * the await.
+ */
+const APNS_POLL_ATTEMPTS = 10;
+const APNS_POLL_DELAY_MS = 300;
+
+async function waitForApnsToken(
+  messaging: Messaging,
+  attempts = APNS_POLL_ATTEMPTS,
+  delayMs = APNS_POLL_DELAY_MS,
+): Promise<string | null> {
+  for (let i = 0; i < attempts; i += 1) {
+    const apnsToken = await getAPNSToken(messaging);
+    if (apnsToken) return apnsToken;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return null;
+}
+
+/**
+ * Returns an **FCM registration token** on both platforms, or null after having
+ * already reported why it failed.
+ *
+ * The backend sends exclusively through `firebase_admin.messaging`, which can only
+ * address FCM tokens — so "whatever token the OS handed us" is not good enough:
+ *
+ *  - Android: expo-notifications owns FCM delivery here (see react-native.config.js)
+ *    and `getDevicePushTokenAsync()` already returns a real FCM token.
+ *  - iOS: that same call returns the raw 64-hex APNs device token, which
+ *    firebase_admin cannot route — pushes would be accepted by our own backend and
+ *    then silently never delivered. Only the Firebase iOS SDK can exchange the APNs
+ *    token for an FCM one, which is the entire reason
+ *    @react-native-firebase/messaging is a dependency of this app.
+ */
+async function acquireFcmToken(): Promise<string | null> {
+  if (Platform.OS !== "ios") {
+    try {
+      const { data } = await Notifications.getDevicePushTokenAsync();
+      return data;
+    } catch (err) {
+      reportPushFailure(
+        { type: "token-unavailable", message: toMessage(err), phase: "token" },
+        { hasUid: _hasUid() },
+      );
+      return null;
+    }
+  }
+
+  const messaging = getMessaging();
+
+  try {
+    // Idempotent, but checking first avoids a pointless bridge round-trip on
+    // every warm start.
+    if (!isDeviceRegisteredForRemoteMessages(messaging)) {
+      await registerDeviceForRemoteMessages(messaging);
+    }
+  } catch (err) {
+    reportPushFailure(
+      {
+        type: "apns-register-failed",
+        message: toMessage(err),
+        phase: "apns-register",
+      },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
+
+  const apnsToken = await waitForApnsToken(messaging);
+  if (!apnsToken) {
+    // Registration was accepted but APNs never delivered. In practice this means a
+    // provisioning problem, not a transient one: missing `aps-environment`
+    // entitlement, Push Notifications not enabled on the App ID, or a build signed
+    // for the wrong APNs environment.
+    reportPushFailure(
+      {
+        type: "apns-token-timeout",
+        message: `APNs no entregó un device token tras ${APNS_POLL_ATTEMPTS} intentos (${APNS_POLL_ATTEMPTS * APNS_POLL_DELAY_MS}ms)`,
+        phase: "apns-register",
+      },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
+  // Prefix only — an APNs token is a credential just like the FCM one.
+  pushBreadcrumb("APNs device token acquired", {
+    tokenPrefix: redactToken(apnsToken),
+  });
+
+  try {
+    return await getFcmRegistrationToken(messaging);
+  } catch (err) {
+    reportPushFailure(
+      { type: "token-unavailable", message: toMessage(err), phase: "token" },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
+}
+
+export async function sendTokenToBackend(fcmToken: string): Promise<PushRegistrationResult> {
+  // Another call already owns this token's outcome — not our failure to report.
+  if (_registrationInFlight === fcmToken) return { ok: true };
   _registrationInFlight = fcmToken;  // set before any await — closes TOCTOU window
 
+  const tokenPrefix = redactToken(fcmToken);
   let success = false;
-  let lastErr: unknown;
+  let failureType: PushFailureType = 'backend-unreachable';
+  let lastMessage = '(no error object)';
+  let lastStatus: number | undefined;
+  let attempt = 0;
 
   try {
     // Persistent deduplication: skip if token already registered successfully
     try {
       const stored = await AsyncStorage.getItem(_LAST_TOKEN_KEY);
-      if (stored === fcmToken) return;   // finally handles _registrationInFlight = null
+      if (stored === fcmToken) {
+        pushBreadcrumb('token already registered — skipping POST', { tokenPrefix });
+        return { ok: true };             // finally handles _registrationInFlight = null
+      }
     } catch {
       // AsyncStorage unavailable — proceed with registration
     }
 
     const MAX = 3;
     for (let i = 0; i < MAX; i++) {
+      attempt = i + 1;
       try {
-        const res = await authFetch(`${API_BASE_URL}/push-token`, {
+        const res = await authFetch(`${API_BASE_URL}/api/v1/push-token`, {
           method: 'POST',
-          body: JSON.stringify({ token: fcmToken }),
+          // `platform` decide la forma del payload que el backend puede mandar: un
+          // push silencioso es `content-available` en iOS y un canal en Android, y
+          // sin este campo no se pueden distinguir — un registration token de FCM es
+          // opaco e idéntico en las dos plataformas.
+          body: JSON.stringify({ token: fcmToken, platform: Platform.OS }),
         });
         if (res.ok) {
           try {
             await AsyncStorage.setItem(_LAST_TOKEN_KEY, fcmToken);
           } catch { /* best-effort; next launch will re-POST (idempotent) */ }
           track('push_token_saved', { ok: true });
+          pushBreadcrumb('token registered with backend', { tokenPrefix, attempt });
           success = true;
           break;
         }
+        // Record WHY before deciding whether to retry. Breaking out of the loop
+        // without capturing the reason is what made 4xx failures invisible.
+        lastStatus = res.status;
+        failureType = classifyBackendStatus(res.status);
+        lastMessage = `HTTP ${res.status}`;
         if (res.status < 500) break;                       // 4xx permanente — no reintentar
-        lastErr = new Error(`HTTP ${res.status}`);
       } catch (err) {
-        lastErr = err;                                     // error de red → reintentar
+        failureType = 'backend-unreachable';               // error de red → reintentar
+        lastMessage = toMessage(err);
+        lastStatus = undefined;
       }
       if (i < MAX - 1) await new Promise(r => setTimeout(r, 1000 * 2 ** i)); // 1s → 2s
     }
@@ -134,16 +302,66 @@ export async function sendTokenToBackend(fcmToken: string): Promise<void> {
     _registrationInFlight = null;
   }
 
-  if (!success) {
-    console.error('Error enviando token al backend después de retries:', lastErr);
-    track('push_token_saved', { ok: false, error: String(lastErr) });
-    if (lastErr !== undefined) {
-      // Only show Toast for transient failures (network errors, 5xx) — not for 4xx permanent
-      toast.error('No se pudieron activar notificaciones', {
-        description: 'Revisa tu conexión e intenta abrir la app de nuevo.',
-      });
+  if (success) return { ok: true };
+
+  reportPushFailure(
+    { type: failureType, message: lastMessage, phase: 'backend' },
+    { hasUid: _hasUid(), attempt, httpStatus: lastStatus, tokenPrefix },
+  );
+  track('push_token_saved', { ok: false, error: failureType });
+
+  // Whether to interrupt the user is a per-failure decision, not an inference
+  // from whether an error object happens to exist.
+  const copy = PUSH_FAILURE_COPY[failureType];
+  if (copy.notify) {
+    toast.error(copy.title, { description: copy.description });
+  }
+  return { ok: false, type: failureType };
+}
+
+/**
+ * Se suscribe a la *rotación* de token y devuelve el unsubscribe.
+ *
+ * Hay que llamar a APIs distintas por plataforma porque **el valor que emiten es
+ * distinto**, no por gusto:
+ *
+ * - **iOS** → `onTokenRefresh` de RNFB, que emite un **registration token de FCM** — que es
+ *   lo único que `firebase_admin` sabe enrutar. `addPushTokenListener` de expo aquí emitiría
+ *   el **hex crudo de APNs**, y como `sendTokenToBackend` pisa el token guardado, una
+ *   rotación borraría el token bueno adquirido en el arranque y dejaría la cuenta muda. El
+ *   backend tampoco lo limpiaría: el fallo no es `UnregisteredError`, así que la lista
+ *   blanca de `_PERMANENT_FAILURE_TYPES` (correctamente) lo conserva.
+ * - **Android** → se queda `addPushTokenListener` de expo, **sin cambio de comportamiento**.
+ *   RNFB messaging está deslinkeado ahí (`react-native.config.js`), así que `getMessaging()`
+ *   reventaría — por eso la llamada vive detrás del branch de `Platform.OS`, igual que en
+ *   `acquireFcmToken()` y como explica el comentario del import arriba.
+ */
+export function subscribeToTokenRefresh(
+  onToken: (token: string) => void,
+): () => void {
+  if (Platform.OS === "ios") {
+    // Mismo guard que registerForPushNotificationsAsync(): sin dispositivo físico
+    // no hay APNs, y en Simulator el módulo nativo de RNFB puede ni existir.
+    if (!Device.isDevice) {
+      pushBreadcrumb("token refresh omitido — requiere dispositivo físico");
+      return () => {};
+    }
+    try {
+      return onTokenRefresh(getMessaging(), onToken);
+    } catch (err) {
+      // getMessaging() tira si el binario no trae RNFB messaging linkeado — o sea
+      // cualquier dev client anterior a `1e704ea`. Esto NO puede propagarse: corre
+      // sincrónico dentro del useEffect de AuthGate, así que un throw aquí no
+      // degrada "no hay rotación de token", se lleva el render de toda la app.
+      reportPushFailure(
+        { type: "token-unavailable", message: toMessage(err), phase: "token" },
+        { hasUid: _hasUid() },
+      );
+      return () => {};
     }
   }
+  const sub = Notifications.addPushTokenListener(({ data }) => onToken(data));
+  return () => sub.remove();
 }
 
 export async function setupNotificationChannels() {
@@ -188,56 +406,106 @@ export async function setupNotificationChannels() {
 }
 
 export async function registerForPushNotificationsAsync() {
+  resetPushFailureReporting();
+
   if (!Device.isDevice) {
-    console.log("Push solo funciona en dispositivo físico");
+    pushBreadcrumb('skipped — push requires a physical device');
     return null;
   }
 
-  await setupNotificationChannels();
+  // A failed channel must not cost us the token. This used to be a bare `await`:
+  // any throw rejected the whole function, so permissions were never requested
+  // and no token was ever fetched — with nothing but a console line to show it.
+  try {
+    await setupNotificationChannels();
+  } catch (err) {
+    reportPushFailure(
+      { type: 'channel-setup-failed', message: toMessage(err), phase: 'channels' },
+      { hasUid: _hasUid() },
+    );
+  }
 
   // 1) Permisos
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  const finalStatus =
-    existingStatus === "granted"
-      ? existingStatus
-      : (await Notifications.requestPermissionsAsync()).status;
+  let finalStatus: string;
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    finalStatus =
+      existingStatus === "granted"
+        ? existingStatus
+        : (await Notifications.requestPermissionsAsync()).status;
+  } catch (err) {
+    reportPushFailure(
+      { type: 'unknown', message: toMessage(err), phase: 'permissions' },
+      { hasUid: _hasUid() },
+    );
+    return null;
+  }
 
   track("push_permission", {
     status: finalStatus === "granted" ? "granted" : "denied",
   });
 
   if (finalStatus !== "granted") {
-    Alert.alert(
-      "Permiso denegado",
-      "Sin permiso no se pueden recibir alertas de huracán",
-    );
+    // A declined permission is a user choice, not a defect — it belongs in the
+    // Mixpanel funnel above, not in Sentry's "something is broken" dashboard.
+    const copy = PUSH_FAILURE_COPY['permission-denied'];
+    pushBreadcrumb('permission denied by user', { status: finalStatus });
+    Alert.alert(copy.title, copy.description);
     return null;
   }
 
-  // 2) Token nativo FCM (HTTP v1)
-  const { data: fcmToken } = await Notifications.getDevicePushTokenAsync();
-  console.log("FCM token →", fcmToken);
+  // 2) Token de registro FCM (HTTP v1) — la ruta difiere por plataforma,
+  //    ver acquireFcmToken(). Siempre devuelve un token FCM, nunca uno de APNs.
+  const fcmToken = await acquireFcmToken();
+  if (!fcmToken) return null; // acquireFcmToken ya reportó la causa exacta
+  // Prefix only — a push token is a credential, and Sentry runs sendDefaultPii.
+  pushBreadcrumb('FCM token acquired', { tokenPrefix: redactToken(fcmToken) });
 
   await sendTokenToBackend(fcmToken);
 
   // 3) Battery optimization exemption — solo aparece una vez
-  requestBatteryOptimizationExemption();
+  void requestBatteryOptimizationExemption().catch((err) =>
+    pushBreadcrumb('battery-opt dialog failed', { error: toMessage(err) }),
+  );
   // 4) Heads-up / floating notifications — mostramos 2 s después para no superponer dialogs
-  setTimeout(() => requestHeadsUpPermission(), 2000);
+  setTimeout(() => {
+    void requestHeadsUpPermission().catch((err) =>
+      pushBreadcrumb('heads-up dialog failed', { error: toMessage(err) }),
+    );
+  }, 2000);
 
   return fcmToken;
 }
 
 // Muestra un banner sencillo cuando llega la notificación
 export function setForegroundNotificationHandler() {
+  // Política de primer plano, igual en las dos plataformas:
+  //   visual  → lo dibuja la app (toast de sonner-native / AlarmScreen), NO el sistema.
+  //             Poner shouldShowBanner en true daría banner del sistema *encima* del
+  //             toast: UI duplicada, no un arreglo.
+  //   sonido  → lo pide el sistema, y solo para alertas críticas.
+  //
+  // Por qué el sonido va aparte: en Android el canal (IMPORTANCE_MAX) suena aunque el
+  // handler diga que no — por eso nunca se notó. iOS obedece el handler al pie de la
+  // letra, así que con todo en false una alerta nivel 4 llegaba **muda** mientras la
+  // app estaba abierta. El `sound: "default"` que manda el backend (build_apns_config)
+  // no sirve de nada si el handler se niega a reproducirlo.
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: false,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-      shouldShowBanner: false,
-      shouldShowList: false,
-    }),
+    handleNotification: async (notification) => {
+      const data = notification.request.content.data;
+      const isCritical =
+        data?.fullScreen === "true" ||
+        data?.category === "sos" ||
+        Number(data?.level ?? data?.siat_level ?? 0) >= 4;
+
+      return {
+        shouldPlaySound: isCritical,
+        shouldShowAlert: false,
+        shouldSetBadge: false,
+        shouldShowBanner: false,
+        shouldShowList: false,
+      };
+    },
   });
 
   Notifications.addNotificationReceivedListener((notif) => {

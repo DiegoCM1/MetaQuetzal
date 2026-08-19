@@ -1,2 +1,0 @@
-- Firebase JWT
-- Unauthenticated users must loging before entering the app.

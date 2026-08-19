@@ -4,7 +4,7 @@
     "slug": "react-native-blueye",
     "version": "1.9.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Icon.png",
     "userInterfaceStyle": "light",
     "scheme": "blueye",
     "newArchEnabled": true,
@@ -23,13 +23,13 @@
       "backgroundColor": "#030810"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.bluai.app",
+      "buildNumber": "15",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -55,26 +55,40 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_CONTACTS"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyCnJQJAIvATM2Vlcs-Atss8_tA2MYj_Hg4"
-        }
-      }
+      ]
     },
     "web": {
       "bundler": "metro"
     },
     "plugins": [
       "expo-router",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "iosGoogleMapsApiKey": "AIzaSyA7WPPSf4wIo-f52ESWanqP-Np72_tx9YE",
+          "androidGoogleMapsApiKey": "AIzaSyB2swiDQepQYT1AjRlo_LiIoIh_JFWmhoU"
+        }
+      ],
       [
         "expo-contacts",
         {
-          "contactsPermission": "BluEye necesita acceso a tus contactos para que puedas agregar contactos SOS fácilmente."
+          "contactsPermission": "Bluai necesita acceso a tus contactos para que puedas agregar contactos SOS fácilmente."
         }
       ],
-      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bluai usa tu ubicación para enviarte alertas de huracán de tu zona y mostrarte los riesgos cerca de ti.",
+          "locationAlwaysPermission": false,
+          "locationAlwaysAndWhenInUsePermission": false
+        }
+      ],
       "./plugins/with-nearby-connections",
       "@react-native-firebase/app",
       [
@@ -92,7 +106,8 @@
             "useFrameworks": "static",
             "forceStaticLinking": [
               "RNFBApp",
-              "RNFBAuth"
+              "RNFBAuth",
+              "RNFBMessaging"
             ]
           }
         }

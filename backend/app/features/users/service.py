@@ -1,12 +1,43 @@
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-_ALL_FIELDS = "id, firebase_uid, display_name, email, phone, lat, lon, created_at, updated_at"
+_ALL_FIELDS = (
+    "id, firebase_uid, display_name, email, phone, lat, lon, created_at, updated_at, "
+    "first_name, last_name, address_1, address_2, zip_code, state, age_range"
+)
+
+# Columnas de `users` que el perfil del onboarding puede escribir. Es una lista blanca,
+# no documentación: los nombres de columna se interpolan en el SQL (no se pueden pasar
+# como parámetro), así que esto es lo que garantiza que solo entren identificadores que
+# nosotros elegimos, sin importar qué llegue del cliente.
+_PROFILE_COLUMNS = (
+    "first_name",
+    "last_name",
+    "phone",
+    "address_1",
+    "address_2",
+    "zip_code",
+    "state",
+    "age_range",
+)
 
 
 async def get_user_by_firebase_uid(db: AsyncSession, firebase_uid: str) -> dict | None:
+    # LEFT JOIN porque los dos sliders viven en `notification_preferences` y la fila de
+    # preferencias se crea perezosamente: un usuario que nunca tocó Ajustes no tiene
+    # una. El COALESCE devuelve el mismo default que `_DEFAULTS` en el servicio de
+    # preferencias, para que la app no vea None donde el resto del sistema ya asume 5.
+    qualified = ", ".join(f"u.{c.strip()}" for c in _ALL_FIELDS.split(","))
     result = await db.execute(
-        text(f"SELECT {_ALL_FIELDS} FROM users WHERE firebase_uid = :uid LIMIT 1"),
+        text(f"""
+            SELECT {qualified},
+                   COALESCE(np.nervousness_level, 5)  AS nervousness_level,
+                   COALESCE(np.weather_info_level, 5) AS weather_info_level
+            FROM users u
+            LEFT JOIN notification_preferences np ON np.user_id = u.id
+            WHERE u.firebase_uid = :uid
+            LIMIT 1
+        """),
         {"uid": firebase_uid},
     )
     return result.mappings().first()
@@ -35,6 +66,42 @@ async def upsert_user(
     return result.mappings().first()
 
 
+async def update_user_profile(
+    db: AsyncSession,
+    firebase_uid: str,
+    updates: dict,
+    commit: bool = True,
+) -> dict | None:
+    """Escribe el perfil del onboarding en `users`.
+
+    Solo toca las claves presentes en `updates`: un payload parcial no debe borrar una
+    columna que el cliente no mandó. `commit=False` deja la transacción abierta para que
+    quien llama pueda escribir también las preferencias y cerrar UNA sola vez — que es
+    lo que impide el estado a medias ("se guardó el teléfono pero no la dirección").
+    """
+    fields = {k: v for k, v in updates.items() if k in _PROFILE_COLUMNS}
+
+    if not fields:
+        # Nada que escribir en `users` (p. ej. un payload que solo trae sliders). No es
+        # un error: devolvemos el perfil actual para que la respuesta sea la misma.
+        return await get_user_by_firebase_uid(db, firebase_uid)
+
+    assignments = ", ".join(f"{col} = :{col}" for col in fields)
+    result = await db.execute(
+        text(f"""
+            UPDATE users SET {assignments}, updated_at = NOW()
+            WHERE firebase_uid = :uid
+            RETURNING id
+        """),
+        {"uid": firebase_uid, **fields},
+    )
+    if result.first() is None:
+        return None
+    if commit:
+        await db.commit()
+    return await get_user_by_firebase_uid(db, firebase_uid)
+
+
 async def update_user_phone(db: AsyncSession, firebase_uid: str, phone: str) -> dict | None:
     result = await db.execute(
         text(f"""
@@ -59,3 +126,20 @@ async def update_user_location(db: AsyncSession, firebase_uid: str, lat: float, 
     )
     await db.commit()
     return result.mappings().first()
+
+
+async def delete_user_by_firebase_uid(db: AsyncSession, firebase_uid: str) -> bool:
+    """Borra la fila de `users`. Devuelve True si existía.
+
+    Todo lo demás cuelga de esto por FK: `device_tokens`, `notification_preferences`,
+    `sos_contacts`, `sos_invitations` y `sos_events` van en cascada. Los push tokens
+    son los que importan para la Guideline 5.1.1(v) — mientras esa fila viva, una
+    cuenta "borrada" **sigue recibiendo alertas de huracán**.
+    """
+    result = await db.execute(
+        text("DELETE FROM users WHERE firebase_uid = :uid RETURNING id"),
+        {"uid": firebase_uid},
+    )
+    deleted = result.first() is not None
+    await db.commit()
+    return deleted

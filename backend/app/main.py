@@ -23,12 +23,16 @@ import asyncio
 import logging
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
+# The AI router is imported optionally because it drags in sentence-transformers
+# (~1GB of torch). If that import fails in production the feature disappears
+# silently — the app boots fine and /ai/chat just 404s — so log the reason.
 try:
     from app.features.ai.router import router as ai_router
 except Exception:
+    logger.exception("AI router import failed; /ai/chat and /api/v1/ai/alert-summary will 404")
     ai_router = None
-
-logger = logging.getLogger(__name__)
 
 SIAT_CYCLE_INTERVAL_SECONDS = 30 * 60  # 30 minutes
 
@@ -68,6 +72,24 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
             )
         """))
         await conn.execute(text(
+            "ALTER TABLE device_tokens ADD COLUMN IF NOT EXISTS platform TEXT"
+        ))
+        # Backfill de una sola vez: hasta el primer build de iOS, TODO token en la
+        # tabla es de Android por construcción (iOS nunca se ha publicado). Un token
+        # de registro de FCM es opaco e idéntico entre plataformas, así que esta
+        # clasificación es imposible de recuperar después — hay que hacerla mientras
+        # los datos siguen siendo homogéneos.
+        #
+        # El `NOT EXISTS` lo apaga solo: en cuanto UN cliente reporte su plataforma,
+        # los datos dejan de ser homogéneos y el backfill no vuelve a correr nunca.
+        # Sin eso, correría en cada arranque y etiquetaría como "android" cualquier
+        # token de iOS que llegara sin plataforma.
+        await conn.execute(text("""
+            UPDATE device_tokens SET platform = 'android'
+            WHERE platform IS NULL
+              AND NOT EXISTS (SELECT 1 FROM device_tokens WHERE platform IS NOT NULL)
+        """))
+        await conn.execute(text(
             "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS pdf_url TEXT"
         ))
         await conn.execute(text(
@@ -82,6 +104,24 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)"
         ))
+        # Perfil del onboarding. El wizard captura diez campos y hasta ahora solo el
+        # teléfono llegaba al servidor (y ese, sin confirmar) — los otros nueve morían
+        # en el AsyncStorage del dispositivo. Todos van en `users` y no en una tabla
+        # aparte porque son 1:1 con la cuenta y se leen siempre junto con ella.
+        #
+        # `first_name`/`last_name` son la fuente de verdad del nombre; `display_name`
+        # (que viene del token de Firebase) queda como respaldo cuando el usuario nunca
+        # pasó por el wizard.
+        await conn.execute(text("""
+            ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
+                ADD COLUMN IF NOT EXISTS last_name  VARCHAR(100),
+                ADD COLUMN IF NOT EXISTS address_1  VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS address_2  VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS zip_code   VARCHAR(10),
+                ADD COLUMN IF NOT EXISTS state      VARCHAR(60),
+                ADD COLUMN IF NOT EXISTS age_range  VARCHAR(10)
+        """))
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "pgcrypto"'))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS notification_preferences (
@@ -100,6 +140,18 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         ))
         await conn.execute(text(
             "ALTER TABLE notification_preferences ADD COLUMN IF NOT EXISTS quiet_end TIME"
+        ))
+        # Los dos sliders del onboarding viven aquí y no en `users`: son personalización
+        # de alertas, que es justo lo que esta tabla ya gobierna. Partirlos entre dos
+        # tablas es como una feature termina construida contra la mitad equivocada.
+        # DEFAULT 5 = el mismo valor inicial que el wizard muestra (`_types.ts`).
+        await conn.execute(text(
+            "ALTER TABLE notification_preferences "
+            "ADD COLUMN IF NOT EXISTS nervousness_level SMALLINT NOT NULL DEFAULT 5"
+        ))
+        await conn.execute(text(
+            "ALTER TABLE notification_preferences "
+            "ADD COLUMN IF NOT EXISTS weather_info_level SMALLINT NOT NULL DEFAULT 5"
         ))
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS map_events (
@@ -165,6 +217,27 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS sos_events_sender_idx ON sos_events (sender_id, created_at DESC)"
         ))
+        # `sos_events.sender_id` se creó sin ON DELETE, o sea NO ACTION: borrar un
+        # usuario que alguna vez mandó un SOS fallaba con violación de FK. Eso rompe
+        # el borrado de cuenta (Guideline 5.1.1(v)) **solo para algunos usuarios**, que
+        # es la peor variante: pasa la prueba manual con una cuenta recién creada.
+        #
+        # CASCADE es lo correcto: un sos_event guarda lat/lon del usuario, o sea que es
+        # dato personal suyo y se va con la cuenta. El `confdeltype <> 'c'` hace que
+        # esto solo corra mientras la constraint aún no sea CASCADE.
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM pg_constraint
+                    WHERE conname = 'sos_events_sender_id_fkey' AND confdeltype <> 'c'
+                ) THEN
+                    ALTER TABLE sos_events DROP CONSTRAINT sos_events_sender_id_fkey;
+                    ALTER TABLE sos_events ADD CONSTRAINT sos_events_sender_id_fkey
+                        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE;
+                END IF;
+            END $$;
+        """))
         await conn.execute(text(
             "CREATE INDEX IF NOT EXISTS sos_contacts_linked_uid_idx "
             "ON sos_contacts (linked_user_id) WHERE linked_user_id IS NOT NULL"

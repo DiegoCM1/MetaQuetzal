@@ -19,7 +19,14 @@ import {
   sendTokenToBackend,
   setForegroundNotificationHandler,
   addNotificationResponseListener,
+  subscribeToTokenRefresh,
 } from "../utils/pushNotifications";
+import {
+  pushBreadcrumb,
+  redactToken,
+  reportPushFailure,
+  toMessage,
+} from "../utils/pushTelemetry";
 import * as Notifications from "expo-notifications";
 import { Toaster, toast } from "sonner-native";
 import { initAnalytics, track, flush } from "../utils/analytics"
@@ -27,6 +34,7 @@ import { flushSOSQueue, shouldConfirmPendingSOS } from "./map/sosQueue"
 import { PENDING_SOS_INVITE_KEY } from "./sos-invite/[token]";
 export const PENDING_SOS_CONTACT_ADDED_KEY = "@BluEye:pending_sos_contact_added";
 import { hasCompletedOnboarding } from "./onboarding/_services/onboardingService"
+import { syncProfileIfPending } from "../utils/profileSync"
 import { authFetch } from "../utils/api"
 import { API_BASE_URL } from "../utils/config"
 import { usePathname } from "expo-router";
@@ -131,13 +139,26 @@ function AuthGate({ children }) {
 
   useEffect(() => {
     if (!authEnabled || !user) return
+    // Reconciliación del perfil del onboarding. Corre una vez por arranque autenticado
+    syncProfileIfPending()
     registerForPushNotificationsAsync()
-      .then((token) => console.log("Token guardado:", token))
-      .catch(console.error)
-    const tokenSub = Notifications.addPushTokenListener(({ data }) => {
-      sendTokenToBackend(data).catch(console.error)
+      .then((token) => pushBreadcrumb("registration finished", { tokenPrefix: redactToken(token) }))
+      // Backstop: every stage inside is individually guarded, so anything
+      // reaching here is genuinely unforeseen — which is exactly why it must
+      // not land in a console line nobody reads.
+      .catch((err) => reportPushFailure(
+        { type: "unknown", message: toMessage(err), phase: "unknown" },
+        { hasUid: !!user?.uid },
+      ))
+    // Rotación de token. La API correcta depende de la plataforma porque el valor
+    // que emite cada una es distinto — ver subscribeToTokenRefresh().
+    const unsubscribeTokenRefresh = subscribeToTokenRefresh((token) => {
+      sendTokenToBackend(token).catch((err) => reportPushFailure(
+        { type: "unknown", message: toMessage(err), phase: "token" },
+        { hasUid: !!user?.uid, tokenPrefix: redactToken(token) },
+      ))
     })
-    return () => tokenSub.remove()
+    return () => unsubscribeTokenRefresh()
   }, [authEnabled, user?.uid])
 
   useEffect(() => {

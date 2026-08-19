@@ -39,14 +39,24 @@ Once the dev client is installed, the daily loop is `npx expo start`.
 
 ### Backend
 
+**Python 3.12 is required** — it's what Railway runs, it's pinned in `backend/.python-version`,
+and CI reads that same file.
+
 ```bash
 cd backend
-python -m venv venv
+python3.12 -m venv venv        # not `python` / `python3` — pin the version explicitly
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn app.main:app --reload
 ```
+
+> **Already have a venv from before?** Recreate it — an in-place `pip install` keeps you on the
+> old interpreter:
+> ```bash
+> cd backend && rm -rf venv && python3.12 -m venv venv
+> source venv/bin/activate && pip install -r requirements.txt
+> ```
 
 ## Environment Variables
 

@@ -39,7 +39,10 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          # Read from backend/.python-version so CI, local venvs and Railway
+          # cannot drift apart. Railway already builds against that file, so
+          # this keeps tests on the exact interpreter production runs.
+          python-version-file: backend/.python-version
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
