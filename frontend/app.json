@@ -4,7 +4,7 @@
     "slug": "react-native-blueye",
     "version": "1.9.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Icon.png",
     "userInterfaceStyle": "light",
     "scheme": "blueye",
     "newArchEnabled": true,

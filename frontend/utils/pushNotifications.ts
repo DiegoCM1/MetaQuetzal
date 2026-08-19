@@ -16,6 +16,7 @@ import {
   getMessaging,
   getToken as getFcmRegistrationToken,
   isDeviceRegisteredForRemoteMessages,
+  onTokenRefresh,
   registerDeviceForRemoteMessages,
   type Messaging,
 } from '@react-native-firebase/messaging';
@@ -316,6 +317,51 @@ export async function sendTokenToBackend(fcmToken: string): Promise<PushRegistra
     toast.error(copy.title, { description: copy.description });
   }
   return { ok: false, type: failureType };
+}
+
+/**
+ * Se suscribe a la *rotación* de token y devuelve el unsubscribe.
+ *
+ * Hay que llamar a APIs distintas por plataforma porque **el valor que emiten es
+ * distinto**, no por gusto:
+ *
+ * - **iOS** → `onTokenRefresh` de RNFB, que emite un **registration token de FCM** — que es
+ *   lo único que `firebase_admin` sabe enrutar. `addPushTokenListener` de expo aquí emitiría
+ *   el **hex crudo de APNs**, y como `sendTokenToBackend` pisa el token guardado, una
+ *   rotación borraría el token bueno adquirido en el arranque y dejaría la cuenta muda. El
+ *   backend tampoco lo limpiaría: el fallo no es `UnregisteredError`, así que la lista
+ *   blanca de `_PERMANENT_FAILURE_TYPES` (correctamente) lo conserva.
+ * - **Android** → se queda `addPushTokenListener` de expo, **sin cambio de comportamiento**.
+ *   RNFB messaging está deslinkeado ahí (`react-native.config.js`), así que `getMessaging()`
+ *   reventaría — por eso la llamada vive detrás del branch de `Platform.OS`, igual que en
+ *   `acquireFcmToken()` y como explica el comentario del import arriba.
+ */
+export function subscribeToTokenRefresh(
+  onToken: (token: string) => void,
+): () => void {
+  if (Platform.OS === "ios") {
+    // Mismo guard que registerForPushNotificationsAsync(): sin dispositivo físico
+    // no hay APNs, y en Simulator el módulo nativo de RNFB puede ni existir.
+    if (!Device.isDevice) {
+      pushBreadcrumb("token refresh omitido — requiere dispositivo físico");
+      return () => {};
+    }
+    try {
+      return onTokenRefresh(getMessaging(), onToken);
+    } catch (err) {
+      // getMessaging() tira si el binario no trae RNFB messaging linkeado — o sea
+      // cualquier dev client anterior a `1e704ea`. Esto NO puede propagarse: corre
+      // sincrónico dentro del useEffect de AuthGate, así que un throw aquí no
+      // degrada "no hay rotación de token", se lleva el render de toda la app.
+      reportPushFailure(
+        { type: "token-unavailable", message: toMessage(err), phase: "token" },
+        { hasUid: _hasUid() },
+      );
+      return () => {};
+    }
+  }
+  const sub = Notifications.addPushTokenListener(({ data }) => onToken(data));
+  return () => sub.remove();
 }
 
 export async function setupNotificationChannels() {
