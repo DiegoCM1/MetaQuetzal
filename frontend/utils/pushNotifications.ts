@@ -340,7 +340,25 @@ export function subscribeToTokenRefresh(
   onToken: (token: string) => void,
 ): () => void {
   if (Platform.OS === "ios") {
-    return onTokenRefresh(getMessaging(), onToken);
+    // Mismo guard que registerForPushNotificationsAsync(): sin dispositivo físico
+    // no hay APNs, y en Simulator el módulo nativo de RNFB puede ni existir.
+    if (!Device.isDevice) {
+      pushBreadcrumb("token refresh omitido — requiere dispositivo físico");
+      return () => {};
+    }
+    try {
+      return onTokenRefresh(getMessaging(), onToken);
+    } catch (err) {
+      // getMessaging() tira si el binario no trae RNFB messaging linkeado — o sea
+      // cualquier dev client anterior a `1e704ea`. Esto NO puede propagarse: corre
+      // sincrónico dentro del useEffect de AuthGate, así que un throw aquí no
+      // degrada "no hay rotación de token", se lleva el render de toda la app.
+      reportPushFailure(
+        { type: "token-unavailable", message: toMessage(err), phase: "token" },
+        { hasUid: _hasUid() },
+      );
+      return () => {};
+    }
   }
   const sub = Notifications.addPushTokenListener(({ data }) => onToken(data));
   return () => sub.remove();

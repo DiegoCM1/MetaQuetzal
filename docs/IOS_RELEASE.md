@@ -192,6 +192,17 @@ se queda con `addPushTokenListener` de expo — **comportamiento idéntico en An
 Firma verificada contra `messaging/dist/typescript/lib/modular.d.ts:48`. tsc limpio; eslint
 en el baseline exacto (350) — cero errores nuevos.
 
+**Guard obligatorio (encontrado corriendo la app, 18/08).** La primera versión llamaba
+`getMessaging()` sin proteger y **tiró la app entera** en un dev client anterior a
+`1e704ea`: *"You attempted to use a Firebase module that's not installed natively"*, y
+detrás el cascade *"Attempted to navigate before mounting the Root Layout"*.
+`acquireFcmToken()` nunca lo pegó porque `registerForPushNotificationsAsync()` corta antes
+con `if (!Device.isDevice) return null` — pero `subscribeToTokenRefresh()` se llama
+**incondicionalmente** desde el `useEffect` de `AuthGate`. Ahora lleva el mismo guard de
+`Device.isDevice` (breadcrumb, no error — en Simulator es lo esperado) **y** un try/catch
+que reporta `token-unavailable` y devuelve un unsubscribe no-op. Un throw síncrono en esa
+posición no degrada "no hay rotación de token": se lleva el render del árbol completo.
+
 Por qué no era cosmético: `sendTokenToBackend` **pisa** el token guardado, así que en iOS
 una rotación habría reemplazado el token bueno del arranque por hex crudo de APNs. Y el
 backend no lo habría limpiado — ese fallo no es `UnregisteredError`, así que la lista
