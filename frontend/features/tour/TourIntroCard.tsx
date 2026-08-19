@@ -10,12 +10,16 @@ interface Props {
 }
 
 /**
- * Step 0. Deliberately a plain Modal rather than a tour step:
+ * The consent gate, shown before the tour starts. Deliberately a plain Modal
+ * rather than a tour step: it buys consent, and a tour that starts unannounced
+ * right after a two-step form wizard reads as more onboarding, while one the
+ * user opted into gets read.
  *
- * 1. A step with no `AttachStep` renders an invisible tooltip over an undimmed
- *    screen, so a "frame the whole map" step is not expressible as one.
- * 2. It buys consent. A tour that starts unannounced right after a two-step
- *    form wizard reads as more onboarding; one the user opted into gets read.
+ * It used to also carry the map explanation, because "frame the whole map" was
+ * not expressible as a step. That is no longer true — `TourAnchor`'s `center`
+ * variant frames an area without needing a control to attach to — so the map
+ * content now lives in step `MAP_TOUR.MAP` with the rest of the tour, and this
+ * card does one job: ask.
  */
 export function TourIntroCard({ visible, onAccept, onDecline }: Props) {
   return (
@@ -32,18 +36,18 @@ export function TourIntroCard({ visible, onAccept, onDecline }: Props) {
             style={{ width: 56, height: 56 }}
           >
             <MaterialCommunityIcons
-              name="map-search-outline"
+              name="compass-outline"
               size={28}
               color={colors.brandCyan}
             />
           </View>
 
           <Text className="font-poppins-semibold text-xl text-white text-center mb-2">
-            Tu zona en tiempo real
+            Conoce tu app
           </Text>
           <Text className="font-poppins text-sm text-white text-center leading-5">
-            Aquí verás los huracanes activos y los reportes de tu comunidad. Te
-            mostramos lo importante en 4 pasos rápidos.
+            En 5 pasos rápidos te mostramos dónde ver las alertas, cómo pedir
+            ayuda y cómo reportar lo que ves.
           </Text>
 
           <Pressable

@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import MapView, {
@@ -376,6 +377,10 @@ export default function WeatherMapNativewind({
 }: MapProps = {}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // Diameter of the tour's "your area" spotlight (step MAP_TOUR.MAP). Off the
+  // smaller dimension so portrait and landscape both get a circle that fits.
+  const { width: winWidth, height: winHeight } = useWindowDimensions();
+  const mapSpotSize = Math.round(Math.min(winWidth, winHeight) * 0.55);
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [showWind, setShowWind] = useState(true);
   const [showPrecip, setShowPrecip] = useState(false);
@@ -1138,6 +1143,13 @@ export default function WeatherMapNativewind({
       {/* Invisible spotlight targets standing in for the FABs, so tour code
           never touches a real control. Rendered before the FABs so the buttons
           always win z-order. The offset correction comes from context. */}
+      {/* Step 0 frames the middle of the map instead of a control. The map
+          centres on the user, so "your area" is a fixed screen position — this
+          needs no coordinates and no marker to measure. Sized off the smaller
+          screen dimension so it stays a highlight in both orientations: much
+          larger and the cutout covers everything, which reads the same as no
+          spotlight at all. */}
+      <TourAnchor index={MAP_TOUR.MAP} center size={mapSpotSize} />
       <TourAnchor
         index={MAP_TOUR.SOS}
         width={FAB_SIZE}
