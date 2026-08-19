@@ -393,6 +393,10 @@ Probado de verdad, no inferido:
   El Simulator es válido para esto: el borrado no toca APNs ni entitlements. **Falta
   repetirlo con Sign in with Apple**, que es donde aparece P2.
 
+### G. Upload R8 file to make the app lighter for users and facilitate revision by GooglePlay — **DIFERIDO**
+It refers to the alert/advice that appears whenever sending a new update to the playstore. - Optimization
+
+
 ---
 
 ## Post-release — encontrado durante el release, NO bloquea el envío
