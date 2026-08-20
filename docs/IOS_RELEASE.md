@@ -508,12 +508,13 @@ dos variables que no se pudieron descartar.
 
 ---
 
-### P5. El dedup de push token no lleva el uid — cambiar de cuenta deja el push mudo
+### ~~P5. El dedup de push token no lleva el uid~~ ✅ **HECHO (19/08)**
 
-**Verificado 19/08** contra staging con el dev build.
+Cambiar de cuenta en el mismo dispositivo dejaba el push mudo. **Verificado 19/08** contra
+staging con el dev build, y arreglado antes del build de producción.
 
-`utils/pushNotifications.ts:259` compara `stored === fcmToken` contra AsyncStorage
-(`_LAST_TOKEN_KEY`, línea 116). Un token de FCM es del **dispositivo**, no del usuario: al
+**Qué pasaba.** `sendTokenToBackend` comparaba `stored === fcmToken` contra AsyncStorage
+(`_LAST_TOKEN_KEY`). Un token de FCM es del **dispositivo**, no del usuario: al
 cerrar sesión y entrar con otra cuenta el token es idéntico, el guard matchea y **el POST
 nunca sale**. Peor: devuelve `{ ok: true }`, así que se imprime `registration finished` y
 toda la telemetría reporta éxito. Falla en silencio y en positivo.
@@ -534,8 +535,16 @@ Evidencia:
 sale. Solo afecta cambiar de cuenta en el mismo dispositivo — incluido borrar cuenta y
 volver a entrar, que sí es un flujo real y deja al usuario sin alertas sin avisarle.
 
-**Fix (3 líneas, solo cliente):** usar `${uid}:${token}` como valor del dedup en vez de
-`${token}`.
+**Fix aplicado (solo cliente):** `sendTokenToBackend` arma `dedupeKey = ${uid}:${token}` y
+lo usa tanto en el guard en memoria (`_registrationInFlight`) como en el de AsyncStorage
+(`_LAST_TOKEN_KEY`). El uid se lee **antes del primer await** — `currentUser` puede cambiar
+mientras corren los reintentos, y el dedup tiene que hablar del usuario que motivó ese
+registro. Sin sesión cae a `anon`, que es un valor distinto de cualquier uid real, así que
+el primer registro autenticado sí sale.
+
+**Por qué era barato hacerlo el día del release:** si la llave nueva se equivoca, el peor
+caso es un POST de más — y ese POST es idempotente en el backend (`ON CONFLICT`). El
+downside de un bug aquí es ruido, no una cuenta muda.
 
 ---
 

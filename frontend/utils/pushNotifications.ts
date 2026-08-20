@@ -113,6 +113,11 @@ export async function requestHeadsUpPermission(): Promise<void> {
   );
 }
 
+// Guarda `uid:token`, NO el token pelón. Un token de FCM es del *dispositivo*, así que
+// al cambiar de cuenta sigue siendo el mismo: con el token solo como llave, el POST de la
+// cuenta nueva se saltaba y esa cuenta se quedaba sin fila en `device_tokens` — sin push
+// y reportando éxito. El backend ya hace `ON CONFLICT (token) DO UPDATE SET user_id`, o
+// sea que el POST que nos ahorrábamos era justo el que arreglaba la fila.
 const _LAST_TOKEN_KEY = 'push_last_registered_token';
 // In-memory guard prevents concurrent calls with the same token from both POSTing
 let _registrationInFlight: string | null = null;
@@ -124,12 +129,16 @@ export type PushRegistrationResult =
 
 // Telemetry must never be the thing that crashes the app: if Firebase isn't
 // initialised yet, "no uid" is the honest answer, not an exception.
-function _hasUid(): boolean {
+function _currentUid(): string | null {
   try {
-    return !!getAuth().currentUser?.uid;
+    return getAuth().currentUser?.uid ?? null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function _hasUid(): boolean {
+  return _currentUid() !== null;
 }
 
 /**
@@ -241,9 +250,13 @@ async function acquireFcmToken(): Promise<string | null> {
 }
 
 export async function sendTokenToBackend(fcmToken: string): Promise<PushRegistrationResult> {
+  // Leído antes del primer await: `currentUser` puede cambiar mientras corren los
+  // reintentos, y el dedup tiene que hablar del usuario que motivó ESTE registro.
+  const dedupeKey = `${_currentUid() ?? "anon"}:${fcmToken}`;
+
   // Another call already owns this token's outcome — not our failure to report.
-  if (_registrationInFlight === fcmToken) return { ok: true };
-  _registrationInFlight = fcmToken;  // set before any await — closes TOCTOU window
+  if (_registrationInFlight === dedupeKey) return { ok: true };
+  _registrationInFlight = dedupeKey;  // set before any await — closes TOCTOU window
 
   const tokenPrefix = redactToken(fcmToken);
   let success = false;
@@ -256,7 +269,7 @@ export async function sendTokenToBackend(fcmToken: string): Promise<PushRegistra
     // Persistent deduplication: skip if token already registered successfully
     try {
       const stored = await AsyncStorage.getItem(_LAST_TOKEN_KEY);
-      if (stored === fcmToken) {
+      if (stored === dedupeKey) {
         pushBreadcrumb('token already registered — skipping POST', { tokenPrefix });
         return { ok: true };             // finally handles _registrationInFlight = null
       }
@@ -278,7 +291,7 @@ export async function sendTokenToBackend(fcmToken: string): Promise<PushRegistra
         });
         if (res.ok) {
           try {
-            await AsyncStorage.setItem(_LAST_TOKEN_KEY, fcmToken);
+            await AsyncStorage.setItem(_LAST_TOKEN_KEY, dedupeKey);
           } catch { /* best-effort; next launch will re-POST (idempotent) */ }
           track('push_token_saved', { ok: true });
           pushBreadcrumb('token registered with backend', { tokenPrefix, attempt });
