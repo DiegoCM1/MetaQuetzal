@@ -489,6 +489,56 @@ y el día del release es mal día para descubrir los casos borde de esa iniciali
 
 ---
 
+### P4. La tab bar se queda inerte de vez en cuando (iPhone físico) — sin repro
+
+**19/08, dev build, iPhone SE físico.** La tab bar se dibuja normal pero no recibe
+toques: **todos** los tabs, **cero** feedback de press. El resto de la pantalla (mapa,
+SOS, reportar) responde bien, así que no es un freeze.
+
+- **No es del tour.** Diego ya lo había visto antes de los cambios del tutorial, y al
+  re-correr el tour después del reinicio no volvió a pasar.
+- **Se limpia con force-quit + relanzar.** No se reprodujo en ~4 intentos posteriores,
+  incluyendo sign out / sign in con Google.
+- **Solo en dispositivo físico.** El Simulator de iOS nunca lo hace — que es justo por
+  qué nadie lo había cachado (ver "El Simulator no firma nada — y por eso engaña").
+
+Sin repro determinista no hay nada que arreglar, y no bloquea el envío. **Si vuelve:**
+anotar si el tour corrió en ese arranque y si hubo un reload de Metro antes — son las
+dos variables que no se pudieron descartar.
+
+---
+
+### P5. El dedup de push token no lleva el uid — cambiar de cuenta deja el push mudo
+
+**Verificado 19/08** contra staging con el dev build.
+
+`utils/pushNotifications.ts:259` compara `stored === fcmToken` contra AsyncStorage
+(`_LAST_TOKEN_KEY`, línea 116). Un token de FCM es del **dispositivo**, no del usuario: al
+cerrar sesión y entrar con otra cuenta el token es idéntico, el guard matchea y **el POST
+nunca sale**. Peor: devuelve `{ ok: true }`, así que se imprime `registration finished` y
+toda la telemetría reporta éxito. Falla en silencio y en positivo.
+
+**El backend ya está bien** — `notifications/service.py:215-221` hace
+`INSERT ... ON CONFLICT (token) DO UPDATE SET user_id = :user_id`. Si el POST llegara, la
+fila se reasignaría sola. El bug es 100% del cliente.
+
+Evidencia:
+
+- Sign-in Google 19:35 local → `token registered with backend` + `POST /api/v1/push-token
+  201` en los logs HTTP de Railway (staging).
+- Sign-in Apple ~20:05 local → `token already registered — skipping POST`. **Cero** POSTs
+  a `/api/v1/push-token` entre 20:02 y 20:13 local.
+- El user de Apple (`psr0MWNFmBUUeCWYGfzG…`) quedó sin ninguna fila en `device_tokens`.
+
+**No bloquea el envío:** el revisor instala de cero, AsyncStorage está vacío y el POST sí
+sale. Solo afecta cambiar de cuenta en el mismo dispositivo — incluido borrar cuenta y
+volver a entrar, que sí es un flujo real y deja al usuario sin alertas sin avisarle.
+
+**Fix (3 líneas, solo cliente):** usar `${uid}:${token}` como valor del dedup en vez de
+`${token}`.
+
+---
+
 ## Falta en App Store Connect (Diego) — **bloquea el envío**
 
 No es código, pero sin esto la review se rechaza:
