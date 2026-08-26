@@ -250,7 +250,7 @@ export default Sentry.wrap(function Layout() {
       });
 
       if (isSosInvite && inviteToken) {
-        console.log('[QA_NAV] tap → sos-invite | token:', inviteToken)
+        console.log('[QA_NAV] tap → sos-invite | tokenPrefix:', redactToken(inviteToken))
         AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
         router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
         return;
@@ -306,7 +306,7 @@ export default Sentry.wrap(function Layout() {
         return;
       }
       if (isSosInvite && inviteToken) {
-        console.log('[QA_SOS_INVITE] foreground received | saving token:', inviteToken)
+        console.log('[QA_SOS_INVITE] foreground received | saving tokenPrefix:', redactToken(inviteToken))
         AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
         toast(`Invitación SOS de ${inviterDisplayName}`, {
           description: 'Toca para aceptar la invitación.',
@@ -396,7 +396,7 @@ export default Sentry.wrap(function Layout() {
       });
 
       if (isSosInvite && inviteToken) {
-        console.log('[QA_NAV] cold start → sos-invite | token:', inviteToken)
+        console.log('[QA_NAV] cold start → sos-invite | tokenPrefix:', redactToken(inviteToken))
         AsyncStorage.setItem(PENDING_SOS_INVITE_KEY, inviteToken).catch(() => {});
         router.push({ pathname: "/sos-invite/[token]", params: { token: inviteToken } });
         return;

@@ -369,3 +369,53 @@ async def alert_summary(db, alert_id: str) -> str:
     except Exception as exc:
         logger.error("alert_summary LLM call failed: %s", exc, exc_info=True)
         raise RuntimeError("llm_unavailable")
+
+
+_SMN_SUMMARY_SYSTEM_PROMPT = (
+    "Eres un asistente de alertas meteorológicas para México. Dado el texto "
+    "completo de un boletín oficial del SMN/CONAGUA, redacta un resumen breve "
+    "para el público general. "
+    "Reglas estrictas: máximo 3 oraciones; español simple y directo; sin jerga "
+    "meteorológica ni técnica (o explícala en una frase si es imprescindible); "
+    "sin emojis; no inventes datos que no estén en el texto; conserva cifras y "
+    "nombres de lugares tal como aparecen en el original."
+)
+
+_SMN_SUMMARY_MAX_CHARS = 500
+
+
+async def generate_plain_summary(full_text: str) -> str | None:
+    """
+    Plain-language rewrite of a raw SMN bulletin body, for the push notification
+    and alert cards — the audience complained the original scraped text reads
+    "medio científico". Best-effort: returns None (never raises) when the LLM
+    isn't configured or the call fails, so callers must fall back to the raw
+    truncated text rather than block the SMN ingestion cycle on this.
+    """
+    if not settings.LLM_API_KEY or not settings.LLM_BASE_URL or not full_text:
+        return None
+
+    messages = [
+        {"role": "system", "content": _SMN_SUMMARY_SYSTEM_PROMPT},
+        {"role": "user", "content": f"Boletín SMN/CONAGUA:\n{full_text}"},
+    ]
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url=f"{settings.LLM_BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.LLM_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": settings.LLM_MODEL, "messages": messages},
+                timeout=30.0,
+            )
+            data = response.json()
+            if "choices" not in data:
+                raise RuntimeError(f"LLM returned no choices: {data}")
+            summary = data["choices"][0]["message"]["content"]
+            return summary[:_SMN_SUMMARY_MAX_CHARS]
+    except Exception as exc:
+        logger.error("generate_plain_summary LLM call failed: %s", exc, exc_info=True)
+        return None

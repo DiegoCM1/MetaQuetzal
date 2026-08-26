@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from app.features.siat.classification import classify_wind_kmh, classification_label
 from app.features.siat.direction import parse_movement_direction
 from app.features.siat.evaluator import evaluate_user, haversine_km
+from app.features.siat.levels import siat_title
 from app.features.siat.providers.nhc import fetch_active_cyclones
 from app.features.notifications.service import (
     get_tokens_for_users,
@@ -38,14 +39,6 @@ logger = logging.getLogger(__name__)
 
 _NOTIFY_MIN_LEVEL = 2          # VERDE and above trigger push
 _QUIET_HOURS_OVERRIDE_LEVEL = 4  # NARANJA and ROJO always fire even in quiet hours
-
-_COLOR_LABELS = {
-    "AZUL": "Azul",
-    "VERDE": "Verde",
-    "AMARILLO": "Amarillo",
-    "NARANJA": "Naranja",
-    "ROJO": "Rojo",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -263,9 +256,7 @@ async def _upsert_cyclone_alert(
     national bulletins / admin-created alerts, not SIAT cyclone escalations.
     """
     level = assessment["siat_level"]
-    color = assessment["siat_color"]
-    label = _COLOR_LABELS.get(color, color)
-    title = f"Ciclón {cyclone['name']} — SIAT-CT {label}"
+    title = f"Ciclón {cyclone['name']} — {siat_title(level)}"
     short = (assessment.get("reason") or f"Ciclón a {assessment.get('distance_km', '?'):.0f} km")[:500]
     result = await db.execute(
         text("""
@@ -304,8 +295,7 @@ async def _push_per_user(
             continue
 
         level = assessment["siat_level"]
-        label = _COLOR_LABELS.get(assessment["siat_color"], assessment["siat_color"])
-        title = f"Alerta SIAT-CT {label}"
+        title = f"Alerta {siat_title(level)}"
         body = assessment["reason"]
         alert_id = assessment.get("alert_id")
 
@@ -365,7 +355,7 @@ _SMN_RADIUS_KM = 500.0
 async def _get_pending_smn_alerts(db: AsyncSession) -> list:
     # Includes national alerts (lat/lon NULL) — these are handled without radius filtering
     result = await db.execute(text("""
-        SELECT id, title, short, level, lat, lon
+        SELECT id, title, short, ai_summary, level, lat, lon
         FROM alerts
         WHERE notified_at IS NULL
           AND timestamp > NOW() - INTERVAL '35 minutes'
@@ -406,7 +396,11 @@ async def _push_smn_for_alert(
         return 0
 
     smn_title = f"Nueva alerta — {alert['title']}"
-    smn_body = alert["short"] or ""
+    # ai_summary is the plain-language rewrite (SMN general bulletins only, see
+    # ai.service.generate_plain_summary) — falls back to the raw scraped `short`
+    # when it wasn't generated (LLM unconfigured/unavailable, or a cyclone
+    # advisory / admin alert, which don't get one).
+    smn_body = alert.get("ai_summary") or alert["short"] or ""
     msg = messaging.MulticastMessage(
         notification=messaging.Notification(title=smn_title, body=smn_body),
         data={

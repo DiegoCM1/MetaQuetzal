@@ -28,13 +28,20 @@ class Settings(BaseSettings):
 
     # Dev-only bypasses
     DEV_BYPASS_MAP_EVENTS_AUTH: bool = False
-    # When true, any authenticated Firebase user can call the notification test endpoints.
-    # Set to true in Railway staging. Never set in production.
-    DEV_BYPASS_NOTIF_TEST_AUTH: bool = False
 
-    # Notification test tool — comma-separated emails allowed to call POST /api/v1/notifications/test.
-    # Empty string disables the endpoint for everyone (production default).
+    # Dev-tools allowlist — gates the internal test-notification and SIAT
+    # inject endpoints (see notifications/router.py:require_dev_tools_admin).
+    # A user matches by EITHER list; both comma-separated. Empty strings
+    # disable the endpoints for everyone (production default) — there used to
+    # be a DEV_BYPASS_NOTIF_TEST_AUTH flag that skipped this allowlist
+    # entirely in staging; it was removed because it defeated the point of
+    # having a list at all.
     NOTIFICATION_TEST_ADMIN_EMAILS: str = ""
+    # Matched against `users.phone` (an onboarding profile field), not a
+    # Firebase token claim — sign-in here is Google/Apple only, so a token
+    # never carries a phone_number. Any non-digit formatting (spaces, +52,
+    # dashes) is stripped before comparing on both sides.
+    NOTIFICATION_TEST_ADMIN_PHONES: str = ""
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"))
 

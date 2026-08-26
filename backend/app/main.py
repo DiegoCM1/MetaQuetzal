@@ -30,9 +30,11 @@ logger = logging.getLogger(__name__)
 # silently — the app boots fine and /ai/chat just 404s — so log the reason.
 try:
     from app.features.ai.router import router as ai_router
+    from app.features.ai.service import generate_plain_summary
 except Exception:
     logger.exception("AI router import failed; /ai/chat and /api/v1/ai/alert-summary will 404")
     ai_router = None
+    generate_plain_summary = None
 
 SIAT_CYCLE_INTERVAL_SECONDS = 30 * 60  # 30 minutes
 
@@ -94,6 +96,12 @@ async def ensure_core_tables(engine: AsyncEngine) -> None:
         ))
         await conn.execute(text(
             "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS cyclone_meta JSONB"
+        ))
+        # Resumen en lenguaje llano del boletín SMN, generado una sola vez al
+        # persistir el boletín (no en cada request) — lo usan el push y las
+        # tarjetas de alerta en vez del texto crudo scrapeado del HTML oficial.
+        await conn.execute(text(
+            "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS ai_summary TEXT"
         ))
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)"
@@ -279,7 +287,9 @@ async def _siat_background_loop():
             async with AsyncSessionLocal() as db:
                 bulletin = await fetch_latest_bulletin()
                 if bulletin:
-                    inserted = await persist_smn_bulletin_if_new(db, bulletin)
+                    inserted = await persist_smn_bulletin_if_new(
+                        db, bulletin, summarizer=generate_plain_summary
+                    )
                     if inserted:
                         logger.info(
                             "SMN: new bulletin persisted — '%s'",

@@ -73,7 +73,7 @@ export default function LocalChatConversationScreen() {
     clearConversation,
     sendMessage,
     isPeerInRange,
-    connectedPeerId,
+    isPeerConnected,
     connectToPeer,
     peers,
   } = useLocalChatContext();
@@ -83,7 +83,7 @@ export default function LocalChatConversationScreen() {
   const convo = getConversation(peerId);
 
   const inRange = isPeerInRange(peerId);
-  const connected = connectedPeerId === peerId;
+  const connected = isPeerConnected(peerId);
   const peerName = convo?.peerNickname ?? params.nickname ?? "Desconocido";
 
   // FlashList renders top→bottom; our store is newest-first, so reverse for
