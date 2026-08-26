@@ -42,6 +42,7 @@ import {
   type ActiveCyclone,
 } from "./service";
 import { darkMapStyle } from "./mapStyle";
+import { colorForLevel as siatColorForLevel } from "../../utils/siatLevels";
 import {
   DEFAULT_REGION,
   REPORTING_DISTANCE_METERS,
@@ -99,22 +100,11 @@ interface MapProps {
 }
 
 // SIAT level (this user's risk) — used only for the focusLat/focusLon marker
-// that comes from a push notification.
-// Tokens de marca, no hex sueltos. Antes eran los colores POR DEFECTO de Material
-// (#F44336 = Red 500, #FF9800 = Orange 500, #FFC107 = Amber 500, #4CAF50 = Green 500):
-// la paleta de Google encima de un mapa navy hecho a medida. Por eso los marcadores se
-// sentían pegados de otra app — los tonos se parecen lo suficiente para verse
-// intencionales y difieren lo suficiente para chocar.
-// El mapeo severidad → color es el canónico de docs/BRAND.md.
-const LEVEL_COLORS: Record<number, string> = {
-  1: colors.brandGreen, // Safe
-  2: colors.brandGreen, // Safe
-  3: colors.brandYellow, // Watch
-  4: colors.brandOrange, // Warning
-  5: colors.brandRed, // Emergency
-};
+// that comes from a push notification. Colors come from the canonical
+// utils/siatLevels.ts, not a local copy — see docs/specs_aug06/edgar_sprint_4.md
+// Bloque 1 for why that used to be a separate (and mismatched) palette here.
 
-// Storm intensity classification — deliberately separate from LEVEL_COLORS.
+// Storm intensity classification — deliberately separate from SIAT level colors.
 // A weak depression heading straight at someone can carry a high SIAT level,
 // so mixing the two palettes would misrepresent one or the other.
 // La separación es de SIGNIFICADO; la paleta sí se comparte, para que el mapa no
@@ -165,7 +155,7 @@ const HurricaneMarker = React.memo(function HurricaneMarker({
   console.log("[QA_MAP] HurricaneMarker render | lat:", lat, "| lon:", lon);
   const color = categoryCode
     ? (CATEGORY_COLORS[categoryCode] ?? CATEGORY_COLORS.TD)
-    : LEVEL_COLORS[level ?? 3];
+    : siatColorForLevel(level ?? 3);
   return (
     <Marker
       coordinate={{ latitude: lat, longitude: lon }}
@@ -531,12 +521,10 @@ export default function WeatherMapNativewind({
 
   useEffect(() => {
     if (focusLat == null || focusLon == null) return;
-    console.log(
-      "[QA_MAP] focus useEffect fired | focusLat:",
-      focusLat,
-      "| focusLon:",
-      focusLon,
-    );
+    // focusLat/focusLon are not logged here — this fires for cyclone alerts
+    // AND for an SOS focus (focusSosPhone set), where they're a real person's
+    // live GPS, not a public cyclone position.
+    console.log("[QA_MAP] focus useEffect fired | isSos:", focusSosPhone !== undefined);
     // Don't update region state — recenter button must always go to user location
     mapRef.current?.animateToRegion(
       {
@@ -617,14 +605,10 @@ export default function WeatherMapNativewind({
         // Always update region to user location — recenter button depends on this
         setRegion(userRegion);
         if (focusLat != null && focusLon != null) {
-          console.log(
-            "[QA_MAP] GPS resolved with focus — fitToCoordinates | cyclone:",
-            focusLat,
-            focusLon,
-            "| user:",
-            coords.latitude,
-            coords.longitude,
-          );
+          // Neither the user's own GPS nor focusLat/focusLon are logged here —
+          // focusLat/focusLon can be a real person's GPS (SOS focus), not
+          // necessarily a public cyclone position. See the focus useEffect above.
+          console.log("[QA_MAP] GPS resolved with focus — fitToCoordinates | isSos:", focusSosPhone !== undefined);
           mapRef.current?.fitToCoordinates(
             [
               { latitude: focusLat, longitude: focusLon },
@@ -1376,6 +1360,9 @@ export default function WeatherMapNativewind({
         <TouchableOpacity
           onPress={handleSOSTrigger}
           disabled={isSosSending}
+          accessibilityLabel="Enviar SOS"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSosSending, busy: isSosSending }}
           style={{
             width: FAB_SIZE,
             height: FAB_SIZE,

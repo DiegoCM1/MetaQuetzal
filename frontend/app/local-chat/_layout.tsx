@@ -31,6 +31,7 @@ export default function LocalChatLayout() {
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="chat" />
+        <Stack.Screen name="mesh" />
       </Stack>
       <NicknameGate />
     </LocalChatProvider>

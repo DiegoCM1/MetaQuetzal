@@ -97,7 +97,7 @@ export default function SOSContactsScreen() {
             return r.ok ? r.json() : Promise.reject(r.status);
           })
           .then((data: SOSContact[]) => {
-            console.log('[QA_SOS] contacts loaded:', data.length, 'items', JSON.stringify(data.map(c => ({ id: c.id, name: c.name, link_status: c.link_status }))));
+            console.log('[QA_SOS] contacts loaded:', data.length, 'items'); // names deliberately not logged — PII
             if (live) setContacts(data);
           })
           .catch((err) => {
@@ -112,7 +112,7 @@ export default function SOSContactsScreen() {
             return r.ok ? r.json() : Promise.reject(r.status);
           })
           .then((data: WhoHasMeItem[]) => {
-            console.log('[QA_SOS] who-has-me loaded:', data.length, 'items', JSON.stringify(data));
+            console.log('[QA_SOS] who-has-me loaded:', data.length, 'items'); // names/phones deliberately not logged — PII
             if (live) setWhoHasMe(data);
           })
           .catch((err) => console.log('[QA_SOS] who-has-me fetch error:', err));
@@ -197,7 +197,7 @@ export default function SOSContactsScreen() {
   function selectPhoneContact(contact: ExpoContacts.Contact) {
     const fullName = (contact.name ?? "").trim();
     const phone = (contact.phoneNumbers?.[0]?.number ?? "").replace(/\s/g, "");
-    console.log('[QA_SOS] contact selected from picker | name:', fullName, '| phone:', phone);
+    console.log('[QA_SOS] contact selected from picker'); // name/phone deliberately not logged — PII
     setNameVal(fullName);
     setPhoneVal(phone);
     setPickerVisible(false);
@@ -206,7 +206,7 @@ export default function SOSContactsScreen() {
 
   async function handleSave() {
     const n = nameVal.trim(), p = phoneVal.trim(), r = relVal.trim();
-    console.log('[QA_SOS] handleSave | name:', JSON.stringify(n), '| phone:', JSON.stringify(p), '| rel:', JSON.stringify(r), '| editing:', editingContact?.id ?? null);
+    console.log('[QA_SOS] handleSave | editing:', editingContact?.id ?? null); // name/phone/rel deliberately not logged — PII
     if (!n || !p) {
       console.log('[QA_SOS] validation failed: name or phone empty');
       return setFormError("Nombre y teléfono son obligatorios.");
@@ -222,13 +222,13 @@ export default function SOSContactsScreen() {
       ? `${API_BASE_URL}/api/v1/sos-contacts/${editingContact.id}`
       : `${API_BASE_URL}/api/v1/sos-contacts`;
     const method = editingContact ? "PATCH" : "POST";
-    console.log('[QA_SOS] saving contact | method:', method, '| body:', JSON.stringify(body));
+    console.log('[QA_SOS] saving contact | method:', method); // body deliberately not logged — contains phone
     try {
       const res = await authFetch(url, { method, body: JSON.stringify(body) });
       console.log('[QA_SOS] save response status:', res.status);
       if (!res.ok) throw new Error(String(res.status));
       const saved: SOSContact = await res.json();
-      console.log('[QA_SOS] contact saved:', JSON.stringify({ id: saved.id, name: saved.name, link_status: saved.link_status }));
+      console.log('[QA_SOS] contact saved:', JSON.stringify({ id: saved.id, link_status: saved.link_status })); // name deliberately not logged — PII
       setContacts(prev =>
         editingContact ? prev.map(c => c.id === saved.id ? saved : c) : [...prev, saved]
       );
@@ -267,7 +267,7 @@ export default function SOSContactsScreen() {
   }
 
   async function handleAddReciprocal(item: WhoHasMeItem) {
-    console.log('[QA_SOS] adding reciprocal contact | owner_user_id:', item.owner_user_id, '| name:', item.owner_display_name);
+    console.log('[QA_SOS] adding reciprocal contact | owner_user_id:', item.owner_user_id); // name deliberately not logged — PII
     setAddingReciprocal(item.owner_user_id);
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/reciprocate/${item.owner_user_id}`, { method: "POST" });
@@ -279,7 +279,7 @@ export default function SOSContactsScreen() {
       }
       if (!res.ok) throw new Error(String(res.status));
       const saved: SOSContact = await res.json();
-      console.log('[QA_SOS] reciprocal added:', JSON.stringify({ id: saved.id, name: saved.name }));
+      console.log('[QA_SOS] reciprocal added:', JSON.stringify({ id: saved.id })); // name deliberately not logged — PII
       setContacts(prev => [...prev, saved]);
       setWhoHasMe(prev => prev.map(w => w.owner_user_id === item.owner_user_id ? { ...w, already_my_contact: true } : w));
       toast.success(`${item.owner_display_name ?? item.name} agregado a tus contactos SOS`);
@@ -292,13 +292,13 @@ export default function SOSContactsScreen() {
   }
 
   async function handleInvite(c: SOSContact) {
-    console.log('[QA_SOS] sending invite for contact id:', c.id, 'name:', c.name);
+    console.log('[QA_SOS] sending invite for contact id:', c.id); // name deliberately not logged — PII
     try {
       const res = await authFetch(`${API_BASE_URL}/api/v1/sos-contacts/${c.id}/invite`, { method: "POST" });
       console.log('[QA_SOS] invite response status:', res.status);
       if (!res.ok) throw new Error(String(res.status));
       const { share_url, push_sent } = await res.json();
-      console.log('[QA_SOS] invite result | push_sent:', push_sent, '| share_url:', share_url);
+      console.log('[QA_SOS] invite result | push_sent:', push_sent); // share_url deliberately not logged — equivalent to a bearer token
       setContacts(prev => prev.map(x => x.id === c.id ? { ...x, link_status: "invite_sent" } : x));
       if (push_sent) {
         toast.success("Notificación enviada", {
